@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply text-zinc-800 antialiased bg-zinc-50;
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  h1 { @apply text-xl font-semibold text-zinc-900; }
+  h2 { @apply text-base font-semibold text-zinc-800; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium
+           hover:bg-zinc-700 transition-colors disabled:opacity-40;
+  }
+  .btn-secondary {
+    @apply border border-zinc-200 text-zinc-700 px-4 py-2 rounded-lg text-sm
+           font-medium hover:bg-zinc-100 transition-colors;
+  }
+  .card {
+    @apply bg-white rounded-xl border border-zinc-200/80 shadow-sm;
+  }
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  /* Page wrapper — every page gets consistent padding */
+  .page {
+    @apply max-w-7xl mx-auto px-8 py-6;
+  }
+}

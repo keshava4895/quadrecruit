@@ -1,0 +1,90 @@
+from pydantic import BaseModel, EmailStr, Field
+from typing import List, Optional
+from datetime import datetime
+
+# ── Job models ────────────────────────────────────────────────────────────────
+class JobCreate(BaseModel):
+    title: str
+    description: str
+    skills: List[str]
+    experience_years: int
+    location: Optional[str] = None
+    recruiter_email: Optional[EmailStr] = None
+
+class JobResponse(JobCreate):
+    jobId: str
+    created_at: datetime
+    status: str = "active"
+
+# ── Candidate models ──────────────────────────────────────────────────────────
+class CandidateCreate(BaseModel):
+    name: str
+    email: EmailStr
+    phone: Optional[str] = None
+    skills: List[str] = []
+    experience: int = 0
+    summary: Optional[str] = None
+    resume_text: Optional[str] = None
+
+class CandidateResponse(CandidateCreate):
+    candidateId: str
+    match_score: float = 0.0
+    status: str = "sourced"          # sourced | emailed | interested | rejected | selected
+    interview_phase: str = "not_started"
+    created_at: datetime
+
+# ── Email models ──────────────────────────────────────────────────────────────
+class EmailRequest(BaseModel):
+    candidate_email: EmailStr
+    subject: str
+    body: str
+
+class BulkEmailRequest(BaseModel):
+    jobId: str
+    subject: Optional[str] = None
+
+# ── Schedule models ───────────────────────────────────────────────────────────
+class ScheduleRequest(BaseModel):
+    candidateId: str
+    jobId: str
+    interviewer_email: EmailStr
+    start_time: str    # ISO 8601
+    end_time: str
+
+# ── Feedback models ───────────────────────────────────────────────────────────
+class InterviewerFeedback(BaseModel):
+    candidateId: str
+    jobId: str
+    round: int
+    rating: int = Field(..., ge=1, le=10)
+    comments: str
+    decision: str    # "Next Round" | "Selected" | "Rejected"
+
+class CandidateFeedback(BaseModel):
+    candidateId: str
+    jobId: str
+    experience_rating: int = Field(..., ge=1, le=5)
+    comment: Optional[str] = None
+
+# ── Job Portal Search models ───────────────────────────────────────────────────
+class CandidateSearchRequest(BaseModel):
+    query: str                          # free-text requirements
+    portal: str                         # linkedin | indeed | naukri | monster | glassdoor
+    job_id: Optional[str] = None        # if set, query is derived from this job
+    location: Optional[str] = None
+    experience_min: Optional[int] = 0
+    experience_max: Optional[int] = 20
+    limit: int = Field(default=10, ge=1, le=20)
+
+class ExternalCandidate(BaseModel):
+    name: str
+    headline: str = ""
+    current_company: str = ""
+    location: str = ""
+    skills: List[str] = []
+    experience_years: int = 0
+    summary: str = ""
+    availability: str = ""
+    profile_url: str = ""
+    portal: str = ""
+    match_score: float = 0.0

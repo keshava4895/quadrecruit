@@ -1,0 +1,72 @@
+import base64
+from email.mime.text import MIMEText
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from openai import AsyncOpenAI
+from config import OPENAI_API_KEY, OPENAI_MODEL
+from database import get_db
+from datetime import datetime, timezone
+
+openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+
+
+def _build_service(token: dict):
+    creds = Credentials.from_authorized_user_info(token)
+    return build("gmail", "v1", credentials=creds)
+
+
+def _make_message(to: str, subject: str, body: str) -> dict:
+    msg = MIMEText(body)
+    msg["to"] = to
+    msg["subject"] = subject
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+    return {"raw": raw}
+
+
+async def send_email(to: str, subject: str, body: str, token: dict) -> dict:
+    service = _build_service(token)
+    result = service.users().messages().send(
+        userId="me", body=_make_message(to, subject, body)
+    ).execute()
+
+    # Log to MongoDB
+    db = get_db()
+    await db.email_logs.insert_one({
+        "to": to, "subject": subject,
+        "status": "SENT", "messageId": result.get("id"),
+        "sent_at": datetime.now(timezone.utc),
+    })
+    return result
+
+
+async def draft_outreach_email(candidate_name: str, job_title: str) -> dict:
+    """Use LLM to generate a personalised outreach email."""
+    prompt = f"""Write a professional, friendly recruitment outreach email for:
+- Candidate: {candidate_name}
+- Role: {job_title}
+Return JSON with keys "subject" and "body". Body should be 3 short paragraphs max."""
+    import json
+    resp = await openai_client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7, max_tokens=400,
+    )
+    return json.loads(resp.choices[0].message.content.strip())
+
+
+async def parse_reply_intent(reply_text: str) -> str:
+    """Classify a candidate reply as interested / not_interested / unclear."""
+    prompt = f"""Classify the following email reply as one of:
+interested | not_interested | unclear
+
+Reply:
+{reply_text}
+
+Return only the label, nothing else."""
+    resp = await openai_client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0, max_tokens=10,
+    )
+    label = resp.choices[0].message.content.strip().lower()
+    return label if label in ("interested", "not_interested") else "unclear"
