@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { LogOut, ChevronDown } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import Qlogo from '../../logo/Qlogo.svg'
+import QlogoAnimated from './QlogoAnimated'
 
 export default function Header() {
   const { user, logout } = useAuth()
@@ -30,12 +30,10 @@ export default function Header() {
   }
 
   return (
-    <header className="h-14 bg-blue-600 flex items-center justify-between px-6 flex-shrink-0 z-50 shadow-sm">
+    <header className="h-16 bg-blue-600 flex items-center justify-between px-6 flex-shrink-0 z-50 shadow-sm">
       {/* Logo */}
       <Link to="/dashboard" className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center bg-white/10">
-          <img src={Qlogo} alt="Quad Recruit" className="w-7 h-7 object-contain" />
-        </div>
+        <QlogoAnimated className="w-12 h-12 flex-shrink-0" />
         <div className="leading-tight">
           <div className="text-white font-bold text-sm">Quad Recruit</div>
           <div className="text-blue-200 text-xs">AI-Powered Recruitment Platform</div>

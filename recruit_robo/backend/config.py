@@ -3,8 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Azure Cosmos DB (MongoDB API) — paste your connection string from Azure Portal
-# When set, this takes priority over MONGO_URI
+# Azure Cosmos DB (MongoDB API)
 COSMOS_CONNECTION_STRING = os.getenv("COSMOS_CONNECTION_STRING", "")
 
 # Active DB URI: Cosmos DB if configured, otherwise local MongoDB for dev

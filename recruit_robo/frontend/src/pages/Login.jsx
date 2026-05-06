@@ -44,14 +44,14 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
 
         {/* Logo block */}
         <div className="text-center mb-8">
           <QlogoAnimated className="w-24 h-24 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-white">Quad Recruit</h1>
-          <p className="text-indigo-300 mt-1 text-sm">AI-Powered Recruitment Platform</p>
+          <h1 className="text-3xl font-bold text-indigo-900">Quad Recruit</h1>
+          <p className="text-indigo-500 mt-1 text-sm">AI-Powered Recruitment Platform</p>
         </div>
 
         {/* Card */}
@@ -124,7 +124,7 @@ export default function Login() {
           </form>
         </div>
 
-        <p className="text-center text-blue-200 text-xs mt-6">
+        <p className="text-center text-indigo-400 text-xs mt-6">
           Internal recruitment tool &mdash; authorized users only
         </p>
       </div>

@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, LogOut,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import Qlogo from '../../logo/Qlogo.svg'
+import QlogoAnimated from './QlogoAnimated'
 
 const NAV = [
   { to: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
@@ -34,9 +34,9 @@ export default function Sidebar() {
       }`}
     >
       {/* Logo row + collapse toggle */}
-      <div className="flex items-center h-14 px-4 border-b border-white/5 flex-shrink-0 gap-3">
+      <div className="flex items-center h-16 px-4 border-b border-white/5 flex-shrink-0 gap-3">
         <Link to="/dashboard" className="flex items-center gap-3 flex-1 min-w-0">
-          <img src={Qlogo} alt="Quad Recruit" className="w-7 h-7 object-contain flex-shrink-0" />
+          <QlogoAnimated className="w-12 h-12 flex-shrink-0" />
           {!collapsed && (
             <div className="min-w-0">
               <p className="text-white text-sm font-semibold leading-tight">Quad Recruit</p>
