@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { User, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react'
-import Qlogo from '../../logo/Qlogo.svg'
+import QlogoAnimated from '../components/QlogoAnimated'
 import { useAuth } from '../context/AuthContext'
 
 const HARDCODED_PASSWORD = 'password'
@@ -50,7 +50,7 @@ export default function Login() {
         {/* Logo block */}
         <div className="text-center mb-8">
           <div className="inline-flex w-16 h-16 bg-white/20 rounded-2xl items-center justify-center mb-4 shadow-lg">
-            <img src={Qlogo} alt="Quad Recruit" className="w-10 h-10 object-contain" />
+            <QlogoAnimated className="w-10 h-10" />
           </div>
           <h1 className="text-3xl font-bold text-white">Quad Recruit</h1>
           <p className="text-blue-200 mt-1 text-sm">AI-Powered Recruitment Platform</p>
