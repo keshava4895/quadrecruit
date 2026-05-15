@@ -1,8 +1,12 @@
 import json
-from openai import AsyncOpenAI
-from config import OPENAI_API_KEY, OPENAI_MODEL
+from openai import AsyncAzureOpenAI
+from config import AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_VERSION, OPENAI_MODEL
 
-client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+client = AsyncAzureOpenAI(
+    api_key=AZURE_OPENAI_API_KEY,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT,
+    api_version=AZURE_OPENAI_API_VERSION,
+)
 
 SYSTEM_PROMPT = """You are a resume parser. Extract structured information from the
 resume text provided and return ONLY valid JSON with these fields:

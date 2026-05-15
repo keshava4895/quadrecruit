@@ -1,0 +1,57 @@
+version: "3.9"
+
+# Local dev stack — mirrors the Azure Container Apps topology.
+# Backend is reachable internally as "ca-quadrecruit-backend" to match nginx.conf.
+# Frontend is exposed on http://localhost (port 80).
+# MongoDB runs locally instead of Cosmos DB; switch to Cosmos by setting
+# COSMOS_CONNECTION_STRING in backend/.env.
+
+services:
+
+  # ── Local MongoDB (skipped in Azure — use Cosmos DB there) ──────────────────
+  mongo:
+    image: mongo:6
+    container_name: quadrecruit-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  # ── FastAPI Backend ──────────────────────────────────────────────────────────
+  # Named "ca-quadrecruit-backend" so nginx.conf proxy_pass resolves correctly.
+  ca-quadrecruit-backend:
+    build:
+      context: ./backend
+    container_name: quadrecruit-backend
+    ports:
+      - "8000:8000"          # expose for direct testing at http://localhost:8000/docs
+    env_file:
+      - ./backend/.env       # copy backend/.env.example → backend/.env and fill in keys
+    environment:
+      # Override DB to point at the local mongo service (ignored if
+      # COSMOS_CONNECTION_STRING is set in backend/.env)
+      MONGO_URI: mongodb://mongo:27017
+      DB_NAME: quad_recruit
+      # OAuth callbacks must match what's registered in Google Cloud Console
+      FRONTEND_URL: http://localhost
+      BACKEND_URL: http://localhost
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  # ── React Frontend (nginx) ───────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api   # all API calls go through nginx proxy at /api/*
+    container_name: quadrecruit-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - ca-quadrecruit-backend
+    restart: unless-stopped
+
+volumes:
+  mongo_data:

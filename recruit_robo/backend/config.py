@@ -10,10 +10,12 @@ COSMOS_CONNECTION_STRING = os.getenv("COSMOS_CONNECTION_STRING", "")
 MONGO_URI = COSMOS_CONNECTION_STRING if COSMOS_CONNECTION_STRING else os.getenv("MONGO_URI", "mongodb://localhost:27017")
 DB_NAME   = os.getenv("DB_NAME", "quad_recruit")
 
-# OpenAI
-OPENAI_API_KEY   = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL     = os.getenv("OPENAI_MODEL", "gpt-4o")
-EMBEDDING_MODEL  = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+# Azure OpenAI
+AZURE_OPENAI_API_KEY   = os.getenv("AZURE_OPENAI_API_KEY", "")
+AZURE_OPENAI_ENDPOINT  = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
+OPENAI_MODEL           = os.getenv("OPENAI_MODEL", "gpt-4o")
+EMBEDDING_MODEL        = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
 # Google OAuth
 GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
