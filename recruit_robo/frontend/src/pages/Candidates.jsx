@@ -299,7 +299,7 @@ function CandidateCard({ candidate, onSendMail }) {
 }
 
 export default function Candidates() {
-  const [portal,        setPortal]        = useState('linkedin')
+  const [portals,       setPortals]       = useState(['linkedin'])
   const [portalOpen,    setPortalOpen]    = useState(false)
   const [searchMode,    setSearchMode]    = useState('custom')
   const [query,         setQuery]         = useState('')
@@ -329,7 +329,11 @@ export default function Candidates() {
     return () => document.removeEventListener('mousedown', close)
   }, [])
 
-  const selectedPortal = PORTALS.find(p => p.value === portal)
+  const togglePortal = (value) =>
+    setPortals(prev => prev.includes(value)
+      ? prev.length > 1 ? prev.filter(x => x !== value) : prev
+      : [...prev, value]
+    )
 
   const handleDrop = (e) => {
     e.preventDefault()
@@ -365,16 +369,25 @@ export default function Candidates() {
     if (!hasQuery) { setError(searchMode === 'custom' ? 'Enter search requirements.' : 'Select a job description.'); return }
     setLoading(true); setResults(null)
     try {
-      const res = await searchApi.candidates({
-        portal,
-        query:          searchMode === 'custom' ? query.trim() : '',
-        job_id:         searchMode === 'job'    ? selectedJobId : null,
-        location:       location.trim() || null,
-        experience_min: expMin !== '' ? parseInt(expMin) : 0,
-        experience_max: expMax !== '' ? parseInt(expMax) : 20,
-        limit: 10,
-      })
-      setResults(res.data)
+      const all = []
+      for (const p of portals) {
+        const res = await searchApi.candidates({
+          portal: p,
+          query:          searchMode === 'custom' ? query.trim() : '',
+          job_id:         searchMode === 'job'    ? selectedJobId : null,
+          location:       location.trim() || null,
+          experience_min: expMin !== '' ? parseInt(expMin) : 0,
+          experience_max: expMax !== '' ? parseInt(expMax) : 20,
+          limit: 10,
+        })
+        res.data.candidates.forEach(c => all.push({ ...c, _portal: p }))
+      }
+      const seen = new Map()
+      for (const c of all) {
+        if (!seen.has(c.name) || c.match_score > seen.get(c.name).match_score) seen.set(c.name, c)
+      }
+      const merged = [...seen.values()].sort((a, b) => b.match_score - a.match_score)
+      setResults({ total: merged.length, candidates: merged })
     } catch (err) {
       setError(err.response?.data?.detail || 'Search failed. Please try again.')
     } finally { setLoading(false) }
@@ -434,19 +447,24 @@ export default function Candidates() {
               onClick={() => setPortalOpen(v => !v)}
               className="flex items-center gap-2 px-3.5 py-2 bg-white border border-zinc-200 rounded-lg text-sm font-medium text-zinc-700 hover:border-zinc-400 transition-colors"
             >
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${selectedPortal.dot}`} />
-              {selectedPortal.label}
+              <div className="flex items-center gap-1">
+                {portals.slice(0, 3).map(v => (
+                  <span key={v} className={`w-2 h-2 rounded-full flex-shrink-0 ${PORTALS.find(p => p.value === v)?.dot}`} />
+                ))}
+              </div>
+              {portals.length === 1 ? PORTALS.find(p => p.value === portals[0])?.label : `${portals.length} portals`}
               <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform ${portalOpen ? 'rotate-180' : ''}`} />
             </button>
             {portalOpen && (
-              <div className="absolute right-0 mt-1.5 w-40 bg-white border border-zinc-200 rounded-xl shadow-lg py-1 z-20">
+              <div className="absolute right-0 mt-1.5 w-44 bg-white border border-zinc-200 rounded-xl shadow-lg py-1 z-20">
                 {PORTALS.map(p => (
-                  <button key={p.value} onClick={() => { setPortal(p.value); setPortalOpen(false) }}
+                  <button key={p.value} onClick={() => togglePortal(p.value)}
                     className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left transition-colors ${
-                      p.value === portal ? 'text-zinc-900 font-semibold bg-zinc-50' : 'text-zinc-600 hover:bg-zinc-50'
+                      portals.includes(p.value) ? 'text-zinc-900 font-semibold bg-zinc-50' : 'text-zinc-600 hover:bg-zinc-50'
                     }`}>
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${p.dot}`} />
-                    {p.label}
+                    <span className="flex-1">{p.label}</span>
+                    {portals.includes(p.value) && <span className="text-zinc-500 text-xs">✓</span>}
                   </button>
                 ))}
               </div>
@@ -575,7 +593,7 @@ export default function Candidates() {
           ) : isResumeMode ? (
             <><Upload className="w-4 h-4" /> Screen {resumeFiles.length || 0} Resume{resumeFiles.length !== 1 ? 's' : ''}</>
           ) : (
-            <><Search className="w-4 h-4" /> Search {selectedPortal.label}</>
+            <><Search className="w-4 h-4" /> Search {portals.length === 1 ? PORTALS.find(p => p.value === portals[0])?.label : `${portals.length} Portals`}</>
           )}
         </button>
       </form>
@@ -637,8 +655,10 @@ export default function Candidates() {
               {results.total} candidate{results.total !== 1 ? 's' : ''} found
             </p>
             <span className="flex items-center gap-1.5 text-xs text-zinc-500">
-              <span className={`w-2 h-2 rounded-full ${selectedPortal.dot}`} />
-              via {selectedPortal.label}
+              {portals.map(v => (
+                <span key={v} className={`w-2 h-2 rounded-full ${PORTALS.find(p => p.value === v)?.dot}`} />
+              ))}
+              via {portals.length === 1 ? PORTALS.find(p => p.value === portals[0])?.label : `${portals.length} portals`}
             </span>
           </div>
           {results.candidates.length === 0 ? (

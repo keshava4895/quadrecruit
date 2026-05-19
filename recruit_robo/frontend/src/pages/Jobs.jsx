@@ -12,6 +12,7 @@ export default function Jobs() {
   const [form,     setForm]     = useState(EMPTY_FORM)
   const [showForm, setShowForm] = useState(false)
   const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
 
   const load = () => jobsApi.list().then(r => setJobs(r.data))
   useEffect(() => { load() }, [])
@@ -21,6 +22,7 @@ export default function Jobs() {
   const submit = async () => {
     if (!form.title.trim()) return
     setLoading(true)
+    setError('')
     try {
       await jobsApi.create({
         ...form,
@@ -29,6 +31,8 @@ export default function Jobs() {
       setShowForm(false)
       setForm(EMPTY_FORM)
       load()
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || 'Failed to create job. Please try again.')
     } finally { setLoading(false) }
   }
 
@@ -93,6 +97,11 @@ export default function Jobs() {
                 value={form.description} onChange={e => set('description', e.target.value)} />
             </div>
           </div>
+          {error && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {error}
+            </div>
+          )}
           <div className="flex items-center gap-3 mt-5 pt-5 border-t border-zinc-100">
             <button
               onClick={submit} disabled={loading || !form.title.trim()}
