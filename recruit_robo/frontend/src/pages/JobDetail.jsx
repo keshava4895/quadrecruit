@@ -110,7 +110,7 @@ export default function JobDetail() {
         {candidates.length === 0 ? (
           <div className="text-center py-16 text-zinc-400">
             <p className="text-sm">No candidates yet.</p>
-            <p className="text-xs mt-1 text-zinc-300">Upload resumes from the MCP Testing page to get started.</p>
+            <p className="text-xs mt-1 text-zinc-300">Upload resumes from the Resume Scorer page to get started.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

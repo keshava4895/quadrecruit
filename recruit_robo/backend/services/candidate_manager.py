@@ -18,10 +18,8 @@ async def add_candidate(job_id: str, candidate: CandidateCreate) -> dict:
         "created_at": datetime.now(timezone.utc),
     })
 
-    # Global candidate store
     await db.candidate_info.insert_one(doc)
-    # Job-specific store
-    await db[f"job_{job_id}_candidates"].insert_one(doc)
+    await db.job_candidates.insert_one(doc)
 
     return {"candidateId": candidate_id}
 
@@ -32,8 +30,8 @@ async def update_status(candidate_id: str, status: str, job_id: str = None):
                        "updated_at": datetime.now(timezone.utc)}}
     await db.candidate_info.update_one({"candidateId": candidate_id}, update)
     if job_id:
-        await db[f"job_{job_id}_candidates"].update_one(
-            {"candidateId": candidate_id}, update
+        await db.job_candidates.update_one(
+            {"candidateId": candidate_id, "jobId": job_id}, update
         )
 
 
@@ -42,16 +40,16 @@ async def update_match_score(candidate_id: str, job_id: str, score: float):
     update = {"$set": {"match_score": round(score, 4),
                        "updated_at": datetime.now(timezone.utc)}}
     await db.candidate_info.update_one({"candidateId": candidate_id}, update)
-    await db[f"job_{job_id}_candidates"].update_one(
-        {"candidateId": candidate_id}, update
+    await db.job_candidates.update_one(
+        {"candidateId": candidate_id, "jobId": job_id}, update
     )
 
 
 async def get_top_candidates(job_id: str, limit: int = 10) -> list:
     db = get_db()
     cursor = (
-        db[f"job_{job_id}_candidates"]
-        .find({}, {"_id": 0})
+        db.job_candidates
+        .find({"jobId": job_id}, {"_id": 0})
         .sort("match_score", -1)
         .limit(limit)
     )

@@ -19,11 +19,6 @@ async def create_job(job_data: JobCreate) -> dict:
 
     await db.job_info.insert_one(doc)
 
-    # Dynamic job-specific candidate collection
-    await db[f"job_{job_id}_candidates"].create_index(
-        [("match_score", -1)]
-    )
-
     # Seed pipeline timeline
     await db.pipeline_timelines.insert_one({
         "jobId": job_id,

@@ -31,6 +31,7 @@ export const candidatesApi = {
 // ── Email ─────────────────────────────────────────────────────────────────────
 export const emailApi = {
   draft:        (candidateName, jobTitle) => api.post('/email/draft', { candidate_name: candidateName, job_title: jobTitle }),
+  bulkDraft:    (candidates, jobTitle)    => api.post('/email/bulk-draft', { candidates, job_title: jobTitle }),
   parseReply:   (replyText)               => api.post('/email/parse-reply', { reply_text: replyText }),
 }
 

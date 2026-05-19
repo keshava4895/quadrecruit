@@ -63,8 +63,8 @@ async def transition_candidate(
 
     update = {"$set": update_fields}
     await db.candidate_info.update_one({"candidateId": candidate_id}, update)
-    await db[f"job_{job_id}_candidates"].update_one(
-        {"candidateId": candidate_id}, update
+    await db.job_candidates.update_one(
+        {"candidateId": candidate_id, "jobId": job_id}, update
     )
     await push_timeline(job_id, f"Candidate {candidate_id} → {new_status}")
     return {"success": True, "status": new_status}

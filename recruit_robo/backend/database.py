@@ -37,8 +37,10 @@ async def _create_indexes():
         await db.candidate_info.create_index("email")
         await db.job_info.create_index("jobId", unique=True)
         await db.job_candidates.create_index([("jobId", 1), ("match_score", -1)])
+        await db.job_candidates.create_index("candidateId")
+        print("[DB] Indexes ensured")
     except Exception as e:
-        # Cosmos DB may already have these indexes from previous runs
+        # Cosmos DB may already have these indexes from a previous run
         print(f"[DB] Index note: {e}")
 
 
