@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { searchApi, jobsApi, candidatesApi } from '../api'
+import { searchApi, jobsApi, candidatesApi, emailApi } from '../api'
 import {
   Search, MapPin, Briefcase, ExternalLink,
   ChevronDown, Star, Loader2, AlertCircle,
   Upload, FileText, CheckCircle, XCircle, FolderOpen,
+  Mail, X, Copy,
 } from 'lucide-react'
 
 const PORTALS = [
@@ -25,6 +26,203 @@ const AVAIL_STYLE = {
 const INPUT = 'border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition'
 const SELECT = 'w-full border border-zinc-200 rounded-lg px-3 py-2.5 text-sm bg-white text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition'
 
+function MailModal({ candidate, jobTitle, onClose }) {
+  const [to,      setTo]      = useState(candidate?.email || '')
+  const [subject, setSubject] = useState('')
+  const [body,    setBody]    = useState('')
+  const [loading, setLoading] = useState(true)
+  const [copied,  setCopied]  = useState(false)
+
+  useEffect(() => {
+    emailApi.draft(candidate.name, jobTitle || 'the role')
+      .then(r => { setSubject(r.data.subject); setBody(r.data.body) })
+      .catch(() => { setSubject('Exciting Opportunity for You'); setBody('') })
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(`To: ${to}\nSubject: ${subject}\n\n${body}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <p className="text-sm font-semibold text-zinc-900">Send outreach email</p>
+            <p className="text-xs text-zinc-400 mt-0.5">to {candidate.name}</p>
+          </div>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12 gap-2 text-zinc-400">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">Drafting email…</span>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 mb-1">To</label>
+              <input type="email" value={to} onChange={e => setTo(e.target.value)}
+                placeholder="candidate@email.com" className={INPUT + ' w-full'} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 mb-1">Subject</label>
+              <input type="text" value={subject} onChange={e => setSubject(e.target.value)}
+                className={INPUT + ' w-full'} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 mb-1">Body</label>
+              <textarea value={body} onChange={e => setBody(e.target.value)} rows={8}
+                className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition" />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={handleCopy}
+                className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-700 transition-colors">
+                {copied ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+              <a href={`mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}
+                className="flex items-center gap-1.5 px-4 py-2 border border-zinc-200 text-zinc-700 text-sm font-medium rounded-lg hover:border-zinc-400 transition-colors">
+                <Mail className="w-3.5 h-3.5" />
+                Open in Mail
+              </a>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function BulkMailModal({ candidates, jobTitle, onClose }) {
+  const [drafts,   setDrafts]   = useState([])
+  const [loading,  setLoading]  = useState(true)
+  const [expanded, setExpanded] = useState(null)
+  const [sent,     setSent]     = useState({})
+
+  useEffect(() => {
+    emailApi.bulkDraft(
+      candidates.map(c => ({ name: c.name, email: c.email, phone: c.phone })),
+      jobTitle
+    )
+      .then(r => setDrafts(r.data.drafts))
+      .catch(() => setDrafts(candidates.map(c => ({
+        name: c.name, email: c.email, phone: c.phone,
+        subject: 'Exciting Opportunity', body: '',
+      }))))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleSend = (draft, i) => {
+    window.open(`mailto:${draft.email}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`)
+    setSent(s => ({ ...s, [i]: true }))
+  }
+
+  const sendableCount = drafts.filter(d => d.email).length
+  const sentCount     = Object.keys(sent).length
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
+          <div>
+            <p className="text-sm font-semibold text-zinc-900">Bulk Outreach Email</p>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              {candidates.length} candidate{candidates.length !== 1 ? 's' : ''} · AI-drafted · replies auto-classified
+            </p>
+          </div>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2 text-zinc-400">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm">Drafting emails for {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}…</span>
+            </div>
+          ) : (
+            <div className="divide-y divide-zinc-50">
+              {drafts.map((d, i) => (
+                <div key={i} className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-xs font-semibold text-zinc-600 flex-shrink-0">
+                      {d.name?.charAt(0) || '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-zinc-900">{d.name}</p>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        {d.email && <span className="text-xs text-zinc-400">{d.email}</span>}
+                        {d.phone && <span className="text-xs text-zinc-400">{d.phone}</span>}
+                        {!d.email && <span className="text-xs text-amber-500">No email found</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button onClick={() => setExpanded(expanded === i ? null : i)}
+                        className="text-xs text-zinc-500 hover:text-zinc-800 px-2 py-1 rounded border border-zinc-200 hover:border-zinc-400 transition-colors">
+                        {expanded === i ? 'Hide' : 'Preview'}
+                      </button>
+                      {d.email ? (
+                        <button onClick={() => handleSend(d, i)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                            sent[i]
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-zinc-900 text-white hover:bg-zinc-700'
+                          }`}>
+                          {sent[i] ? <CheckCircle className="w-3.5 h-3.5" /> : <Mail className="w-3.5 h-3.5" />}
+                          {sent[i] ? 'Opened' : 'Send'}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-zinc-300 px-3 py-1.5">No email</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {expanded === i && (
+                    <div className="mt-3 ml-11 space-y-2">
+                      <div>
+                        <p className="text-[11px] font-medium text-zinc-400 mb-1">Subject</p>
+                        <p className="text-xs text-zinc-700 bg-zinc-50 rounded-lg px-3 py-2">{d.subject}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-medium text-zinc-400 mb-1">Body</p>
+                        <p className="text-xs text-zinc-700 bg-zinc-50 rounded-lg px-3 py-2 whitespace-pre-wrap leading-relaxed">{d.body}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {!loading && (
+          <div className="px-6 py-4 border-t border-zinc-100 flex items-center justify-between">
+            <p className="text-xs text-zinc-400">
+              {sentCount} of {sendableCount} opened in mail client
+            </p>
+            <button
+              onClick={() => drafts.forEach((d, i) => { if (d.email && !sent[i]) handleSend(d, i) })}
+              disabled={sendableCount === 0 || sentCount === sendableCount}
+              className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-700 disabled:opacity-40 transition-colors">
+              <Mail className="w-3.5 h-3.5" />
+              Send All ({sendableCount})
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function ScoreBar({ score }) {
   const pct   = Math.round(score * 100)
   const color = pct >= 85 ? 'bg-emerald-500' : pct >= 70 ? 'bg-amber-400' : 'bg-red-400'
@@ -38,7 +236,7 @@ function ScoreBar({ score }) {
   )
 }
 
-function CandidateCard({ candidate }) {
+function CandidateCard({ candidate, onSendMail }) {
   const avail        = AVAIL_STYLE[candidate.availability] || 'bg-zinc-100 text-zinc-500'
   const skills       = candidate.skills?.slice(0, 5) ?? []
   const extraSkills  = (candidate.skills?.length ?? 0) - 5
@@ -87,7 +285,15 @@ function CandidateCard({ candidate }) {
         {extraSkills > 0 && <span className="px-1.5 py-0.5 text-zinc-400 text-xs">+{extraSkills}</span>}
       </div>
 
-      <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">{candidate.summary}</p>
+      <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2 mb-3">{candidate.summary}</p>
+
+      <button
+        onClick={() => onSendMail(candidate)}
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-600 border border-zinc-200 rounded-lg hover:border-zinc-400 hover:text-zinc-900 transition-colors w-full justify-center"
+      >
+        <Mail className="w-3.5 h-3.5" />
+        Send Mail
+      </button>
     </div>
   )
 }
@@ -105,6 +311,8 @@ export default function Candidates() {
   const [results,       setResults]       = useState(null)
   const [loading,       setLoading]       = useState(false)
   const [error,         setError]         = useState('')
+  const [mailTarget,    setMailTarget]    = useState(null)
+  const [showBulkMail,  setShowBulkMail]  = useState(false)
   const portalRef = useRef(null)
 
   // Resume browse state
@@ -143,9 +351,9 @@ export default function Candidates() {
       for (const file of resumeFiles) {
         try {
           const r = await candidatesApi.uploadResume(resumeJobId, file)
-          out.push({ name: file.name, status: 'success', ...r.data })
+          out.push({ fileName: file.name, status: 'success', ...r.data })
         } catch (err) {
-          out.push({ name: file.name, status: 'error', error: err.message })
+          out.push({ fileName: file.name, status: 'error', error: err.message })
         }
       }
       setResumeResults(out)
@@ -174,8 +382,23 @@ export default function Candidates() {
 
   const isResumeMode = searchMode === 'resume'
 
+  const activeJobId    = searchMode === 'job' ? selectedJobId : searchMode === 'resume' ? resumeJobId : null
+  const activeJobTitle = jobs.find(j => j.jobId === activeJobId)?.title || ''
+
   return (
     <div className="page">
+
+      {mailTarget && (
+        <MailModal candidate={mailTarget} jobTitle={activeJobTitle} onClose={() => setMailTarget(null)} />
+      )}
+
+      {showBulkMail && resumeResults && (
+        <BulkMailModal
+          candidates={resumeResults.filter(r => r.status === 'success')}
+          jobTitle={activeJobTitle}
+          onClose={() => setShowBulkMail(false)}
+        />
+      )}
 
       {/* Page header */}
       <div className="flex items-center justify-between mb-8">
@@ -183,6 +406,26 @@ export default function Candidates() {
           <h1 className="text-xl font-semibold text-zinc-900">Find Candidates</h1>
           <p className="text-sm text-zinc-400 mt-0.5">Search talent across job portals or screen local resumes</p>
         </div>
+
+        {/* Send Mail button — always visible in Browse Local mode */}
+        {isResumeMode && (() => {
+          const successCount = resumeResults?.filter(r => r.status === 'success').length ?? 0
+          const hasResults   = successCount > 0
+          return (
+            <button
+              onClick={() => hasResults && setShowBulkMail(true)}
+              disabled={!hasResults}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                hasResults
+                  ? 'bg-zinc-900 text-white hover:bg-zinc-700 cursor-pointer'
+                  : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
+              }`}
+            >
+              <Mail className="w-4 h-4" />
+              Send Mail{hasResults ? ` (${successCount})` : ''}
+            </button>
+          )
+        })()}
 
         {/* Portal picker — hidden in resume mode */}
         {!isResumeMode && (
@@ -348,15 +591,29 @@ export default function Candidates() {
           </div>
           <div className="divide-y divide-zinc-50">
             {resumeResults.map((r, i) => (
-              <div key={i} className="flex items-center gap-3 px-5 py-3.5">
+              <div key={i} className="flex items-center gap-3 px-5 py-4">
                 {r.status === 'success'
                   ? <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                   : <XCircle    className="w-4 h-4 text-red-400 flex-shrink-0" />}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-zinc-800 truncate">{r.name}</p>
-                  {r.status === 'success'
-                    ? <p className="text-xs text-zinc-400">{r.candidateId} · Match: {Math.round((r.match_score || 0) * 100)}%</p>
-                    : <p className="text-xs text-red-500">{r.error}</p>}
+                  <p className="text-sm font-medium text-zinc-800 truncate">
+                    {r.status === 'success' ? (r.name || r.fileName) : r.fileName}
+                  </p>
+                  {r.status === 'success' ? (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+                      {r.email && (
+                        <span className="text-xs text-zinc-400 flex items-center gap-1">
+                          <Mail className="w-3 h-3" />{r.email}
+                        </span>
+                      )}
+                      {r.phone && (
+                        <span className="text-xs text-zinc-400">{r.phone}</span>
+                      )}
+                      {!r.email && <span className="text-xs text-amber-500">No email extracted</span>}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-red-500 mt-0.5">{r.error}</p>
+                  )}
                 </div>
                 {r.status === 'success' && (
                   <span className={`text-sm font-bold flex-shrink-0 ${
@@ -391,7 +648,7 @@ export default function Candidates() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {results.candidates.map((c, i) => <CandidateCard key={i} candidate={c} />)}
+              {results.candidates.map((c, i) => <CandidateCard key={i} candidate={c} onSendMail={setMailTarget} />)}
             </div>
           )}
         </div>

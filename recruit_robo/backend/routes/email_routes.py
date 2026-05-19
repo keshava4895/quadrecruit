@@ -20,6 +20,28 @@ async def draft_email(payload: dict):
     title = payload.get("job_title", "")
     return await draft_outreach_email(name, title)
 
+@router.post("/bulk-draft")
+async def bulk_draft_emails(payload: dict):
+    candidates = payload.get("candidates", [])
+    job_title  = payload.get("job_title", "the role")
+    drafts = []
+    for c in candidates:
+        draft = await draft_outreach_email(c["name"], job_title)
+        loopback = (
+            "\n\n---\nPlease reply to this email with:\n"
+            "  INTERESTED – if you'd like to learn more\n"
+            "  NOT INTERESTED – if you'd prefer not to be contacted\n"
+            "We'll follow up based on your response."
+        )
+        drafts.append({
+            "name":    c["name"],
+            "email":   c.get("email", ""),
+            "phone":   c.get("phone", ""),
+            "subject": draft["subject"],
+            "body":    draft["body"] + loopback,
+        })
+    return {"drafts": drafts}
+
 @router.post("/parse-reply")
 async def classify_reply(payload: dict):
     reply = payload.get("reply_text", "")

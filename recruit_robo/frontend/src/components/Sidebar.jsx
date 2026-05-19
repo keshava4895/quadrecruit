@@ -11,7 +11,7 @@ const NAV = [
   { to: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
   { to: '/jobs',       label: 'Jobs',        icon: Briefcase },
   { to: '/candidates', label: 'Candidates',  icon: Users },
-  { to: '/upload',     label: 'MCP Testing', icon: Cpu },
+  { to: '/upload',     label: 'Resume Scorer', icon: Cpu },
 ]
 
 export default function Sidebar() {

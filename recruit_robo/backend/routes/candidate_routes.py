@@ -38,6 +38,9 @@ async def upload_and_screen(
     )
     result = await add_candidate(job_id, candidate)
     candidate_id = result["candidateId"]
+    result["name"]  = parsed.get("name",  "Unknown")
+    result["email"] = parsed.get("email", "")
+    result["phone"] = parsed.get("phone", "")
 
     job = await get_job(job_id)
     if job:
@@ -49,6 +52,10 @@ async def upload_and_screen(
         )
         await update_match_score(candidate_id, job_id, score)
         result["match_score"] = score
+
+    result["name"]  = parsed.get("name",  "Unknown")
+    result["email"] = parsed.get("email", "")
+    result["phone"] = parsed.get("phone", "")
 
     return result
 

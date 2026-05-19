@@ -45,7 +45,7 @@ export default function UploadResume() {
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-1">
           <Cpu className="w-5 h-5 text-zinc-400" />
-          <h1 className="text-xl font-semibold text-zinc-900">MCP Testing</h1>
+          <h1 className="text-xl font-semibold text-zinc-900">Resume Scorer</h1>
         </div>
         <p className="text-sm text-zinc-400">Upload resumes — AI parses and scores candidates against the job</p>
       </div>
