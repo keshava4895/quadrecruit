@@ -1,10 +1,14 @@
 from datetime import datetime, timezone
-from openai import AsyncOpenAI
+from openai import AsyncAzureOpenAI
 from database import get_db
 from services.lifecycle_engine import process_feedback_decision
-from config import OPENAI_API_KEY, OPENAI_MODEL
+from config import AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_VERSION, OPENAI_MODEL
 
-openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+openai_client = AsyncAzureOpenAI(
+    api_key=AZURE_OPENAI_API_KEY,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT,
+    api_version=AZURE_OPENAI_API_VERSION,
+)
 
 
 async def store_interviewer_feedback(data: dict) -> dict:

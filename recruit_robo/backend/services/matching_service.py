@@ -1,8 +1,12 @@
-from openai import AsyncOpenAI
-from config import OPENAI_API_KEY, EMBEDDING_MODEL
+from openai import AsyncAzureOpenAI
+from config import AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_VERSION, EMBEDDING_MODEL
 import numpy as np
 
-client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+client = AsyncAzureOpenAI(
+    api_key=AZURE_OPENAI_API_KEY,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT,
+    api_version=AZURE_OPENAI_API_VERSION,
+)
 
 
 async def _embed(text: str) -> list[float]:

@@ -1,7 +1,7 @@
 import json
-from openai import AsyncOpenAI
+from openai import AsyncAzureOpenAI
 from config import (
-    OPENAI_API_KEY, OPENAI_MODEL,
+    AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_VERSION, OPENAI_MODEL,
     LINKEDIN_API_KEY, INDEED_API_KEY, NAUKRI_API_KEY,
     MONSTER_API_KEY, GLASSDOOR_API_KEY,
 )
@@ -82,7 +82,11 @@ async def _generate_ai_candidates(
     exp_max: int,
     limit: int,
 ) -> list[dict]:
-    client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+    client = AsyncAzureOpenAI(
+        api_key=AZURE_OPENAI_API_KEY,
+        azure_endpoint=AZURE_OPENAI_ENDPOINT,
+        api_version=AZURE_OPENAI_API_VERSION,
+    )
 
     location_str = location if location else "Any location"
     exp_str = f"{exp_min}–{exp_max} years"

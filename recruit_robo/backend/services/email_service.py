@@ -2,12 +2,16 @@ import base64
 from email.mime.text import MIMEText
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from openai import AsyncOpenAI
-from config import OPENAI_API_KEY, OPENAI_MODEL
+from openai import AsyncAzureOpenAI
+from config import AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_VERSION, OPENAI_MODEL
 from database import get_db
 from datetime import datetime, timezone
 
-openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+openai_client = AsyncAzureOpenAI(
+    api_key=AZURE_OPENAI_API_KEY,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT,
+    api_version=AZURE_OPENAI_API_VERSION,
+)
 
 
 def _build_service(token: dict):
