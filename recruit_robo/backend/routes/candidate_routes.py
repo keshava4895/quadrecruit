@@ -3,7 +3,7 @@ from models.models import CandidateCreate
 from services.candidate_manager import (
     add_candidate, get_top_candidates, get_candidate, update_status
 )
-from services.screening_service import screen_resume
+from services.screening_service import screen_resume, extract_text_from_bytes
 from services.matching_service  import compute_match
 from services.candidate_manager import update_match_score
 from services.job_manager       import get_job
@@ -21,15 +21,26 @@ async def upload_and_screen(
     job_id: str,
     file: UploadFile = File(...),
 ):
-    """Upload a PDF/text resume, screen it with LLM, score it, store candidate."""
-    content = await file.read()
-    resume_text = content.decode("utf-8", errors="ignore")
+    """Upload a PDF/text resume, screen it, score it, store candidate."""
+    file_bytes  = await file.read()
+    resume_text = extract_text_from_bytes(file_bytes, file.filename or "")
+
+    if not resume_text.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="Could not extract text from the uploaded file. "
+                   "Please upload a readable PDF or plain-text resume.",
+        )
 
     parsed = await screen_resume(resume_text)
 
+    # Ensure a usable email so the DB unique-key constraint doesn't fail
+    email = parsed.get("email") or f"candidate_{job_id}_{file.filename}@placeholder.com"
+    email = email.strip()
+
     candidate = CandidateCreate(
-        name=parsed.get("name", "Unknown"),
-        email=parsed.get("email", f"unknown_{job_id}@placeholder.com"),
+        name=parsed.get("name") or file.filename or "Unknown",
+        email=email,
         phone=parsed.get("phone"),
         skills=parsed.get("skills", []),
         experience=parsed.get("experience", 0),
@@ -38,9 +49,6 @@ async def upload_and_screen(
     )
     result = await add_candidate(job_id, candidate)
     candidate_id = result["candidateId"]
-    result["name"]  = parsed.get("name",  "Unknown")
-    result["email"] = parsed.get("email", "")
-    result["phone"] = parsed.get("phone", "")
 
     job = await get_job(job_id)
     if job:
@@ -53,9 +61,10 @@ async def upload_and_screen(
         await update_match_score(candidate_id, job_id, score)
         result["match_score"] = score
 
-    result["name"]  = parsed.get("name",  "Unknown")
-    result["email"] = parsed.get("email", "")
-    result["phone"] = parsed.get("phone", "")
+    # Always surface extracted contact info to the frontend
+    result["name"]  = parsed.get("name")  or file.filename or "Unknown"
+    result["email"] = parsed.get("email") or ""
+    result["phone"] = parsed.get("phone") or ""
 
     return result
 
