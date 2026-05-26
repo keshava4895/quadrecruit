@@ -1,34 +1,56 @@
-from motor.motor_asyncio import AsyncIOMotorClient
-from config import MONGO_URI, DB_NAME
+from config import COSMOS_CONNECTION_STRING, MONGO_URI, DB_NAME
+from json_db import JsonDB
 
-client: AsyncIOMotorClient = None
+client = None
 db = None
-
-_IS_COSMOS = "cosmos.azure.com" in MONGO_URI
+_using_json = False
 
 
 async def connect_db():
-    global client, db
+    global client, db, _using_json
 
-    if _IS_COSMOS:
-        # Cosmos DB for MongoDB API requires TLS and has no support for retryable writes
+    # ── 1. Cosmos DB ──────────────────────────────────────────────────────────
+    if COSMOS_CONNECTION_STRING:
+        try:
+            from motor.motor_asyncio import AsyncIOMotorClient
+            client = AsyncIOMotorClient(
+                COSMOS_CONNECTION_STRING,
+                tls=True,
+                tlsAllowInvalidCertificates=True,
+                retryWrites=False,
+                serverSelectionTimeoutMS=8000,
+                connectTimeoutMS=8000,
+                socketTimeoutMS=8000,
+            )
+            db = client[DB_NAME]
+            # Quick ping to confirm connection
+            await db.command("ping")
+            await _create_indexes()
+            print("[DB] Connected to Azure Cosmos DB (MongoDB API)")
+            return
+        except Exception as e:
+            print(f"[DB] Cosmos DB connection failed: {e}")
+
+    # ── 2. Local MongoDB ──────────────────────────────────────────────────────
+    try:
+        from motor.motor_asyncio import AsyncIOMotorClient
         client = AsyncIOMotorClient(
             MONGO_URI,
-            tls=True,
-            tlsAllowInvalidCertificates=True,
-            retryWrites=False,
-            serverSelectionTimeoutMS=30000,
-            connectTimeoutMS=30000,
-            socketTimeoutMS=30000,
+            serverSelectionTimeoutMS=3000,
+            connectTimeoutMS=3000,
         )
-        print("[DB] Connected to Azure Cosmos DB (MongoDB API)")
-    else:
-        client = AsyncIOMotorClient(MONGO_URI)
-        print("[DB] Connected to local MongoDB")
+        db = client[DB_NAME]
+        await db.command("ping")
+        await _create_indexes()
+        print(f"[DB] Connected to local MongoDB — {DB_NAME}")
+        return
+    except Exception as e:
+        print(f"[DB] Local MongoDB not available: {e}")
 
-    db = client[DB_NAME]
-    await _create_indexes()
-    print(f"[DB] Database: {DB_NAME}")
+    # ── 3. JSON file fallback (zero setup) ───────────────────────────────────
+    db = JsonDB()
+    _using_json = True
+    print("[DB] Using local JSON file storage (data/ folder) — no external DB needed")
 
 
 async def _create_indexes():
@@ -40,7 +62,6 @@ async def _create_indexes():
         await db.job_candidates.create_index("candidateId")
         print("[DB] Indexes ensured")
     except Exception as e:
-        # Cosmos DB may already have these indexes from a previous run
         print(f"[DB] Index note: {e}")
 
 
