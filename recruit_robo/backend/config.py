@@ -17,6 +17,9 @@ AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-pre
 OPENAI_MODEL           = os.getenv("OPENAI_MODEL", "gpt-4o")
 EMBEDDING_MODEL        = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
+# Standard OpenAI (fallback when Azure OpenAI is not configured)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
 # Google OAuth
 GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
