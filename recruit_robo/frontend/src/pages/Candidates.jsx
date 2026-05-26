@@ -338,7 +338,10 @@ export default function Candidates() {
   const handleDrop = (e) => {
     e.preventDefault()
     setDragOver(false)
-    const dropped = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.pdf') || f.name.endsWith('.txt'))
+    const dropped = Array.from(e.dataTransfer.files).filter(f =>
+      f.name.endsWith('.pdf') || f.name.endsWith('.txt') ||
+      f.name.endsWith('.doc') || f.name.endsWith('.docx')
+    )
     if (dropped.length) setResumeFiles(dropped)
   }
 
@@ -540,8 +543,8 @@ export default function Candidates() {
                 <p className="text-sm font-medium text-zinc-500">
                   Drop files here or <span className="text-zinc-900 underline underline-offset-2">browse</span>
                 </p>
-                <p className="text-xs text-zinc-400 mt-1">PDF or TXT files supported</p>
-                <input type="file" multiple accept=".pdf,.txt" className="hidden"
+                <p className="text-xs text-zinc-400 mt-1">PDF, Word (.doc/.docx) or TXT files supported</p>
+                <input type="file" multiple accept=".pdf,.doc,.docx,.txt" className="hidden"
                   onChange={e => setResumeFiles(Array.from(e.target.files))} />
               </label>
 

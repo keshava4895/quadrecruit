@@ -6,7 +6,10 @@ AI tier priority:
   2. Standard OpenAI — if OPENAI_API_KEY is set and valid
   3. Pure-Python regex parser — always works, no API key required
 
-PDF extraction uses pypdf (pure Python, no external dependencies).
+File extraction:
+  - PDF  → pypdf
+  - Word (.docx, .doc) → python-docx
+  - Plain text (.txt)  → UTF-8 decode
 """
 import io
 import json
@@ -27,7 +30,7 @@ def _use_openai() -> bool:
     return bool(key and not key.startswith("sk-...") and len(key) > 10)
 
 
-# ── PDF text extraction ───────────────────────────────────────────────────────
+# ── File text extraction ──────────────────────────────────────────────────────
 
 def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     """Extract plain text from a PDF file using pypdf."""
@@ -39,19 +42,78 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
             text = page.extract_text()
             if text:
                 pages.append(text)
-        return "\n".join(pages)
+        extracted = "\n".join(pages)
+        print(f"[Screening] PDF extracted {len(extracted)} chars")
+        return extracted
     except Exception as e:
         print(f"[Screening] PDF extraction failed: {e}")
         return ""
 
 
+def extract_text_from_docx(docx_bytes: bytes) -> str:
+    """Extract plain text from a Word .docx file using python-docx."""
+    try:
+        from docx import Document
+        doc = Document(io.BytesIO(docx_bytes))
+        parts = []
+        for para in doc.paragraphs:
+            if para.text.strip():
+                parts.append(para.text)
+        # Also extract text from tables
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = " | ".join(
+                    cell.text.strip() for cell in row.cells if cell.text.strip()
+                )
+                if row_text:
+                    parts.append(row_text)
+        extracted = "\n".join(parts)
+        print(f"[Screening] DOCX extracted {len(extracted)} chars")
+        return extracted
+    except Exception as e:
+        print(f"[Screening] DOCX extraction failed: {e}")
+        return ""
+
+
+# Word 97-2003 .doc magic bytes: D0 CF 11 E0
+_DOC_MAGIC = b"\xd0\xcf\x11\xe0"
+# DOCX / ZIP magic bytes: PK
+_ZIP_MAGIC = b"PK"
+
+
 def extract_text_from_bytes(file_bytes: bytes, filename: str = "") -> str:
-    """Auto-detect file type and extract text."""
+    """Auto-detect file type and extract plain text."""
     fname = (filename or "").lower()
-    # PDF: either by extension or by magic bytes
+
+    # ── PDF ──────────────────────────────────────────────────────────────────
     if fname.endswith(".pdf") or file_bytes[:4] == b"%PDF":
         return extract_text_from_pdf(file_bytes)
-    # Plain text / TXT
+
+    # ── Word .docx (ZIP-based) ────────────────────────────────────────────────
+    if fname.endswith(".docx") or (file_bytes[:2] == _ZIP_MAGIC and not fname.endswith(".pdf")):
+        text = extract_text_from_docx(file_bytes)
+        if text:
+            return text
+        # If docx parse failed but it's a ZIP, try plain-text fallback below
+
+    # ── Word .doc (OLE compound document) ────────────────────────────────────
+    if fname.endswith(".doc") or file_bytes[:4] == _DOC_MAGIC:
+        # python-docx cannot open old .doc format; attempt best-effort ASCII extraction
+        try:
+            raw = file_bytes.decode("latin-1", errors="ignore")
+            # Strip binary noise: keep printable ASCII lines only
+            lines = [
+                l.strip() for l in raw.splitlines()
+                if len(l.strip()) > 3 and sum(32 <= ord(c) < 127 for c in l) / max(len(l), 1) > 0.7
+            ]
+            text = "\n".join(lines)
+            print(f"[Screening] Legacy .doc extracted {len(text)} chars (ASCII heuristic)")
+            return text
+        except Exception as e:
+            print(f"[Screening] Legacy .doc extraction failed: {e}")
+            return ""
+
+    # ── Plain text / TXT / fallback ───────────────────────────────────────────
     try:
         return file_bytes.decode("utf-8", errors="ignore")
     except Exception:
