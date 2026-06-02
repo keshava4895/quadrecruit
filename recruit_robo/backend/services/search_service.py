@@ -70,31 +70,7 @@ async def search_portal_candidates(
 # ── Real portal stubs ─────────────────────────────────────────────────────────
 
 async def _search_linkedin(query, location, exp_min, exp_max, limit, api_key):
-    from services.linkedin_service import search_linkedin_jobs
-    jobs = await search_linkedin_jobs(title=query, location=location or "", limit=limit)
-    if not jobs:
-        # Key set but API returned nothing — fall through to AI/mock
-        portal_label = PORTAL_LABELS.get("linkedin", "LinkedIn")
-        return await _generate_candidates(query, portal_label, location, exp_min, exp_max, limit)
-    # Convert job listings to candidate-style records (hiring market intelligence)
-    candidates = []
-    for j in jobs:
-        candidates.append({
-            "name":             f"Candidate at {j['company']}" if j["company"] else "LinkedIn Candidate",
-            "headline":         j["title"],
-            "current_company":  j["company"],
-            "location":         j["location"],
-            "skills":           j["skills"] or [],
-            "experience_years": exp_min,
-            "summary":          j["description"][:300] if j["description"] else "",
-            "availability":     "Open to Opportunities",
-            "profile_url":      j["url"],
-            "match_score":      round(0.70 + (0.25 * (exp_min / max(exp_max, 1))), 2),
-            "portal":           "LinkedIn",
-            "employment_type":  j.get("employment_type", ""),
-            "posted_at":        j.get("posted_at", ""),
-        })
-    return candidates
+    raise NotImplementedError("LinkedIn API key set but integration not yet wired")
 
 async def _search_indeed(query, location, exp_min, exp_max, limit, api_key):
     raise NotImplementedError("Indeed API key set but integration not yet wired")

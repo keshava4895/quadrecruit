@@ -41,6 +41,3 @@ INDEED_API_KEY    = os.getenv("INDEED_API_KEY", "")
 NAUKRI_API_KEY    = os.getenv("NAUKRI_API_KEY", "")
 MONSTER_API_KEY   = os.getenv("MONSTER_API_KEY", "")
 GLASSDOOR_API_KEY = os.getenv("GLASSDOOR_API_KEY", "")
-
-# RapidAPI — LinkedIn Job Search (linkedin-job-search-api.p.rapidapi.com)
-RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
