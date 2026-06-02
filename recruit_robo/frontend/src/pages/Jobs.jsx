@@ -1,18 +1,27 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { jobsApi } from '../api'
-import { Plus, Trash2, MapPin, Briefcase, ChevronRight, X, Clock } from 'lucide-react'
+import { jobsApi, searchApi } from '../api'
+import { Plus, Trash2, MapPin, Briefcase, ChevronRight, X, Search, ExternalLink, Download } from 'lucide-react'
 
 const EMPTY_FORM = { title: '', description: '', skills: '', experience_years: 3, location: '' }
 
 const INPUT = 'w-full border border-zinc-200 rounded-lg px-3 py-2.5 text-sm bg-white text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition'
 
 export default function Jobs() {
-  const [jobs,     setJobs]     = useState([])
-  const [form,     setForm]     = useState(EMPTY_FORM)
-  const [showForm, setShowForm] = useState(false)
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
+  const [jobs,        setJobs]        = useState([])
+  const [form,        setForm]        = useState(EMPTY_FORM)
+  const [showForm,    setShowForm]    = useState(false)
+  const [loading,     setLoading]     = useState(false)
+  const [error,       setError]       = useState('')
+
+  // LinkedIn search state
+  const [liTitle,     setLiTitle]     = useState('')
+  const [liLocation,  setLiLocation]  = useState('')
+  const [liResults,   setLiResults]   = useState([])
+  const [liLoading,   setLiLoading]   = useState(false)
+  const [liError,     setLiError]     = useState('')
+  const [importingId, setImportingId] = useState(null)
+  const [showLinkedIn, setShowLinkedIn] = useState(false)
 
   const load = () => jobsApi.list().then(r => setJobs(r.data))
   useEffect(() => { load() }, [])
@@ -42,6 +51,36 @@ export default function Jobs() {
     load()
   }
 
+  const searchLinkedIn = async () => {
+    if (!liTitle.trim()) return
+    setLiLoading(true)
+    setLiError('')
+    setLiResults([])
+    try {
+      const r = await searchApi.linkedinJobs(liTitle.trim(), liLocation.trim())
+      setLiResults(r.data.jobs || [])
+      if ((r.data.jobs || []).length === 0) setLiError('No results found. Try a different title or location.')
+    } catch (err) {
+      setLiError(err?.response?.data?.detail || 'LinkedIn search failed. Check RAPIDAPI_KEY in .env.')
+    } finally { setLiLoading(false) }
+  }
+
+  const importLinkedInJob = async (job, idx) => {
+    setImportingId(idx)
+    try {
+      await jobsApi.create({
+        title:           job.title,
+        description:     job.description,
+        skills:          job.skills || [],
+        experience_years: 2,
+        location:        job.location,
+      })
+      load()
+    } catch (err) {
+      alert(err?.response?.data?.detail || 'Import failed')
+    } finally { setImportingId(null) }
+  }
+
   return (
     <div className="page">
 
@@ -51,13 +90,108 @@ export default function Jobs() {
           <h1 className="text-xl font-semibold text-zinc-900">Jobs</h1>
           <p className="text-sm text-zinc-400 mt-0.5">{jobs.length} active posting{jobs.length !== 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-700 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Create New Job
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowLinkedIn(v => !v)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <Search className="w-4 h-4" /> Search LinkedIn
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Create New Job
+          </button>
+        </div>
       </div>
+
+      {/* LinkedIn Job Search Panel */}
+      {showLinkedIn && (
+        <div className="bg-white border border-blue-200 rounded-xl p-6 mb-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-semibold text-zinc-900">Search LinkedIn Jobs</h2>
+              <p className="text-xs text-zinc-400 mt-0.5">Live job postings via RapidAPI — import directly into your ATS</p>
+            </div>
+            <button onClick={() => setShowLinkedIn(false)} className="text-zinc-400 hover:text-zinc-700">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex gap-3 mb-4">
+            <input
+              className={INPUT + ' flex-1'}
+              placeholder="Job title e.g. Data Engineer"
+              value={liTitle}
+              onChange={e => setLiTitle(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && searchLinkedIn()}
+            />
+            <input
+              className={INPUT + ' w-56'}
+              placeholder="Location e.g. India"
+              value={liLocation}
+              onChange={e => setLiLocation(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && searchLinkedIn()}
+            />
+            <button
+              onClick={searchLinkedIn}
+              disabled={liLoading || !liTitle.trim()}
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+            >
+              {liLoading ? 'Searching…' : 'Search'}
+            </button>
+          </div>
+          {liError && <p className="text-sm text-red-600 mb-3">{liError}</p>}
+          {liResults.length > 0 && (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {liResults.map((job, idx) => (
+                <div key={idx} className="border border-zinc-100 rounded-lg px-4 py-3 flex items-start gap-3 hover:bg-zinc-50">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-semibold text-zinc-900 truncate">{job.title}</p>
+                      {job.employment_type && (
+                        <span className="px-1.5 py-0.5 bg-zinc-100 text-zinc-500 text-xs rounded">{job.employment_type}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-500 mb-1">
+                      {job.company && <span className="font-medium">{job.company}</span>}
+                      {job.company && job.location ? ' · ' : ''}
+                      {job.location}
+                      {job.posted_at ? ` · ${job.posted_at}` : ''}
+                    </p>
+                    {job.description && (
+                      <p className="text-xs text-zinc-400 line-clamp-2">{job.description}</p>
+                    )}
+                    {job.skills?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {job.skills.slice(0, 5).map(s => (
+                          <span key={s} className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">{s}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5 flex-shrink-0">
+                    <button
+                      onClick={() => importLinkedInJob(job, idx)}
+                      disabled={importingId === idx}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors"
+                    >
+                      <Download className="w-3 h-3" />
+                      {importingId === idx ? 'Importing…' : 'Import'}
+                    </button>
+                    {job.url && (
+                      <a href={job.url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-xs font-medium rounded-lg transition-colors">
+                        <ExternalLink className="w-3 h-3" /> View
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Create form */}
       {showForm && (

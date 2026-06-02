@@ -52,8 +52,11 @@ export const pipelineApi = {
 
 // ── Job Portal Search ─────────────────────────────────────────────────────────
 export const searchApi = {
-  portals:    ()     => api.get('/search/portals'),
-  candidates: (data) => api.post('/search/candidates', data),
+  portals:      ()                         => api.get('/search/portals'),
+  candidates:   (data)                     => api.post('/search/candidates', data),
+  linkedinJobs: (title, location, limit)   => api.get('/search/linkedin-jobs', {
+    params: { title, location: location || '', limit: limit || 10 },
+  }),
 }
 
 export default api

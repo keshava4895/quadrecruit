@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from models.models import CandidateSearchRequest
 from services.search_service import search_portal_candidates
+from services.linkedin_service import search_linkedin_jobs
+from config import RAPIDAPI_KEY
 from database import db
 
 router = APIRouter()
@@ -57,3 +59,26 @@ async def list_portals():
         {"value": "monster",   "label": "Monster"},
         {"value": "glassdoor", "label": "Glassdoor"},
     ]
+
+
+@router.get("/linkedin-jobs")
+async def linkedin_jobs(
+    title:    str = Query(..., description="Job title to search"),
+    location: str = Query("", description="Location filter"),
+    limit:    int = Query(10, ge=1, le=25),
+):
+    """
+    Fetch live job postings from LinkedIn via RapidAPI.
+    Returns job listings that can be imported into the ATS.
+    """
+    if not RAPIDAPI_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="RAPIDAPI_KEY not configured. Add it to your .env file.",
+        )
+    jobs = await search_linkedin_jobs(title=title, location=location, limit=limit)
+    return {
+        "total":  len(jobs),
+        "source": "LinkedIn (RapidAPI)",
+        "jobs":   jobs,
+    }
