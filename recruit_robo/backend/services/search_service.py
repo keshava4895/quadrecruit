@@ -55,13 +55,15 @@ async def search_portal_candidates(
     portal = portal.lower()
     api_key = _PORTAL_KEYS.get(portal, "")
 
+    # Naukri uses session-based scraper — always route through regardless of api_key
+    if portal == "naukri":
+        return await _search_naukri(query, location, experience_min, experience_max, limit, api_key)
+
     if api_key:
         if portal == "linkedin":
             return await _search_linkedin(query, location, experience_min, experience_max, limit, api_key)
         if portal == "indeed":
             return await _search_indeed(query, location, experience_min, experience_max, limit, api_key)
-        if portal == "naukri":
-            return await _search_naukri(query, location, experience_min, experience_max, limit, api_key)
 
     portal_label = PORTAL_LABELS.get(portal, portal.capitalize())
     return await _generate_candidates(query, portal_label, location, experience_min, experience_max, limit)
@@ -76,7 +78,18 @@ async def _search_indeed(query, location, exp_min, exp_max, limit, api_key):
     raise NotImplementedError("Indeed API key set but integration not yet wired")
 
 async def _search_naukri(query, location, exp_min, exp_max, limit, api_key):
-    raise NotImplementedError("Naukri API key set but integration not yet wired")
+    from services.naukri_service import scrape_naukri_candidates
+    from database import get_db
+    doc = await get_db()["settings"].find_one({"key": "naukri_session"})
+    curl = doc.get("curl_command", "") if doc else ""
+    if not curl:
+        return await _generate_candidates(query, "Naukri", location, exp_min, exp_max, limit)
+    try:
+        candidates = await scrape_naukri_candidates(curl_command=curl, max_results=limit)
+        return candidates or await _generate_candidates(query, "Naukri", location, exp_min, exp_max, limit)
+    except Exception as e:
+        print(f"[Naukri] Scrape error: {e} — falling back to mock")
+        return await _generate_candidates(query, "Naukri", location, exp_min, exp_max, limit)
 
 
 # ── Dispatcher: AI or mock ────────────────────────────────────────────────────

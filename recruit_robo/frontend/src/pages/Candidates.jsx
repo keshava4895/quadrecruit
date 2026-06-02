@@ -4,7 +4,7 @@ import {
   Search, MapPin, Briefcase, ExternalLink,
   ChevronDown, Star, Loader2, AlertCircle,
   Upload, FileText, CheckCircle, XCircle, FolderOpen,
-  Mail, X, Copy,
+  Mail, X, Copy, Settings, Trash2,
 } from 'lucide-react'
 
 const PORTALS = [
@@ -321,7 +321,18 @@ export default function Candidates() {
   const [resumeResults, setResumeResults] = useState(null)
   const [dragOver,      setDragOver]      = useState(false)
 
+  // Naukri session state
+  const [showNaukriModal,  setShowNaukriModal]  = useState(false)
+  const [naukriCurl,       setNaukriCurl]       = useState('')
+  const [naukriSession,    setNaukriSession]    = useState(null)   // {configured, preview}
+  const [naukriSaving,     setNaukriSaving]     = useState(false)
+  const [naukriMsg,        setNaukriMsg]        = useState('')
+
+  const loadNaukriSession = () =>
+    searchApi.getNaukriSession().then(r => setNaukriSession(r.data)).catch(() => {})
+
   useEffect(() => { jobsApi.list().then(r => setJobs(r.data)).catch(() => {}) }, [])
+  useEffect(() => { loadNaukriSession() }, [])
 
   useEffect(() => {
     const close = e => { if (portalRef.current && !portalRef.current.contains(e.target)) setPortalOpen(false) }
@@ -445,33 +456,50 @@ export default function Candidates() {
 
         {/* Portal picker — hidden in resume mode */}
         {!isResumeMode && (
-          <div className="relative" ref={portalRef}>
-            <button
-              onClick={() => setPortalOpen(v => !v)}
-              className="flex items-center gap-2 px-3.5 py-2 bg-white border border-zinc-200 rounded-lg text-sm font-medium text-zinc-700 hover:border-zinc-400 transition-colors"
-            >
-              <div className="flex items-center gap-1">
-                {portals.slice(0, 3).map(v => (
-                  <span key={v} className={`w-2 h-2 rounded-full flex-shrink-0 ${PORTALS.find(p => p.value === v)?.dot}`} />
-                ))}
-              </div>
-              {portals.length === 1 ? PORTALS.find(p => p.value === portals[0])?.label : `${portals.length} portals`}
-              <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform ${portalOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {portalOpen && (
-              <div className="absolute right-0 mt-1.5 w-44 bg-white border border-zinc-200 rounded-xl shadow-lg py-1 z-20">
-                {PORTALS.map(p => (
-                  <button key={p.value} onClick={() => togglePortal(p.value)}
-                    className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left transition-colors ${
-                      portals.includes(p.value) ? 'text-zinc-900 font-semibold bg-zinc-50' : 'text-zinc-600 hover:bg-zinc-50'
-                    }`}>
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${p.dot}`} />
-                    <span className="flex-1">{p.label}</span>
-                    {portals.includes(p.value) && <span className="text-zinc-500 text-xs">✓</span>}
-                  </button>
-                ))}
-              </div>
+          <div className="flex items-center gap-2">
+            {/* Naukri session indicator */}
+            {portals.includes('naukri') && (
+              <button
+                onClick={() => { setShowNaukriModal(true); setNaukriMsg('') }}
+                title="Configure Naukri session"
+                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs font-medium transition-colors ${
+                  naukriSession?.configured
+                    ? 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100'
+                    : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'
+                }`}
+              >
+                <Settings className="w-3.5 h-3.5" />
+                {naukriSession?.configured ? 'Naukri: Active' : 'Naukri: Setup'}
+              </button>
             )}
+            <div className="relative" ref={portalRef}>
+              <button
+                onClick={() => setPortalOpen(v => !v)}
+                className="flex items-center gap-2 px-3.5 py-2 bg-white border border-zinc-200 rounded-lg text-sm font-medium text-zinc-700 hover:border-zinc-400 transition-colors"
+              >
+                <div className="flex items-center gap-1">
+                  {portals.slice(0, 3).map(v => (
+                    <span key={v} className={`w-2 h-2 rounded-full flex-shrink-0 ${PORTALS.find(p => p.value === v)?.dot}`} />
+                  ))}
+                </div>
+                {portals.length === 1 ? PORTALS.find(p => p.value === portals[0])?.label : `${portals.length} portals`}
+                <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform ${portalOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {portalOpen && (
+                <div className="absolute right-0 mt-1.5 w-44 bg-white border border-zinc-200 rounded-xl shadow-lg py-1 z-20">
+                  {PORTALS.map(p => (
+                    <button key={p.value} onClick={() => togglePortal(p.value)}
+                      className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left transition-colors ${
+                        portals.includes(p.value) ? 'text-zinc-900 font-semibold bg-zinc-50' : 'text-zinc-600 hover:bg-zinc-50'
+                      }`}>
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${p.dot}`} />
+                      <span className="flex-1">{p.label}</span>
+                      {portals.includes(p.value) && <span className="text-zinc-500 text-xs">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -689,6 +717,97 @@ export default function Candidates() {
               ? 'Select a job, add resume files, then click Screen.'
               : 'Choose a portal, enter requirements or a job description, then search.'}
           </p>
+        </div>
+      )}
+
+      {/* ── Naukri Session Modal ── */}
+      {showNaukriModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
+              <div>
+                <p className="text-base font-semibold text-zinc-900">Naukri Resdex Session</p>
+                <p className="text-xs text-zinc-400 mt-0.5">Paste your Naukri session curl command to enable live candidate search</p>
+              </div>
+              <button onClick={() => setShowNaukriModal(false)} className="text-zinc-400 hover:text-zinc-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 space-y-4">
+              {/* How-to steps */}
+              <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 text-xs text-orange-800 space-y-1.5">
+                <p className="font-semibold text-orange-900 mb-2">How to get your curl command:</p>
+                <p>1. Log in to <strong>resdex.naukri.com</strong> with your recruiter account</p>
+                <p>2. Search for candidates (set your filters — skills, location, experience)</p>
+                <p>3. Open browser <strong>DevTools → Network tab</strong> (F12)</p>
+                <p>4. Find the search request (look for <code>resdex.naukri.com</code> requests)</p>
+                <p>5. Right-click → <strong>Copy → Copy as cURL</strong></p>
+                <p>6. Paste it below and click Save</p>
+              </div>
+
+              {naukriSession?.configured && (
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                  <p className="text-xs text-emerald-700">
+                    <span className="font-semibold">Active session:</span> {naukriSession.preview}
+                  </p>
+                  <button
+                    onClick={async () => {
+                      await searchApi.deleteNaukriSession()
+                      setNaukriSession({ configured: false })
+                      setNaukriMsg('Session cleared.')
+                    }}
+                    className="ml-2 text-red-400 hover:text-red-600 flex-shrink-0"
+                    title="Remove session"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-zinc-500 mb-1.5">Paste curl command</label>
+                <textarea
+                  rows={5}
+                  className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-xs font-mono text-zinc-800 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
+                  placeholder={`curl 'https://resdex.naukri.com/...' \\\n  -H 'Cookie: _t=...; nauk_ses=...' \\\n  -H 'x-http-method-override: GET'`}
+                  value={naukriCurl}
+                  onChange={e => setNaukriCurl(e.target.value)}
+                />
+              </div>
+
+              {naukriMsg && (
+                <p className={`text-xs ${naukriMsg.includes('Saved') || naukriMsg.includes('cleared') ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {naukriMsg}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 px-6 py-4 border-t border-zinc-100">
+              <button
+                disabled={naukriSaving || !naukriCurl.trim()}
+                onClick={async () => {
+                  setNaukriSaving(true)
+                  setNaukriMsg('')
+                  try {
+                    await searchApi.saveNaukriSession(naukriCurl.trim())
+                    setNaukriMsg('Session saved! Naukri search is now active.')
+                    setNaukriCurl('')
+                    loadNaukriSession()
+                  } catch {
+                    setNaukriMsg('Failed to save. Check backend is running.')
+                  } finally { setNaukriSaving(false) }
+                }}
+                className="px-5 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                {naukriSaving ? 'Saving…' : 'Save Session'}
+              </button>
+              <button onClick={() => setShowNaukriModal(false)}
+                className="px-5 py-2 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-sm font-medium rounded-lg transition-colors">
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

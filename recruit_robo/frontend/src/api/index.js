@@ -54,6 +54,14 @@ export const pipelineApi = {
 export const searchApi = {
   portals:    ()     => api.get('/search/portals'),
   candidates: (data) => api.post('/search/candidates', data),
+
+  // Naukri session management
+  getNaukriSession:    ()            => api.get('/search/naukri-session'),
+  saveNaukriSession:   (curl)        => api.post('/search/naukri-session', { curl_command: curl }),
+  deleteNaukriSession: ()            => api.delete('/search/naukri-session'),
+  naukriScrape:        (curl, limit) => api.post('/search/naukri-scrape', {
+    curl_command: curl, max_results: limit || 10, save_session: true,
+  }),
 }
 
 export default api
