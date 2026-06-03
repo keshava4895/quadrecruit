@@ -168,7 +168,7 @@ async def _call_openai_client(client, query, portal_label, location, exp_min, ex
     exp_str = f"{exp_min}–{exp_max} years"
     portal_domain = portal_label.lower().replace(" ", "")
 
-    prompt = f"""You are a talent database. Generate {min(limit, 12)} realistic candidate profiles \
+    prompt = f"""You are a talent database. Generate {min(limit, 50)} realistic candidate profiles \
 for a recruiter searching on {portal_label}.
 
 Search Requirements: {query}
@@ -193,7 +193,7 @@ Make candidates diverse in background, seniority, and company tier. Return ONLY 
         model=OPENAI_MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.8,
-        max_tokens=3500,
+        max_tokens=min(3500 + (limit * 120), 16000),
         response_format={"type": "json_object"},
     )
 
@@ -262,7 +262,7 @@ def _generate_mock_candidates(query, portal_label, location, exp_min, exp_max, l
     location_str = location if location else "Bangalore, India"
     portal_slug = portal_label.lower().replace(" ", "")
     base_skills = _pick_skills(query)
-    count = min(limit, 10)
+    count = min(limit, 50)
 
     candidates = []
     for i in range(count):

@@ -59,30 +59,43 @@ async def search_people(
 ) -> list[dict]:
     """
     Search LinkedIn profiles via Unipile using POST /linkedin/search.
-    Returns normalised candidate dicts.
+    Paginates automatically using cursor until `limit` results are collected.
+    Unipile returns 10 per page for classic LinkedIn search.
     """
-    # Combine query + location into keywords (location ID lookup not needed for classic API)
     keywords = f"{query} {location}".strip() if location else query
+    collected = []
+    cursor    = None
+    page_size = 10   # Unipile classic LinkedIn search always returns 10 per page
 
-    body = {
-        "api":      "classic",
-        "category": "people",
-        "keywords": keywords,
-        "limit":    min(limit, 50),
-    }
+    async with httpx.AsyncClient(timeout=30) as c:
+        while len(collected) < limit:
+            body = {
+                "api":      "classic",
+                "category": "people",
+                "keywords": keywords,
+            }
+            params = {"account_id": account_id}
+            if cursor:
+                params["cursor"] = cursor
 
-    async with httpx.AsyncClient(timeout=25) as c:
-        r = await c.post(
-            f"{UNIPILE_BASE_URL}/api/v1/linkedin/search",
-            headers=_HEADERS,
-            params={"account_id": account_id},
-            json=body,
-        )
-        r.raise_for_status()
-        raw = r.json()
+            r = await c.post(
+                f"{UNIPILE_BASE_URL}/api/v1/linkedin/search",
+                headers=_HEADERS,
+                params=params,
+                json=body,
+            )
+            r.raise_for_status()
+            raw    = r.json()
+            items  = raw.get("items", [])
+            cursor = raw.get("cursor")
 
-    items = raw.get("items", [])
-    return [_normalise_person(p) for p in items[:limit]]
+            collected.extend(items)
+
+            # Stop if no more pages
+            if not cursor or not items or len(items) < page_size:
+                break
+
+    return [_normalise_person(p) for p in collected[:limit]]
 
 
 async def get_profile(account_id: str, profile_url: str) -> dict:

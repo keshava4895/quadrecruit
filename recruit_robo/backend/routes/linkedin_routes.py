@@ -60,7 +60,7 @@ async def search_linkedin_profiles(
     account_id: str   = Query(..., description="Unipile account ID of connected LinkedIn"),
     query:      str   = Query(..., description="Job title or keywords"),
     location:   str   = Query("", description="Location filter"),
-    limit:      int   = Query(10, ge=1, le=20),
+    limit:      int   = Query(10, ge=1, le=50),
 ):
     """Search LinkedIn candidate profiles via the connected account."""
     _check_key()
