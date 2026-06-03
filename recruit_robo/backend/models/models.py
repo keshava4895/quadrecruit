@@ -2,6 +2,28 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
 from datetime import datetime
 
+# ── User / Auth models ────────────────────────────────────────────────────────
+class UserRegister(BaseModel):
+    name: str
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    userId: str
+    name: str
+    email: str
+    role: str = "recruiter"
+    created_at: datetime
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
 # ── Job models ────────────────────────────────────────────────────────────────
 class JobCreate(BaseModel):
     title: str

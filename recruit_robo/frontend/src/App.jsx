@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Sidebar      from './components/Sidebar'
 import Login        from './pages/Login'
+import Register     from './pages/Register'
 import Dashboard    from './pages/Dashboard'
 import Jobs         from './pages/Jobs'
 import JobDetail    from './pages/JobDetail'
@@ -19,8 +20,9 @@ function AppShell() {
   if (!user) {
     return (
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="*"      element={<Navigate to="/login" replace />} />
+        <Route path="/login"    element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="*"         element={<Navigate to="/login" replace />} />
       </Routes>
     )
   }
@@ -31,6 +33,7 @@ function AppShell() {
       <main className="flex-1 overflow-auto bg-zinc-50">
         <Routes>
           <Route path="/login"       element={<Navigate to="/dashboard" replace />} />
+          <Route path="/register"    element={<Navigate to="/dashboard" replace />} />
           <Route path="/"            element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard"   element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/jobs"        element={<PrivateRoute><Jobs /></PrivateRoute>} />

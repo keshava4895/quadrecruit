@@ -1,7 +1,17 @@
+"""
+Candidate search service.
+
+AI tier priority:
+  1. Azure OpenAI  — if AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT are set
+  2. Standard OpenAI — if OPENAI_API_KEY is set (and not the placeholder "sk-...")
+  3. Pure-Python mock  — always works, no API key required
+"""
 import json
-from openai import AsyncAzureOpenAI
+import random
+import hashlib
 from config import (
     AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_VERSION, OPENAI_MODEL,
+    OPENAI_API_KEY,
     LINKEDIN_API_KEY, INDEED_API_KEY, NAUKRI_API_KEY,
     MONSTER_API_KEY, GLASSDOOR_API_KEY, GITHUB_TOKEN,
 )
@@ -24,6 +34,17 @@ _PORTAL_KEYS = {
     "github":    GITHUB_TOKEN,
 }
 
+# ── Tier detection ────────────────────────────────────────────────────────────
+
+def _use_azure() -> bool:
+    return bool(AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT)
+
+def _use_openai() -> bool:
+    key = OPENAI_API_KEY or ""
+    return bool(key and not key.startswith("sk-...") and len(key) > 10)
+
+
+# ── Public entry point ────────────────────────────────────────────────────────
 
 async def search_portal_candidates(
     query: str,
@@ -33,30 +54,26 @@ async def search_portal_candidates(
     experience_max: int = 20,
     limit: int = 10,
 ) -> list[dict]:
-    """
-    Search candidates from an external job portal.
-    Routes to the real portal API when an API key is configured;
-    falls back to AI-generated demo profiles otherwise.
-    """
     portal = portal.lower()
     api_key = _PORTAL_KEYS.get(portal, "")
 
+    # Naukri uses session-based scraper — always route through regardless of api_key
+    if portal == "naukri":
+        return await _search_naukri(query, location, experience_min, experience_max, limit, api_key)
+
     if api_key:
-        # Real portal API handlers — plug in when keys are available
         if portal == "github":
             return await _search_github(query, location, experience_min, experience_max, limit, api_key)
         if portal == "linkedin":
             return await _search_linkedin(query, location, experience_min, experience_max, limit, api_key)
         if portal == "indeed":
             return await _search_indeed(query, location, experience_min, experience_max, limit, api_key)
-        if portal == "naukri":
-            return await _search_naukri(query, location, experience_min, experience_max, limit, api_key)
 
-    # No API key configured — return AI-generated demo candidates
     portal_label = PORTAL_LABELS.get(portal, portal.capitalize())
-    return await _generate_ai_candidates(query, portal_label, location, experience_min, experience_max, limit)
+    return await _generate_candidates(query, portal_label, location, experience_min, experience_max, limit)
 
 
+<<<<<<< HEAD
 # ── GitHub developer search ───────────────────────────────────────────────────
 
 async def _search_github(query, location, exp_min, exp_max, limit, token):
@@ -130,41 +147,69 @@ async def _search_github(query, location, exp_min, exp_max, limit, token):
     return candidates
 
 
-# ── Real portal stubs (fill in when API contracts are ready) ──────────────────
+# ── Real portal stubs ─────────────────────────────────────────────────────────
 
 async def _search_linkedin(query, location, exp_min, exp_max, limit, api_key):
-    # LinkedIn Talent Solutions API
-    # https://developer.linkedin.com/product-catalog/talent
     raise NotImplementedError("LinkedIn API key set but integration not yet wired")
 
-
 async def _search_indeed(query, location, exp_min, exp_max, limit, api_key):
-    # Indeed Publisher API
-    # https://ads.indeed.com/jobroll/xmlfeed
     raise NotImplementedError("Indeed API key set but integration not yet wired")
 
-
 async def _search_naukri(query, location, exp_min, exp_max, limit, api_key):
-    # Naukri B2B Partner API
-    raise NotImplementedError("Naukri API key set but integration not yet wired")
+    from services.naukri_service import scrape_naukri_candidates
+    from database import get_db
+    doc = await get_db()["settings"].find_one({"key": "naukri_session"})
+    curl = doc.get("curl_command", "") if doc else ""
+    if not curl:
+        return await _generate_candidates(query, "Naukri", location, exp_min, exp_max, limit)
+    try:
+        candidates = await scrape_naukri_candidates(curl_command=curl, max_results=limit)
+        return candidates or await _generate_candidates(query, "Naukri", location, exp_min, exp_max, limit)
+    except Exception as e:
+        print(f"[Naukri] Scrape error: {e} — falling back to mock")
+        return await _generate_candidates(query, "Naukri", location, exp_min, exp_max, limit)
 
 
-# ── AI demo mode ──────────────────────────────────────────────────────────────
+# ── Dispatcher: AI or mock ────────────────────────────────────────────────────
 
-async def _generate_ai_candidates(
-    query: str,
-    portal_label: str,
-    location: str,
-    exp_min: int,
-    exp_max: int,
-    limit: int,
-) -> list[dict]:
+async def _generate_candidates(query, portal_label, location, exp_min, exp_max, limit):
+    if _use_azure():
+        try:
+            return await _generate_ai_candidates_azure(query, portal_label, location, exp_min, exp_max, limit)
+        except Exception as e:
+            print(f"[Search] Azure OpenAI failed ({e}), trying standard OpenAI…")
+
+    if _use_openai():
+        try:
+            return await _generate_ai_candidates_openai(query, portal_label, location, exp_min, exp_max, limit)
+        except Exception as e:
+            print(f"[Search] Standard OpenAI failed ({e}), falling back to mock data…")
+
+    print("[Search] No AI credentials configured — using mock candidate generator")
+    return _generate_mock_candidates(query, portal_label, location, exp_min, exp_max, limit)
+
+
+# ── Tier 1: Azure OpenAI ──────────────────────────────────────────────────────
+
+async def _generate_ai_candidates_azure(query, portal_label, location, exp_min, exp_max, limit):
+    from openai import AsyncAzureOpenAI
     client = AsyncAzureOpenAI(
         api_key=AZURE_OPENAI_API_KEY,
         azure_endpoint=AZURE_OPENAI_ENDPOINT,
         api_version=AZURE_OPENAI_API_VERSION,
     )
+    return await _call_openai_client(client, query, portal_label, location, exp_min, exp_max, limit)
 
+
+# ── Tier 2: Standard OpenAI ───────────────────────────────────────────────────
+
+async def _generate_ai_candidates_openai(query, portal_label, location, exp_min, exp_max, limit):
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+    return await _call_openai_client(client, query, portal_label, location, exp_min, exp_max, limit)
+
+
+async def _call_openai_client(client, query, portal_label, location, exp_min, exp_max, limit):
     location_str = location if location else "Any location"
     exp_str = f"{exp_min}–{exp_max} years"
     portal_domain = portal_label.lower().replace(" ", "")
@@ -200,10 +245,103 @@ Make candidates diverse in background, seniority, and company tier. Return ONLY 
 
     data = json.loads(response.choices[0].message.content)
     candidates = data.get("candidates", [])
-
     for c in candidates:
         c["portal"] = portal_label
         c.setdefault("match_score", 0.75)
-
     candidates.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+    return candidates
+
+
+# ── Tier 3: Pure-Python mock (no API key needed) ──────────────────────────────
+
+_FIRST_NAMES = [
+    "Aarav", "Priya", "Rahul", "Ananya", "Vikram", "Sneha", "Arjun", "Kavya",
+    "Ravi", "Meera", "Kiran", "Divya", "Suresh", "Pooja", "Amit", "Shreya",
+    "Nikhil", "Isha", "Rohan", "Neha", "Sanjay", "Ritu", "Manoj", "Swati",
+]
+_LAST_NAMES = [
+    "Sharma", "Patel", "Kumar", "Singh", "Reddy", "Nair", "Gupta", "Iyer",
+    "Verma", "Shah", "Mehta", "Joshi", "Rao", "Mishra", "Agarwal", "Bose",
+]
+_COMPANIES = [
+    "Infosys", "TCS", "Wipro", "HCL Technologies", "Tech Mahindra", "Cognizant",
+    "Accenture India", "Capgemini", "IBM India", "Oracle India", "Microsoft India",
+    "Amazon India", "Google India", "Flipkart", "Zomato", "Swiggy", "Freshworks",
+    "Zoho", "Byju's", "Paytm", "Ola", "Razorpay",
+]
+_AVAILABILITY = [
+    "Immediately Available", "2 Weeks Notice", "1 Month Notice",
+    "2 Months Notice", "3 Months Notice",
+]
+_SKILL_POOL = {
+    "python": ["Python", "Django", "Flask", "FastAPI", "Pandas", "NumPy", "Scikit-learn", "TensorFlow", "PyTorch"],
+    "java":   ["Java", "Spring Boot", "Hibernate", "Maven", "JUnit", "Kafka", "Microservices"],
+    "react":  ["React", "TypeScript", "Redux", "Next.js", "Tailwind CSS", "REST APIs", "GraphQL"],
+    "data":   ["SQL", "Python", "Power BI", "Tableau", "ETL", "Apache Spark", "Databricks", "Snowflake"],
+    "ml":     ["Machine Learning", "Deep Learning", "NLP", "Computer Vision", "Scikit-learn", "TensorFlow", "MLOps"],
+    "devops": ["Docker", "Kubernetes", "CI/CD", "Jenkins", "Terraform", "AWS", "Azure DevOps", "Ansible"],
+    "node":   ["Node.js", "Express", "MongoDB", "REST APIs", "TypeScript", "AWS Lambda", "Microservices"],
+    "cloud":  ["AWS", "Azure", "GCP", "Terraform", "CloudFormation", "Kubernetes", "Docker"],
+}
+_SOFT_SKILLS = ["Agile", "Problem Solving", "Team Leadership", "Communication", "Scrum"]
+
+
+def _pick_skills(query: str, n: int = 8) -> list[str]:
+    q = query.lower()
+    chosen = []
+    for key, skills in _SKILL_POOL.items():
+        if key in q or any(s.lower() in q for s in skills):
+            chosen.extend(skills)
+    if not chosen:
+        # generic tech skills
+        chosen = ["Python", "SQL", "REST APIs", "Git", "Agile", "Microservices", "Cloud", "Linux"]
+    chosen = list(dict.fromkeys(chosen))          # deduplicate, preserve order
+    chosen += _SOFT_SKILLS
+    return chosen[:n]
+
+
+def _generate_mock_candidates(query, portal_label, location, exp_min, exp_max, limit) -> list[dict]:
+    """Deterministic-ish mock candidates based on query hash so results are stable per search."""
+    seed = int(hashlib.md5(f"{query}{portal_label}{location}".encode()).hexdigest(), 16) % (2**32)
+    rng = random.Random(seed)
+
+    location_str = location if location else "Bangalore, India"
+    portal_slug = portal_label.lower().replace(" ", "")
+    base_skills = _pick_skills(query)
+    count = min(limit, 10)
+
+    candidates = []
+    for i in range(count):
+        first = rng.choice(_FIRST_NAMES)
+        last  = rng.choice(_LAST_NAMES)
+        name  = f"{first} {last}"
+        exp   = rng.randint(max(exp_min, 1), max(exp_max, exp_min + 1))
+        company = rng.choice(_COMPANIES)
+        skills  = rng.sample(base_skills, min(7, len(base_skills)))
+        avail   = rng.choice(_AVAILABILITY)
+        score   = round(rng.uniform(0.70, 0.96), 2)
+        slug    = f"{first.lower()}-{last.lower()}-{rng.randint(100, 999)}"
+
+        seniority = "Senior" if exp >= 7 else ("Mid-Level" if exp >= 4 else "Junior")
+        headline  = f"{seniority} {query.split()[0]} Engineer at {company}"
+
+        candidates.append({
+            "name":            name,
+            "headline":        headline,
+            "current_company": company,
+            "location":        location_str,
+            "skills":          skills,
+            "experience_years": exp,
+            "summary": (
+                f"{name} is a {seniority.lower()} professional with {exp} years of experience "
+                f"in {query}. Currently at {company}, they have delivered impactful projects "
+                f"using {', '.join(skills[:3])}."
+            ),
+            "availability":  avail,
+            "profile_url":   f"https://www.{portal_slug}.com/in/{slug}",
+            "match_score":   score,
+            "portal":        portal_label,
+        })
+
+    candidates.sort(key=lambda x: x["match_score"], reverse=True)
     return candidates

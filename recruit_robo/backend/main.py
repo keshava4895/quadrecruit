@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from database import connect_db, close_db
 from config import FRONTEND_URL
 
+from routes.auth_routes      import router as auth_router
 from routes.job_routes       import router as job_router
 from routes.candidate_routes import router as candidate_router
 from routes.email_routes     import router as email_router
@@ -34,6 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router,      prefix="/auth",       tags=["Auth"])
 app.include_router(job_router,       prefix="/jobs",       tags=["Jobs"])
 app.include_router(candidate_router, prefix="/candidates", tags=["Candidates"])
 app.include_router(email_router,     prefix="/email",      tags=["Email"])

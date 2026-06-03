@@ -7,18 +7,18 @@ export function AuthProvider({ children }) {
     try {
       const stored = localStorage.getItem('rr_user')
       return stored ? JSON.parse(stored) : null
-    } catch {
-      return null
-    }
+    } catch { return null }
   })
 
-  function login(userData) {
-    localStorage.setItem('rr_user', JSON.stringify(userData))
+  function login(userData, token) {
+    localStorage.setItem('rr_user',  JSON.stringify(userData))
+    localStorage.setItem('rr_token', token)
     setUser(userData)
   }
 
   function logout() {
     localStorage.removeItem('rr_user')
+    localStorage.removeItem('rr_token')
     setUser(null)
   }
 
