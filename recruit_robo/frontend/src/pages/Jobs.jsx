@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { jobsApi } from '../api'
-import { Plus, Trash2, MapPin, Briefcase, ChevronRight, X, Clock } from 'lucide-react'
+import { Plus, Trash2, MapPin, Briefcase, ChevronRight, X, CheckSquare, Square } from 'lucide-react'
 
 const EMPTY_FORM = { title: '', description: '', skills: '', experience_years: 3, location: '' }
 
 const INPUT = 'w-full border border-zinc-200 rounded-lg px-3 py-2.5 text-sm bg-white text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition'
 
 export default function Jobs() {
-  const [jobs,     setJobs]     = useState([])
-  const [form,     setForm]     = useState(EMPTY_FORM)
-  const [showForm, setShowForm] = useState(false)
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
+  const [jobs,      setJobs]      = useState([])
+  const [form,      setForm]      = useState(EMPTY_FORM)
+  const [showForm,  setShowForm]  = useState(false)
+  const [loading,   setLoading]   = useState(false)
+  const [error,     setError]     = useState('')
+  const [selected,  setSelected]  = useState(new Set())
+  const [deleting,  setDeleting]  = useState(false)
 
   const load = () => jobsApi.list().then(r => setJobs(r.data))
   useEffect(() => { load() }, [])
@@ -39,7 +41,32 @@ export default function Jobs() {
   const del = async (id) => {
     if (!confirm('Delete this job?')) return
     await jobsApi.delete(id)
+    setSelected(prev => { const next = new Set(prev); next.delete(id); return next })
     load()
+  }
+
+  // ── Multi-select helpers ──────────────────────────────────────────────────
+  const toggleSelect = (id) => setSelected(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
+  const allSelected  = jobs.length > 0 && selected.size === jobs.length
+  const someSelected = selected.size > 0 && !allSelected
+
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set(jobs.map(j => j.jobId)))
+
+  const deleteSelected = async () => {
+    if (!selected.size) return
+    if (!confirm(`Delete ${selected.size} job${selected.size > 1 ? 's' : ''}? This cannot be undone.`)) return
+    setDeleting(true)
+    try {
+      await Promise.all([...selected].map(id => jobsApi.delete(id)))
+      setSelected(new Set())
+      load()
+    } finally { setDeleting(false) }
   }
 
   return (
@@ -51,12 +78,24 @@ export default function Jobs() {
           <h1 className="text-xl font-semibold text-zinc-900">Jobs</h1>
           <p className="text-sm text-zinc-400 mt-0.5">{jobs.length} active posting{jobs.length !== 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-700 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Create New Job
-        </button>
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <button
+              onClick={deleteSelected}
+              disabled={deleting}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              {deleting ? 'Deleting…' : `Delete ${selected.size} selected`}
+            </button>
+          )}
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Create New Job
+          </button>
+        </div>
       </div>
 
       {/* Create form */}
@@ -159,54 +198,96 @@ export default function Jobs() {
         )}
       </div>
 
-      {/* Job list */}
+      {/* Job list with multi-select */}
       {jobs.length > 0 && (
         <div className="space-y-2">
-          {jobs.map(job => (
-            <div key={job.jobId}
-              className="bg-white border border-zinc-200 rounded-xl px-5 py-4 flex items-center gap-4 hover:border-zinc-300 transition-colors group">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2.5 mb-1">
-                  <Link to={`/jobs/${job.jobId}`}
-                    className="text-sm font-semibold text-zinc-900 hover:text-zinc-600 transition-colors">
-                    {job.title}
-                  </Link>
-                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full border border-emerald-100">
-                    {job.status}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-zinc-400 mb-2.5">
-                  <span className="font-mono">{job.jobId}</span>
-                  {job.location && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />{job.location}
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1">
-                    <Briefcase className="w-3 h-3" />{job.experience_years}+ yrs
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {job.skills?.slice(0, 6).map(s => (
-                    <span key={s} className="px-2 py-0.5 bg-zinc-100 text-zinc-600 text-xs rounded-md">{s}</span>
-                  ))}
-                  {job.skills?.length > 6 && (
-                    <span className="px-2 py-0.5 text-zinc-400 text-xs">+{job.skills.length - 6} more</span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Link to={`/jobs/${job.jobId}`}
-                  className="p-2 text-zinc-300 hover:text-zinc-700 transition-colors rounded-lg hover:bg-zinc-50">
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
-                <button onClick={() => del(job.jobId)}
-                  className="p-2 text-zinc-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50">
-                  <Trash2 className="w-4 h-4" />
+
+          {/* Select all bar */}
+          <div className="flex items-center gap-3 px-3 py-2">
+            <button
+              onClick={toggleAll}
+              className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-800 transition-colors"
+            >
+              {allSelected
+                ? <CheckSquare className="w-4 h-4 text-zinc-900" />
+                : someSelected
+                  ? <CheckSquare className="w-4 h-4 text-zinc-400" />
+                  : <Square className="w-4 h-4" />
+              }
+              {allSelected ? 'Deselect all' : 'Select all'}
+            </button>
+            {selected.size > 0 && (
+              <span className="text-xs text-zinc-400">
+                {selected.size} of {jobs.length} selected
+              </span>
+            )}
+          </div>
+
+          {jobs.map(job => {
+            const isSelected = selected.has(job.jobId)
+            return (
+              <div key={job.jobId}
+                className={`bg-white border rounded-xl px-5 py-4 flex items-center gap-4 transition-colors group ${
+                  isSelected
+                    ? 'border-red-200 bg-red-50/40'
+                    : 'border-zinc-200 hover:border-zinc-300'
+                }`}
+              >
+                {/* Checkbox */}
+                <button
+                  onClick={() => toggleSelect(job.jobId)}
+                  className="flex-shrink-0 text-zinc-300 hover:text-zinc-600 transition-colors"
+                >
+                  {isSelected
+                    ? <CheckSquare className="w-4.5 h-4.5 text-red-500" />
+                    : <Square className="w-4.5 h-4.5" />
+                  }
                 </button>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <Link to={`/jobs/${job.jobId}`}
+                      className="text-sm font-semibold text-zinc-900 hover:text-zinc-600 transition-colors">
+                      {job.title}
+                    </Link>
+                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full border border-emerald-100">
+                      {job.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-zinc-400 mb-2.5">
+                    <span className="font-mono">{job.jobId}</span>
+                    {job.location && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />{job.location}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1">
+                      <Briefcase className="w-3 h-3" />{job.experience_years}+ yrs
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {job.skills?.slice(0, 6).map(s => (
+                      <span key={s} className="px-2 py-0.5 bg-zinc-100 text-zinc-600 text-xs rounded-md">{s}</span>
+                    ))}
+                    {job.skills?.length > 6 && (
+                      <span className="px-2 py-0.5 text-zinc-400 text-xs">+{job.skills.length - 6} more</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Link to={`/jobs/${job.jobId}`}
+                    className="p-2 text-zinc-300 hover:text-zinc-700 transition-colors rounded-lg hover:bg-zinc-50">
+                    <ChevronRight className="w-4 h-4" />
+                  </Link>
+                  <button onClick={() => del(job.jobId)}
+                    className="p-2 text-zinc-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
