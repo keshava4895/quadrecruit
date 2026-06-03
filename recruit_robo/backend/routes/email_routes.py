@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, EmailStr
 from models.models import EmailRequest, BulkEmailRequest
 from services.email_service import send_email, send_email_smtp, draft_outreach_email, parse_reply_intent
+from services import msgraph_service
 from services.auth_service import get_current_user
 from services.candidate_manager import get_top_candidates, get_candidate
 from database import get_db
@@ -18,23 +19,33 @@ class SmtpSendRequest(BaseModel):
 
 @router.post("/send-smtp")
 async def send_via_smtp(req: SmtpSendRequest, current_user=Depends(get_current_user)):
-    """Send email from the logged-in user's email address via SMTP."""
+    """Send email — tries Microsoft Graph first, falls back to SMTP password."""
+    user_id = current_user["userId"]
+
+    # Try Microsoft Graph (OAuth2) first
+    ms_doc = await msgraph_service.get_tokens(user_id)
+    if ms_doc and ms_doc.get("access_token"):
+        try:
+            return await msgraph_service.send_mail(user_id, req.to, req.subject, req.body)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Failed to send via Outlook: {str(e)}")
+
+    # Fall back to SMTP password
     db   = get_db()
-    user = await db["users"].find_one({"userId": current_user["userId"]})
+    user = await db["users"].find_one({"userId": user_id})
     smtp_pass = user.get("smtp_pass", "") if user else ""
 
     if not smtp_pass:
         raise HTTPException(
             status_code=503,
-            detail="Email password not configured. Go to your Account settings and save your email password.",
+            detail="Email not configured. Go to Account settings → Connect Outlook to set up email sending.",
         )
     try:
-        result = await send_email_smtp(
+        return await send_email_smtp(
             to=req.to, subject=req.subject, body=req.body,
             from_email=current_user["email"],
             from_pass=smtp_pass,
         )
-        return result
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to send: {str(e)}")
 

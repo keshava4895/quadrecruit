@@ -35,6 +35,11 @@ JWT_EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "7"))
 GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 
+# Microsoft Graph OAuth (for Outlook email sending)
+MS_CLIENT_ID     = os.getenv("MS_CLIENT_ID", "")
+MS_CLIENT_SECRET = os.getenv("MS_CLIENT_SECRET", "")
+MS_TENANT_ID     = os.getenv("MS_TENANT_ID", "common")
+
 # App URLs
 FRONTEND_URL          = os.getenv("FRONTEND_URL", "http://localhost:3000")
 BACKEND_URL           = os.getenv("BACKEND_URL", "http://localhost:8000")

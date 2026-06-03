@@ -105,7 +105,19 @@ async def send_email_smtp(
         with smtplib.SMTP(host, port) as server:
             server.ehlo()
             server.starttls()
-            server.login(sender, password)
+            try:
+                server.login(sender, password)
+            except smtplib.SMTPAuthenticationError as auth_err:
+                code = auth_err.smtp_code
+                msg_lower = str(auth_err.smtp_error).lower()
+                if code == 535 and ("5.7.139" in str(auth_err) or "authentication unsuccessful" in msg_lower):
+                    raise RuntimeError(
+                        "Microsoft 365 rejected the password. SMTP AUTH must be enabled for your mailbox. "
+                        "Ask your IT admin to go to Microsoft 365 Admin Center → Users → Active users → "
+                        "select your account → Mail → Email apps → enable 'Authenticated SMTP'. "
+                        "Alternatively use an App Password if MFA is enabled on your account."
+                    ) from auth_err
+                raise RuntimeError(f"SMTP login failed: {auth_err}") from auth_err
             server.sendmail(sender, [to], msg.as_string())
 
     await asyncio.get_event_loop().run_in_executor(None, _send)

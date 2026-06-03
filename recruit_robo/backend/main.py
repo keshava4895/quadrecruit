@@ -14,6 +14,7 @@ from routes.calendar_routes  import router as calendar_router
 from routes.feedback_routes  import router as feedback_router
 from routes.pipeline_routes  import router as pipeline_router
 from routes.search_routes    import router as search_router
+from routes.msgraph_routes   import router as msgraph_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -45,6 +46,7 @@ app.include_router(calendar_router,  prefix="/calendar",   tags=["Calendar"])
 app.include_router(feedback_router,  prefix="/feedback",   tags=["Feedback"])
 app.include_router(pipeline_router,  prefix="/pipeline",   tags=["Pipeline"])
 app.include_router(search_router,    prefix="/search",     tags=["Search"])
+app.include_router(msgraph_router,   prefix="/msgraph",    tags=["Microsoft Graph"])
 
 @app.get("/", tags=["Health"])
 async def root():

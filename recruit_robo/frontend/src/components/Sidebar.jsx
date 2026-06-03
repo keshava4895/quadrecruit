@@ -6,7 +6,7 @@ import {
   Link2, Link2Off, Settings, Mail, Eye, EyeOff, CheckCircle, ChevronUp,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { linkedinApi, searchApi, authApi } from '../api'
+import { linkedinApi, searchApi, authApi, msGraphApi } from '../api'
 import QlogoAnimated from './QlogoAnimated'
 
 const NAV = [
@@ -42,13 +42,10 @@ export default function Sidebar() {
   const [naukriMsg,      setNaukriMsg]      = useState('')
   const [showNaukriInput,setShowNaukriInput]= useState(false)
 
-  // Email settings states
-  const [emailConfigured, setEmailConfigured] = useState(false)
-  const [showEmailInput,  setShowEmailInput]  = useState(false)
-  const [emailPass,       setEmailPass]       = useState('')
-  const [showPass,        setShowPass]        = useState(false)
-  const [emailSaving,     setEmailSaving]     = useState(false)
-  const [emailMsg,        setEmailMsg]        = useState('')
+  // Microsoft Outlook OAuth state
+  const [msConnected,  setMsConnected]  = useState(false)
+  const [msConfigured, setMsConfigured] = useState(true)
+  const [msConnecting, setMsConnecting] = useState(false)
 
   // Close panel on outside click
   useEffect(() => {
@@ -64,7 +61,10 @@ export default function Sidebar() {
     if (!panelOpen) return
     linkedinApi.accounts().then(r => setLiAccounts(r.data.accounts || [])).catch(() => {})
     searchApi.getNaukriSession().then(r => setNaukriSession(r.data)).catch(() => {})
-    authApi.getEmailSettings().then(r => setEmailConfigured(r.data.configured)).catch(() => {})
+    msGraphApi.status().then(r => {
+      setMsConnected(r.data.connected)
+      setMsConfigured(r.data.configured)
+    }).catch(() => {})
   }, [panelOpen])
 
   function handleLogout() {
@@ -261,63 +261,44 @@ export default function Sidebar() {
                   {user?.role && <div><p className="text-[10px] text-gray-400">Role</p><p className="text-xs font-medium text-gray-800 capitalize">{user.role}</p></div>}
                 </div>
 
-                {/* Outgoing email */}
+                {/* Outlook / Microsoft Graph */}
                 <div className="border border-gray-100 rounded-xl p-3">
                   <div className="flex items-center gap-2 mb-1.5">
                     <Mail className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
                     <span className="text-xs font-medium text-gray-800 flex-1">Outgoing Email</span>
-                    {emailConfigured
-                      ? <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"/>Set</span>
-                      : <span className="text-[10px] text-gray-400">Not set</span>}
+                    {msConnected
+                      ? <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"/>Connected</span>
+                      : <span className="text-[10px] text-gray-400">Not connected</span>}
                   </div>
-                  <p className="text-[10px] text-gray-400 mb-2">Save your password to send emails from <strong>{user?.email}</strong></p>
 
-                  {emailConfigured && !showEmailInput && (
-                    <div className="flex items-center justify-between bg-gray-50 rounded-lg px-2 py-1 mb-1.5">
-                      <span className="text-[10px] text-gray-500">Password saved ••••••••</span>
-                      <button onClick={async () => { await authApi.clearEmailSettings(); setEmailConfigured(false) }}
-                        className="text-red-400 hover:text-red-600 ml-1"><Link2Off className="w-3 h-3" /></button>
-                    </div>
-                  )}
-
-                  {!showEmailInput ? (
-                    <button onClick={() => { setShowEmailInput(true); setEmailMsg('') }}
-                      className="w-full flex items-center justify-center gap-1 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white text-[11px] font-medium rounded-lg">
-                      <Settings className="w-3 h-3" />{emailConfigured ? 'Update Password' : 'Set Password'}
-                    </button>
-                  ) : (
+                  {msConnected ? (
                     <div className="space-y-1.5">
-                      <div className="relative">
-                        <input type={showPass ? 'text' : 'password'} placeholder="Your email password"
-                          value={emailPass} onChange={e => setEmailPass(e.target.value)}
-                          className="w-full border border-gray-200 rounded px-2 py-1.5 pr-7 text-[11px] bg-gray-50 focus:outline-none focus:ring-1 focus:ring-gray-400" />
-                        <button type="button" onClick={() => setShowPass(v => !v)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-                          {showPass ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <div className="flex items-center justify-between bg-emerald-50 rounded-lg px-2.5 py-1.5">
+                        <span className="text-[10px] text-emerald-700 font-medium">Outlook connected — emails send via Microsoft</span>
+                        <button onClick={async () => { await msGraphApi.disconnect(); setMsConnected(false) }}
+                          className="text-red-400 hover:text-red-600 ml-1" title="Disconnect">
+                          <Link2Off className="w-3 h-3" />
                         </button>
-                      </div>
-                      {emailMsg && <p className={`text-[10px] flex items-center gap-1 ${emailMsg.includes('Saved') ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {emailMsg.includes('Saved') && <CheckCircle className="w-3 h-3" />}{emailMsg}
-                      </p>}
-                      <div className="flex gap-1.5">
-                        <button disabled={emailSaving || !emailPass.trim()}
-                          onClick={async () => {
-                            setEmailSaving(true); setEmailMsg('')
-                            try {
-                              await authApi.saveEmailSettings(emailPass.trim())
-                              setEmailConfigured(true)
-                              setEmailMsg('Saved!')
-                              setEmailPass(''); setShowEmailInput(false)
-                            } catch { setEmailMsg('Failed.') }
-                            finally { setEmailSaving(false) }
-                          }}
-                          className="flex-1 py-1 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-white text-[11px] font-medium rounded">
-                          {emailSaving ? 'Saving…' : 'Save'}
-                        </button>
-                        <button onClick={() => { setShowEmailInput(false); setEmailPass(''); setEmailMsg('') }}
-                          className="flex-1 py-1 border border-gray-200 text-gray-600 text-[11px] font-medium rounded">Cancel</button>
                       </div>
                     </div>
+                  ) : !msConfigured ? (
+                    <p className="text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
+                      Microsoft OAuth not configured. Add MS_CLIENT_ID to backend env vars.
+                    </p>
+                  ) : (
+                    <button
+                      disabled={msConnecting}
+                      onClick={async () => {
+                        setMsConnecting(true)
+                        try {
+                          const r = await msGraphApi.authorizeUrl()
+                          window.location.href = r.data.url
+                        } catch { setMsConnecting(false) }
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-[#0078d4] hover:bg-[#106ebe] disabled:opacity-50 text-white text-[11px] font-medium rounded-lg transition-colors">
+                      <Mail className="w-3 h-3" />
+                      {msConnecting ? 'Redirecting…' : 'Connect Outlook'}
+                    </button>
                   )}
                 </div>
               </div>

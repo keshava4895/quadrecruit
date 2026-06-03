@@ -71,6 +71,13 @@ export const pipelineApi = {
   transition:     (data)  => api.post('/pipeline/transition', data),
 }
 
+// ── Microsoft Graph (Outlook OAuth) ──────────────────────────────────────────
+export const msGraphApi = {
+  status:      ()   => api.get('/msgraph/status'),
+  authorizeUrl:()   => api.get('/msgraph/oauth/authorize'),
+  disconnect:  ()   => api.delete('/msgraph/disconnect'),
+}
+
 // ── LinkedIn via Unipile ──────────────────────────────────────────────────────
 export const linkedinApi = {
   accounts:    ()                                     => api.get('/linkedin/accounts'),
