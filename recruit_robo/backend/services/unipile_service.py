@@ -58,33 +58,30 @@ async def search_people(
     limit: int = 10,
 ) -> list[dict]:
     """
-    Search LinkedIn profiles via Unipile.
+    Search LinkedIn profiles via Unipile using POST /linkedin/search.
     Returns normalised candidate dicts.
     """
-    params = {
-        "account_id": account_id,
-        "keywords":   query,
-        "limit":      min(limit, 20),
-    }
-    if location:
-        params["location"] = location
+    # Combine query + location into keywords (location ID lookup not needed for classic API)
+    keywords = f"{query} {location}".strip() if location else query
 
-    async with httpx.AsyncClient(timeout=20) as c:
-        # Try LinkedIn people-search endpoint
-        r = await c.get(
-            f"{UNIPILE_BASE_URL}/api/v1/linkedin/people-search",
-            headers=_HEADERS, params=params,
+    body = {
+        "api":      "classic",
+        "category": "people",
+        "keywords": keywords,
+        "limit":    min(limit, 20),
+    }
+
+    async with httpx.AsyncClient(timeout=25) as c:
+        r = await c.post(
+            f"{UNIPILE_BASE_URL}/api/v1/linkedin/search",
+            headers=_HEADERS,
+            params={"account_id": account_id},
+            json=body,
         )
-        if r.status_code == 404:
-            # fallback path
-            r = await c.get(
-                f"{UNIPILE_BASE_URL}/api/v1/users",
-                headers=_HEADERS, params=params,
-            )
         r.raise_for_status()
         raw = r.json()
 
-    items = raw if isinstance(raw, list) else raw.get("items", raw.get("results", []))
+    items = raw.get("items", [])
     return [_normalise_person(p) for p in items[:limit]]
 
 
@@ -131,46 +128,44 @@ async def disconnect_account(account_id: str) -> bool:
 # ── Normalise ─────────────────────────────────────────────────────────────────
 
 def _normalise_person(p: dict) -> dict:
-    """Map Unipile person fields → standard candidate dict."""
-    name = (
-        p.get("name") or
-        f"{p.get('firstName', '')} {p.get('lastName', '')}".strip() or
-        "Unknown"
-    )
-    skills_raw = p.get("skills") or []
-    skills = (
-        [s["name"] if isinstance(s, dict) else s for s in skills_raw]
-        if isinstance(skills_raw, list) else []
-    )
+    """Map Unipile LinkedIn search result → standard candidate dict."""
+    name = p.get("name") or f"{p.get('firstName','')} {p.get('lastName','')}".strip() or "Unknown"
 
-    headline = p.get("headline") or p.get("title") or ""
-    company  = (
-        p.get("currentCompany") or
-        p.get("company") or
-        (p.get("positions", [{}])[0].get("companyName", "") if p.get("positions") else "")
-    )
-    location = p.get("location") or p.get("geo", {}).get("country", "") if isinstance(p.get("geo"), dict) else p.get("location", "")
-    profile_url = p.get("profileUrl") or p.get("url") or p.get("publicIdentifier", "")
-    if profile_url and not profile_url.startswith("http"):
-        profile_url = f"https://www.linkedin.com/in/{profile_url}"
+    headline    = p.get("headline") or ""
+    location    = p.get("location") or ""
+    profile_url = p.get("public_profile_url") or p.get("profile_url") or ""
+    provider_id = p.get("public_identifier") or p.get("id") or ""
+    picture     = p.get("profile_picture_url") or ""
+    premium     = p.get("premium", False)
+    verified    = p.get("verified", False)
+    distance    = p.get("network_distance", "")
+    shared      = p.get("shared_connections_count", 0)
 
-    exp_years = 0
-    if p.get("positions"):
-        exp_years = len(p["positions"])   # rough proxy
+    # Extract company from headline e.g. "Software Engineer at Bosch"
+    company = ""
+    if " at " in headline:
+        company = headline.split(" at ")[-1].strip()
+
+    if not profile_url and provider_id:
+        profile_url = f"https://www.linkedin.com/in/{provider_id}"
 
     return {
         "name":             name,
-        "email":            p.get("email") or "",
-        "phone":            p.get("phone") or "",
+        "email":            "",
+        "phone":            "",
         "headline":         headline,
         "current_company":  company,
         "location":         location,
-        "skills":           skills,
-        "experience_years": exp_years,
-        "summary":          p.get("summary") or p.get("about") or "",
+        "skills":           [],
+        "experience_years": 0,
+        "summary":          f"LinkedIn {distance.replace('DISTANCE_','').replace('_','+')}° connection · {shared} shared connections" if shared else "",
         "availability":     "Open to Opportunities",
         "profile_url":      profile_url,
-        "match_score":      0.75,
-        "portal":           "LinkedIn (Unipile)",
-        "provider_id":      p.get("id") or p.get("publicIdentifier") or "",
+        "profile_picture":  picture,
+        "match_score":      0.80,
+        "portal":           "LinkedIn",
+        "provider_id":      provider_id,
+        "premium":          premium,
+        "verified":         verified,
+        "network_distance": distance,
     }

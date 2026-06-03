@@ -55,13 +55,15 @@ async def search_portal_candidates(
     portal = portal.lower()
     api_key = _PORTAL_KEYS.get(portal, "")
 
+    # LinkedIn uses Unipile — always route through regardless of api_key
+    if portal == "linkedin":
+        return await _search_linkedin(query, location, experience_min, experience_max, limit, api_key)
+
     # Naukri uses session-based scraper — always route through regardless of api_key
     if portal == "naukri":
         return await _search_naukri(query, location, experience_min, experience_max, limit, api_key)
 
     if api_key:
-        if portal == "linkedin":
-            return await _search_linkedin(query, location, experience_min, experience_max, limit, api_key)
         if portal == "indeed":
             return await _search_indeed(query, location, experience_min, experience_max, limit, api_key)
 
@@ -72,24 +74,54 @@ async def search_portal_candidates(
 # ── Real portal stubs ─────────────────────────────────────────────────────────
 
 async def _search_linkedin(query, location, exp_min, exp_max, limit, api_key):
-    raise NotImplementedError("LinkedIn API key set but integration not yet wired")
+    """Use Unipile with the first connected LinkedIn account."""
+    try:
+        from services.unipile_service import get_accounts, search_people
+        accounts = await get_accounts()
+        if not accounts:
+            print("[LinkedIn] No account connected via Unipile — falling back to mock")
+            return await _generate_candidates(query, "LinkedIn", location, exp_min, exp_max, limit)
+        account_id = accounts[0]["id"]
+        candidates = await search_people(account_id=account_id, query=query, location=location or "", limit=limit)
+        return candidates if candidates else await _generate_candidates(query, "LinkedIn", location, exp_min, exp_max, limit)
+    except Exception as e:
+        print(f"[LinkedIn] Unipile search error: {e}")
+        return await _generate_candidates(query, "LinkedIn", location, exp_min, exp_max, limit)
 
 async def _search_indeed(query, location, exp_min, exp_max, limit, api_key):
     raise NotImplementedError("Indeed API key set but integration not yet wired")
 
 async def _search_naukri(query, location, exp_min, exp_max, limit, api_key):
-    from services.naukri_service import scrape_naukri_candidates
-    from database import get_db
-    doc = await get_db()["settings"].find_one({"key": "naukri_session"})
-    curl = doc.get("curl_command", "") if doc else ""
-    if not curl:
-        return await _generate_candidates(query, "Naukri", location, exp_min, exp_max, limit)
+    from config import NAUKRI_EMAIL
+
+    # Tier 1: Browser-based login (bypasses Akamai bot protection)
+    if NAUKRI_EMAIL:
+        try:
+            from services.naukri_browser_service import search_candidates as browser_search
+            candidates = await browser_search(
+                query=query, location=location or "",
+                experience_min=exp_min, experience_max=exp_max, limit=limit,
+            )
+            if candidates:
+                return candidates
+        except Exception as e:
+            print(f"[Naukri] Browser search error: {e} — trying curl fallback")
+
+    # Tier 2: curl-based scraper (manual session paste)
     try:
-        candidates = await scrape_naukri_candidates(curl_command=curl, max_results=limit)
-        return candidates or await _generate_candidates(query, "Naukri", location, exp_min, exp_max, limit)
+        from services.naukri_service import scrape_naukri_candidates
+        from database import get_db
+        doc = await get_db()["settings"].find_one({"key": "naukri_session"})
+        curl = doc.get("curl_command", "") if doc else ""
+        if curl:
+            candidates = await scrape_naukri_candidates(curl_command=curl, max_results=limit)
+            if candidates:
+                return candidates
     except Exception as e:
-        print(f"[Naukri] Scrape error: {e} — falling back to mock")
-        return await _generate_candidates(query, "Naukri", location, exp_min, exp_max, limit)
+        print(f"[Naukri] Curl scraper error: {e}")
+
+    print("[Naukri] No real data — using mock")
+    return await _generate_candidates(query, "Naukri", location, exp_min, exp_max, limit)
 
 
 # ── Dispatcher: AI or mock ────────────────────────────────────────────────────
