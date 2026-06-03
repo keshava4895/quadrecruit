@@ -49,6 +49,30 @@ async def send_email(to: str, subject: str, body: str, token: dict) -> dict:
     return result
 
 
+# ── SMTP host auto-detection by email domain ──────────────────────────────────
+_SMTP_PROVIDERS = {
+    "gmail.com":          ("smtp.gmail.com",       587),
+    "googlemail.com":     ("smtp.gmail.com",       587),
+    "outlook.com":        ("smtp.office365.com",   587),
+    "hotmail.com":        ("smtp.office365.com",   587),
+    "live.com":           ("smtp.office365.com",   587),
+    "office365.com":      ("smtp.office365.com",   587),
+    "yahoo.com":          ("smtp.mail.yahoo.com",  587),
+    "yahoo.in":           ("smtp.mail.yahoo.com",  587),
+    "zoho.com":           ("smtp.zoho.com",        587),
+}
+
+def _smtp_settings_for(email: str):
+    """Return (host, port) based on email domain. Falls back to .env values."""
+    domain = email.split("@")[-1].lower() if "@" in email else ""
+    # Check known providers
+    for key, val in _SMTP_PROVIDERS.items():
+        if domain == key or domain.endswith("." + key):
+            return val
+    # Corporate / custom domain — Office 365 is most common for business
+    return (SMTP_HOST or "smtp.office365.com", SMTP_PORT or 587)
+
+
 async def send_email_smtp(
     to: str,
     subject: str,
@@ -57,8 +81,8 @@ async def send_email_smtp(
     from_pass:  str = "",
 ) -> dict:
     """
-    Send email via SMTP using the sender's own credentials.
-    Falls back to .env SMTP_USER/SMTP_PASS if per-user credentials not provided.
+    Send email via SMTP from the logged-in user's own email address.
+    SMTP host is auto-detected from their email domain.
     """
     sender   = from_email or SMTP_USER
     password = from_pass  or SMTP_PASS
@@ -66,8 +90,10 @@ async def send_email_smtp(
     if not sender or not password:
         raise RuntimeError(
             "No email credentials configured. "
-            "Go to your account settings and save your email password."
+            "Go to Account settings → Outgoing Email and save your password."
         )
+
+    host, port = _smtp_settings_for(sender)
 
     def _send():
         msg = MIMEMultipart("alternative")
@@ -76,7 +102,7 @@ async def send_email_smtp(
         msg["Subject"] = subject
         msg.attach(MIMEText(body, "plain"))
 
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        with smtplib.SMTP(host, port) as server:
             server.ehlo()
             server.starttls()
             server.login(sender, password)
@@ -87,6 +113,7 @@ async def send_email_smtp(
     db = get_db()
     await db.email_logs.insert_one({
         "from": sender, "to": to, "subject": subject,
+        "smtp_host": host,
         "status": "SENT", "sent_at": datetime.now(timezone.utc),
     })
     return {"sent": True, "to": to, "from": sender}
