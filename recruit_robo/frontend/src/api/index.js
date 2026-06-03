@@ -66,6 +66,15 @@ export const pipelineApi = {
   transition:     (data)  => api.post('/pipeline/transition', data),
 }
 
+// ── LinkedIn via Unipile ──────────────────────────────────────────────────────
+export const linkedinApi = {
+  accounts:    ()                                     => api.get('/linkedin/accounts'),
+  connectUrl:  (userId, userName)                     => api.get('/linkedin/connect', { params: { user_id: userId, user_name: userName } }),
+  search:      (accountId, query, location, limit)    => api.get('/linkedin/search', { params: { account_id: accountId, query, location: location || '', limit: limit || 10 } }),
+  sendMessage: (accountId, profileUrl, message)       => api.post('/linkedin/message', { account_id: accountId, profile_url: profileUrl, message }),
+  disconnect:  (accountId)                            => api.delete(`/linkedin/accounts/${accountId}`),
+}
+
 // ── Job Portal Search ─────────────────────────────────────────────────────────
 export const searchApi = {
   portals:    ()     => api.get('/search/portals'),
