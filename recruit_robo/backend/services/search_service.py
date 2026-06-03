@@ -3,7 +3,7 @@ from openai import AsyncAzureOpenAI
 from config import (
     AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_VERSION, OPENAI_MODEL,
     LINKEDIN_API_KEY, INDEED_API_KEY, NAUKRI_API_KEY,
-    MONSTER_API_KEY, GLASSDOOR_API_KEY,
+    MONSTER_API_KEY, GLASSDOOR_API_KEY, GITHUB_TOKEN,
 )
 
 PORTAL_LABELS = {
@@ -12,6 +12,7 @@ PORTAL_LABELS = {
     "naukri":    "Naukri",
     "monster":   "Monster",
     "glassdoor": "Glassdoor",
+    "github":    "GitHub",
 }
 
 _PORTAL_KEYS = {
@@ -20,6 +21,7 @@ _PORTAL_KEYS = {
     "naukri":    NAUKRI_API_KEY,
     "monster":   MONSTER_API_KEY,
     "glassdoor": GLASSDOOR_API_KEY,
+    "github":    GITHUB_TOKEN,
 }
 
 
@@ -41,6 +43,8 @@ async def search_portal_candidates(
 
     if api_key:
         # Real portal API handlers — plug in when keys are available
+        if portal == "github":
+            return await _search_github(query, location, experience_min, experience_max, limit, api_key)
         if portal == "linkedin":
             return await _search_linkedin(query, location, experience_min, experience_max, limit, api_key)
         if portal == "indeed":
@@ -51,6 +55,79 @@ async def search_portal_candidates(
     # No API key configured — return AI-generated demo candidates
     portal_label = PORTAL_LABELS.get(portal, portal.capitalize())
     return await _generate_ai_candidates(query, portal_label, location, experience_min, experience_max, limit)
+
+
+# ── GitHub developer search ───────────────────────────────────────────────────
+
+async def _search_github(query, location, exp_min, exp_max, limit, token):
+    import httpx, re
+    from datetime import datetime, timezone
+
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    # Build GitHub search query from free-text input
+    keywords = [w for w in re.sub(r'[^\w\s]', ' ', query).split() if len(w) > 2][:4]
+    gh_q = "+".join(keywords)
+    if location:
+        city = location.split(",")[0].strip()
+        gh_q += f"+location:{city}"
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        search_r = await client.get(
+            f"https://api.github.com/search/users?q={gh_q}&per_page={min(limit, 10)}&sort=followers",
+            headers=headers,
+        )
+        items = search_r.json().get("items", [])
+
+        candidates = []
+        for user in items[:limit]:
+            prof_r  = await client.get(user["url"], headers=headers)
+            prof    = prof_r.json()
+            repos_r = await client.get(
+                f"https://api.github.com/users/{user['login']}/repos?sort=stars&per_page=8",
+                headers=headers,
+            )
+            repos = repos_r.json() if repos_r.status_code == 200 else []
+
+            # Skills from repo languages (unique, ordered by frequency)
+            langs = list(dict.fromkeys(r["language"] for r in repos if r.get("language")))[:8]
+
+            # Estimate experience from account creation date
+            created_str = prof.get("created_at", "2020-01-01T00:00:00Z").replace("Z", "+00:00")
+            created     = datetime.fromisoformat(created_str)
+            exp_years   = max(1, (datetime.now(timezone.utc) - created).days // 365)
+
+            # Match score: weighted blend of followers and repo stars
+            followers   = min(prof.get("followers", 0), 2000)
+            total_stars = sum(r.get("stargazers_count", 0) for r in repos)
+            score       = round(min(0.99, 0.65 + (followers / 2000) * 0.20 + min(total_stars, 1000) / 1000 * 0.14), 2)
+
+            top_repo_descs = [r["description"] for r in repos[:3] if r.get("description")]
+            summary = (prof.get("bio") or "")
+            if top_repo_descs:
+                summary += (" | " if summary else "") + " | ".join(top_repo_descs)
+
+            candidates.append({
+                "name":             prof.get("name") or prof["login"],
+                "headline":         prof.get("bio") or f"Developer · {prof.get('public_repos', 0)} public repositories",
+                "current_company":  (prof.get("company") or "").strip().lstrip("@") or "Independent",
+                "location":         prof.get("location") or location or "Not specified",
+                "skills":           langs or ["Git", "Open Source"],
+                "experience_years": exp_years,
+                "summary":          summary or f"GitHub developer with {prof.get('public_repos', 0)} repos and {prof.get('followers', 0)} followers.",
+                "availability":     "Open to opportunities",
+                "profile_url":      prof["html_url"],
+                "match_score":      score,
+                "portal":           "GitHub",
+                "email":            prof.get("email") or "",
+            })
+
+    candidates.sort(key=lambda x: x["match_score"], reverse=True)
+    return candidates
 
 
 # ── Real portal stubs (fill in when API contracts are ready) ──────────────────
