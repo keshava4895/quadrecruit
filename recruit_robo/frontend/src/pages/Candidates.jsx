@@ -4,7 +4,7 @@ import {
   Search, MapPin, Briefcase, ExternalLink,
   ChevronDown, Star, Loader2, AlertCircle,
   Upload, FileText, CheckCircle, XCircle, FolderOpen,
-  Mail, X, Copy, Settings, Trash2,
+  Mail, X, Settings, Trash2,
 } from 'lucide-react'
 
 const PORTALS = [
@@ -32,7 +32,7 @@ function MailModal({ candidate, jobTitle, onClose }) {
   const [subject, setSubject] = useState('')
   const [body,    setBody]    = useState('')
   const [loading, setLoading] = useState(true)
-  const [copied,  setCopied]  = useState(false)
+  const [sent,    setSent]    = useState(false)
 
   useEffect(() => {
     emailApi.draft(candidate.name, jobTitle || 'the role')
@@ -41,10 +41,10 @@ function MailModal({ candidate, jobTitle, onClose }) {
       .finally(() => setLoading(false))
   }, [])
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(`To: ${to}\nSubject: ${subject}\n\n${body}`)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleSend = () => {
+    window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    setSent(true)
+    setTimeout(() => { setSent(false); onClose() }, 1500)
   }
 
   return (
@@ -82,17 +82,24 @@ function MailModal({ candidate, jobTitle, onClose }) {
               <textarea value={body} onChange={e => setBody(e.target.value)} rows={8}
                 className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition" />
             </div>
+            {!to.trim() && (
+              <p className="text-xs text-amber-600">Enter the candidate's email address above to send.</p>
+            )}
             <div className="flex gap-2 pt-1">
-              <button onClick={handleCopy}
-                className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-700 transition-colors">
-                {copied ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? 'Copied!' : 'Copy'}
+              <button
+                onClick={handleSend}
+                disabled={!to.trim() || sent}
+                className="flex items-center gap-1.5 px-5 py-2 bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                {sent
+                  ? <><CheckCircle className="w-3.5 h-3.5" /> Sent!</>
+                  : <><Mail className="w-3.5 h-3.5" /> Send Mail</>
+                }
               </button>
-              <a href={`mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}
-                className="flex items-center gap-1.5 px-4 py-2 border border-zinc-200 text-zinc-700 text-sm font-medium rounded-lg hover:border-zinc-400 transition-colors">
-                <Mail className="w-3.5 h-3.5" />
-                Open in Mail
-              </a>
+              <button onClick={onClose}
+                className="px-5 py-2 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-sm font-medium rounded-lg transition-colors">
+                Cancel
+              </button>
             </div>
           </div>
         )}
