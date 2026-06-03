@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Sidebar      from './components/Sidebar'
+import Header       from './components/Header'
 import Login        from './pages/Login'
 import Register     from './pages/Register'
 import Dashboard    from './pages/Dashboard'
@@ -30,8 +31,10 @@ function AppShell() {
   return (
     <div className="h-screen flex overflow-hidden font-sans">
       <Sidebar />
-      <main className="flex-1 overflow-auto bg-zinc-50">
-        <Routes>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header />
+        <main className="flex-1 overflow-auto bg-zinc-50">
+          <Routes>
           <Route path="/login"       element={<Navigate to="/dashboard" replace />} />
           <Route path="/register"    element={<Navigate to="/dashboard" replace />} />
           <Route path="/"            element={<Navigate to="/dashboard" replace />} />
@@ -40,8 +43,9 @@ function AppShell() {
           <Route path="/jobs/:jobId" element={<PrivateRoute><JobDetail /></PrivateRoute>} />
           <Route path="/candidates"  element={<PrivateRoute><Candidates /></PrivateRoute>} />
           <Route path="/upload"      element={<PrivateRoute><UploadResume /></PrivateRoute>} />
-        </Routes>
-      </main>
+          </Routes>
+        </main>
+      </div>
     </div>
   )
 }

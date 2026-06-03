@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { LogOut, ChevronDown, Link2, Link2Off, Settings, Mail, Eye, EyeOff, CheckCircle } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { linkedinApi, searchApi, authApi } from '../api'
-import QlogoAnimated from './QlogoAnimated'
 
 const LI_ICON = (
   <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
@@ -104,15 +103,7 @@ export default function Header() {
   }
 
   return (
-    <header className="h-16 bg-blue-600 flex items-center justify-between px-6 flex-shrink-0 z-50 shadow-sm">
-      {/* Logo */}
-      <Link to="/dashboard" className="flex items-center gap-3">
-        <QlogoAnimated className="w-12 h-12 flex-shrink-0" />
-        <div className="leading-tight">
-          <div className="text-white font-bold text-sm">Quad Recruit</div>
-          <div className="text-blue-200 text-xs">AI-Powered Recruitment Platform</div>
-        </div>
-      </Link>
+    <header className="h-16 bg-blue-600 flex items-center justify-end px-6 flex-shrink-0 z-50 shadow-sm">
 
       {/* User avatar with dropdown */}
       <div className="relative" ref={dropdownRef}>
