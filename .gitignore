@@ -49,3 +49,9 @@ logs/
 *.msi
 *.dmg
 *.pkg
+
+# Local JSON database (runtime data)
+recruit_robo/backend/data/
+
+# Playwright browser cache
+recruit_robo/backend/.playwright/

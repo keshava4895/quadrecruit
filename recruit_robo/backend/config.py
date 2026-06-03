@@ -40,6 +40,10 @@ GMAIL_SCOPES    = ["https://www.googleapis.com/auth/gmail.send",
                    "https://www.googleapis.com/auth/gmail.readonly"]
 CALENDAR_SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
+# Naukri Recruiter Account
+NAUKRI_EMAIL    = os.getenv("NAUKRI_EMAIL", "")
+NAUKRI_PASSWORD = os.getenv("NAUKRI_PASSWORD", "")
+
 # Unipile LinkedIn API
 UNIPILE_API_KEY  = os.getenv("UNIPILE_API_KEY", "5hVZDtlr.vgHETt4Ov+7Pv40XUSvq1JHuR50KJmRiEr/XRUMQI/g=")
 UNIPILE_BASE_URL = os.getenv("UNIPILE_BASE_URL", "https://api45.unipile.com:17538")

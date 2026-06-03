@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from models.models import CandidateSearchRequest
 from services.search_service import search_portal_candidates
 from services.naukri_service import scrape_naukri_candidates
+from services.naukri_browser_service import browser_login, _session as naukri_session
+from config import NAUKRI_EMAIL
 from database import get_db
 
 router = APIRouter()
@@ -137,6 +139,40 @@ async def delete_naukri_session():
 
 
 # ── Portal list ───────────────────────────────────────────────────────────────
+
+@router.get("/naukri-status")
+async def naukri_status():
+    """Check if Naukri credentials are configured and session is active."""
+    from datetime import datetime, timezone
+    session_active = bool(
+        naukri_session.get("cookies") and
+        naukri_session.get("expires_at") and
+        datetime.now(timezone.utc) < naukri_session["expires_at"]
+    )
+    return {
+        "credentials_configured": bool(NAUKRI_EMAIL),
+        "email":          NAUKRI_EMAIL if NAUKRI_EMAIL else None,
+        "session_active": session_active,
+        "expires_at":     naukri_session.get("expires_at").isoformat() if naukri_session.get("expires_at") else None,
+    }
+
+
+@router.post("/naukri-login")
+async def test_naukri_login():
+    """Trigger browser-based Naukri login and verify credentials work."""
+    if not NAUKRI_EMAIL:
+        raise HTTPException(400, "NAUKRI_EMAIL not set in .env")
+    try:
+        cookies = await browser_login()
+        return {
+            "success":       True,
+            "email":         NAUKRI_EMAIL,
+            "cookies_count": len(cookies),
+            "message":       "Naukri login successful via browser — session is active",
+        }
+    except Exception as e:
+        raise HTTPException(502, f"Naukri browser login failed: {str(e)}")
+
 
 @router.get("/portals")
 async def list_portals():
