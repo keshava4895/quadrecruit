@@ -13,6 +13,7 @@ const PORTALS = [
   { value: 'naukri',    label: 'Naukri',    dot: 'bg-orange-500' },
   { value: 'monster',   label: 'Monster',   dot: 'bg-purple-500' },
   { value: 'glassdoor', label: 'Glassdoor', dot: 'bg-emerald-500' },
+  { value: 'github',    label: 'GitHub',    dot: 'bg-gray-900' },
 ]
 
 const AVAIL_STYLE = {
