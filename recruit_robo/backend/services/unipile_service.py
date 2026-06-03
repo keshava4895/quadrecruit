@@ -129,8 +129,7 @@ async def disconnect_account(account_id: str) -> bool:
 
 def _normalise_person(p: dict) -> dict:
     """Map Unipile LinkedIn search result → standard candidate dict."""
-    name = p.get("name") or f"{p.get('firstName','')} {p.get('lastName','')}".strip() or "Unknown"
-
+    name        = p.get("name") or f"{p.get('firstName','')} {p.get('lastName','')}".strip() or "Unknown"
     headline    = p.get("headline") or ""
     location    = p.get("location") or ""
     profile_url = p.get("public_profile_url") or p.get("profile_url") or ""
@@ -145,9 +144,15 @@ def _normalise_person(p: dict) -> dict:
     company = ""
     if " at " in headline:
         company = headline.split(" at ")[-1].strip()
+        company = company.split(",")[0].split("|")[0].strip()
 
     if not profile_url and provider_id:
         profile_url = f"https://www.linkedin.com/in/{provider_id}"
+
+    deg = distance.replace("DISTANCE_", "").replace("_", "+") if distance else ""
+    summary = f"{deg}° connection" if deg else ""
+    if shared:
+        summary += f" · {shared} shared connection{'s' if shared > 1 else ''}"
 
     return {
         "name":             name,
@@ -158,7 +163,7 @@ def _normalise_person(p: dict) -> dict:
         "location":         location,
         "skills":           [],
         "experience_years": 0,
-        "summary":          f"LinkedIn {distance.replace('DISTANCE_','').replace('_','+')}° connection · {shared} shared connections" if shared else "",
+        "summary":          summary,
         "availability":     "Open to Opportunities",
         "profile_url":      profile_url,
         "profile_picture":  picture,
