@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, status, Depends
+from pydantic import BaseModel
 from models.models import UserRegister, UserLogin, TokenResponse, UserResponse
 from services.auth_service import hash_password, verify_password, create_token, get_current_user
 from database import get_db
@@ -79,3 +80,42 @@ async def delete_user(user_id: str, current_user=Depends(get_current_user)):
     if r.deleted_count == 0:
         raise HTTPException(404, "User not found")
     return {"deleted": True}
+
+
+# ── Email / SMTP settings per user ────────────────────────────────────────────
+
+class EmailSettingsBody(BaseModel):
+    smtp_pass: str
+
+
+@router.post("/email-settings")
+async def save_email_settings(body: EmailSettingsBody, current_user=Depends(get_current_user)):
+    """Save the logged-in user's SMTP password so they can send emails from their own address."""
+    db = get_db()
+    await db["users"].update_one(
+        {"userId": current_user["userId"]},
+        {"$set": {"smtp_pass": body.smtp_pass}},
+    )
+    return {"saved": True}
+
+
+@router.get("/email-settings")
+async def get_email_settings(current_user=Depends(get_current_user)):
+    """Return whether SMTP is configured for this user (never return the password)."""
+    db   = get_db()
+    user = await db["users"].find_one({"userId": current_user["userId"]})
+    configured = bool(user and user.get("smtp_pass"))
+    return {
+        "configured": configured,
+        "email":      current_user["email"],
+    }
+
+
+@router.delete("/email-settings")
+async def clear_email_settings(current_user=Depends(get_current_user)):
+    db = get_db()
+    await db["users"].update_one(
+        {"userId": current_user["userId"]},
+        {"$unset": {"smtp_pass": ""}},
+    )
+    return {"cleared": True}

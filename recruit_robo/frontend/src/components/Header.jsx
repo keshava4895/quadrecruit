@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { LogOut, ChevronDown, Link2, Link2Off, Settings } from 'lucide-react'
+import { LogOut, ChevronDown, Link2, Link2Off, Settings, Mail, Eye, EyeOff, CheckCircle } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { linkedinApi, searchApi } from '../api'
+import { linkedinApi, searchApi, authApi } from '../api'
 import QlogoAnimated from './QlogoAnimated'
 
 const LI_ICON = (
@@ -25,7 +25,15 @@ export default function Header() {
   const [naukriSaving,  setNaukriSaving]  = useState(false)
   const [naukriMsg,     setNaukriMsg]     = useState('')
   const [showNaukriInput, setShowNaukriInput] = useState(false)
-  const [activeTab,     setActiveTab]     = useState('portals')  // 'portals' | 'account'
+  const [activeTab,     setActiveTab]     = useState('portals')
+
+  // Email settings state
+  const [emailConfigured, setEmailConfigured] = useState(false)
+  const [showEmailInput,  setShowEmailInput]  = useState(false)
+  const [emailPass,       setEmailPass]       = useState('')
+  const [showPass,        setShowPass]        = useState(false)
+  const [emailSaving,     setEmailSaving]     = useState(false)
+  const [emailMsg,        setEmailMsg]        = useState('')
 
   const avatar = user?.avatar || user?.name?.charAt(0)?.toUpperCase() || '?'
 
@@ -40,11 +48,12 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', onOutside)
   }, [])
 
-  // Load portal states when dropdown opens
+  // Load portal + email states when dropdown opens
   useEffect(() => {
     if (!open) return
     linkedinApi.accounts().then(r => setLiAccounts(r.data.accounts || [])).catch(() => {})
     searchApi.getNaukriSession().then(r => setNaukriSession(r.data)).catch(() => {})
+    authApi.getEmailSettings().then(r => setEmailConfigured(r.data.configured)).catch(() => {})
   }, [open])
 
   function handleLogout() {
@@ -260,23 +269,110 @@ export default function Header() {
 
             {/* Account tab */}
             {activeTab === 'account' && (
-              <div className="p-3 space-y-1">
-                <div className="bg-gray-50 rounded-xl px-3 py-2.5 space-y-1">
-                  <p className="text-xs text-gray-400">Name</p>
-                  <p className="text-sm font-medium text-gray-800">{user?.name}</p>
+              <div className="p-3 space-y-2">
+                {/* User info */}
+                <div className="bg-gray-50 rounded-xl px-3 py-2.5 space-y-1.5">
+                  <div>
+                    <p className="text-xs text-gray-400">Name</p>
+                    <p className="text-sm font-medium text-gray-800">{user?.name}</p>
+                  </div>
+                  {user?.email && (
+                    <div>
+                      <p className="text-xs text-gray-400">Email</p>
+                      <p className="text-sm font-medium text-gray-800">{user.email}</p>
+                    </div>
+                  )}
+                  {user?.role && (
+                    <div>
+                      <p className="text-xs text-gray-400">Role</p>
+                      <p className="text-sm font-medium text-gray-800 capitalize">{user.role}</p>
+                    </div>
+                  )}
                 </div>
-                {user?.email && (
-                  <div className="bg-gray-50 rounded-xl px-3 py-2.5 space-y-1">
-                    <p className="text-xs text-gray-400">Email</p>
-                    <p className="text-sm font-medium text-gray-800">{user.email}</p>
+
+                {/* Email password for sending */}
+                <div className="border border-gray-100 rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Mail className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                    <span className="text-sm font-medium text-gray-800 flex-1">Outgoing Email</span>
+                    {emailConfigured
+                      ? <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"/>Configured
+                        </span>
+                      : <span className="text-xs text-gray-400">Not set</span>
+                    }
                   </div>
-                )}
-                {user?.role && (
-                  <div className="bg-gray-50 rounded-xl px-3 py-2.5 space-y-1">
-                    <p className="text-xs text-gray-400">Role</p>
-                    <p className="text-sm font-medium text-gray-800 capitalize">{user.role}</p>
-                  </div>
-                )}
+                  <p className="text-xs text-gray-400 mb-2">
+                    Save your Outlook password so emails send from <strong>{user?.email}</strong>
+                  </p>
+
+                  {emailConfigured && !showEmailInput && (
+                    <div className="flex gap-2 mb-2">
+                      <div className="flex-1 bg-gray-50 rounded-lg px-2.5 py-1.5 text-xs text-gray-500">
+                        Password saved ••••••••
+                      </div>
+                      <button onClick={async () => {
+                        await authApi.clearEmailSettings()
+                        setEmailConfigured(false)
+                        setEmailMsg('')
+                      }} className="text-red-400 hover:text-red-600 px-1" title="Remove">
+                        <Link2Off className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {!showEmailInput ? (
+                    <button onClick={() => { setShowEmailInput(true); setEmailMsg('') }}
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-colors">
+                      <Settings className="w-3 h-3" />
+                      {emailConfigured ? 'Update Password' : 'Set Email Password'}
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <input
+                          type={showPass ? 'text' : 'password'}
+                          placeholder="Your Outlook password"
+                          value={emailPass}
+                          onChange={e => setEmailPass(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 pr-8 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                        />
+                        <button type="button" onClick={() => setShowPass(v => !v)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                          {showPass ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        </button>
+                      </div>
+                      {emailMsg && (
+                        <p className={`text-xs flex items-center gap-1 ${emailMsg.includes('Saved') ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {emailMsg.includes('Saved') && <CheckCircle className="w-3 h-3" />}
+                          {emailMsg}
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          disabled={emailSaving || !emailPass.trim()}
+                          onClick={async () => {
+                            setEmailSaving(true); setEmailMsg('')
+                            try {
+                              await authApi.saveEmailSettings(emailPass.trim())
+                              setEmailConfigured(true)
+                              setEmailMsg('Saved! Emails will send from your address.')
+                              setEmailPass('')
+                              setShowEmailInput(false)
+                            } catch { setEmailMsg('Failed to save.') }
+                            finally { setEmailSaving(false) }
+                          }}
+                          className="flex-1 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-white text-xs font-medium rounded-lg">
+                          {emailSaving ? 'Saving…' : 'Save'}
+                        </button>
+                        <button onClick={() => { setShowEmailInput(false); setEmailPass(''); setEmailMsg('') }}
+                          className="flex-1 py-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-medium rounded-lg">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

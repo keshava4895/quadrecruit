@@ -20,6 +20,12 @@ EMBEDDING_MODEL        = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 # Standard OpenAI (fallback when Azure OpenAI is not configured)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
+# SMTP Email
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.office365.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASS = os.getenv("SMTP_PASS", "")
+
 # JWT Authentication
 JWT_SECRET      = os.getenv("JWT_SECRET", "change-this-secret")
 JWT_ALGORITHM   = os.getenv("JWT_ALGORITHM", "HS256")

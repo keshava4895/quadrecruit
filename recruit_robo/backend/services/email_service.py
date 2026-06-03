@@ -1,9 +1,15 @@
 import base64
+import smtplib
+import asyncio
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from openai import AsyncAzureOpenAI
-from config import AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_VERSION, OPENAI_MODEL
+from config import (
+    AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_VERSION, OPENAI_MODEL,
+    SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS,
+)
 from database import get_db
 from datetime import datetime, timezone
 
@@ -41,6 +47,49 @@ async def send_email(to: str, subject: str, body: str, token: dict) -> dict:
         "sent_at": datetime.now(timezone.utc),
     })
     return result
+
+
+async def send_email_smtp(
+    to: str,
+    subject: str,
+    body: str,
+    from_email: str = "",
+    from_pass:  str = "",
+) -> dict:
+    """
+    Send email via SMTP using the sender's own credentials.
+    Falls back to .env SMTP_USER/SMTP_PASS if per-user credentials not provided.
+    """
+    sender   = from_email or SMTP_USER
+    password = from_pass  or SMTP_PASS
+
+    if not sender or not password:
+        raise RuntimeError(
+            "No email credentials configured. "
+            "Go to your account settings and save your email password."
+        )
+
+    def _send():
+        msg = MIMEMultipart("alternative")
+        msg["From"]    = sender
+        msg["To"]      = to
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body, "plain"))
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(sender, password)
+            server.sendmail(sender, [to], msg.as_string())
+
+    await asyncio.get_event_loop().run_in_executor(None, _send)
+
+    db = get_db()
+    await db.email_logs.insert_one({
+        "from": sender, "to": to, "subject": subject,
+        "status": "SENT", "sent_at": datetime.now(timezone.utc),
+    })
+    return {"sent": True, "to": to, "from": sender}
 
 
 async def draft_outreach_email(candidate_name: str, job_title: str) -> dict:

@@ -14,11 +14,14 @@ api.interceptors.request.use(config => {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const authApi = {
-  register: (data)  => api.post('/auth/register', data),
-  login:    (data)  => api.post('/auth/login', data),
-  me:       ()      => api.get('/auth/me'),
-  users:    ()      => api.get('/auth/users'),
-  deleteUser: (id)  => api.delete(`/auth/users/${id}`),
+  register:          (data)     => api.post('/auth/register', data),
+  login:             (data)     => api.post('/auth/login', data),
+  me:                ()         => api.get('/auth/me'),
+  users:             ()         => api.get('/auth/users'),
+  deleteUser:        (id)       => api.delete(`/auth/users/${id}`),
+  saveEmailSettings: (smtpPass) => api.post('/auth/email-settings', { smtp_pass: smtpPass }),
+  getEmailSettings:  ()         => api.get('/auth/email-settings'),
+  clearEmailSettings:()         => api.delete('/auth/email-settings'),
 }
 
 // ── Jobs ──────────────────────────────────────────────────────────────────────
@@ -46,9 +49,11 @@ export const candidatesApi = {
 
 // ── Email ─────────────────────────────────────────────────────────────────────
 export const emailApi = {
-  draft:        (candidateName, jobTitle) => api.post('/email/draft', { candidate_name: candidateName, job_title: jobTitle }),
-  bulkDraft:    (candidates, jobTitle)    => api.post('/email/bulk-draft', { candidates, job_title: jobTitle }),
-  parseReply:   (replyText)               => api.post('/email/parse-reply', { reply_text: replyText }),
+  draft:       (candidateName, jobTitle) => api.post('/email/draft', { candidate_name: candidateName, job_title: jobTitle }),
+  bulkDraft:   (candidates, jobTitle)    => api.post('/email/bulk-draft', { candidates, job_title: jobTitle }),
+  parseReply:  (replyText)               => api.post('/email/parse-reply', { reply_text: replyText }),
+  send:        (to, subject, body)       => api.post('/email/send-smtp', { to, subject, body }),
+  smtpStatus:  ()                        => api.get('/email/smtp-status'),
 }
 
 // ── Feedback ──────────────────────────────────────────────────────────────────

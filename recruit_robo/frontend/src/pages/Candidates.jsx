@@ -28,23 +28,35 @@ const INPUT = 'border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white text
 const SELECT = 'w-full border border-zinc-200 rounded-lg px-3 py-2.5 text-sm bg-white text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition'
 
 function MailModal({ candidate, jobTitle, onClose }) {
-  const [to,      setTo]      = useState(candidate?.email || '')
-  const [subject, setSubject] = useState('')
-  const [body,    setBody]    = useState('')
-  const [loading, setLoading] = useState(true)
-  const [sent,    setSent]    = useState(false)
+  const [to,       setTo]       = useState(candidate?.email || '')
+  const [subject,  setSubject]  = useState('')
+  const [body,     setBody]     = useState('')
+  const [drafting, setDrafting] = useState(true)
+  const [sending,  setSending]  = useState(false)
+  const [sent,     setSent]     = useState(false)
+  const [error,    setError]    = useState('')
 
   useEffect(() => {
     emailApi.draft(candidate.name, jobTitle || 'the role')
       .then(r => { setSubject(r.data.subject); setBody(r.data.body) })
       .catch(() => { setSubject('Exciting Opportunity for You'); setBody('') })
-      .finally(() => setLoading(false))
+      .finally(() => setDrafting(false))
   }, [])
 
-  const handleSend = () => {
-    window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    setSent(true)
-    setTimeout(() => { setSent(false); onClose() }, 1500)
+  const handleSend = async () => {
+    if (!to.trim()) return
+    setSending(true)
+    setError('')
+    try {
+      await emailApi.send(to.trim(), subject, body)
+      setSent(true)
+      setTimeout(() => { setSent(false); onClose() }, 2000)
+    } catch (err) {
+      const detail = err?.response?.data?.detail || 'Failed to send. Check SMTP settings in .env.'
+      setError(detail)
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -60,7 +72,7 @@ function MailModal({ candidate, jobTitle, onClose }) {
           </button>
         </div>
 
-        {loading ? (
+        {drafting ? (
           <div className="flex items-center justify-center py-12 gap-2 text-zinc-400">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span className="text-sm">Drafting email…</span>
@@ -82,18 +94,34 @@ function MailModal({ candidate, jobTitle, onClose }) {
               <textarea value={body} onChange={e => setBody(e.target.value)} rows={8}
                 className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition" />
             </div>
+
             {!to.trim() && (
-              <p className="text-xs text-amber-600">Enter the candidate's email address above to send.</p>
+              <p className="text-xs text-amber-600">Enter the candidate's email address to send.</p>
             )}
+            {error && (
+              <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                {error}
+              </div>
+            )}
+            {sent && (
+              <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                Email sent successfully to {to}
+              </div>
+            )}
+
             <div className="flex gap-2 pt-1">
               <button
                 onClick={handleSend}
-                disabled={!to.trim() || sent}
+                disabled={!to.trim() || sending || sent}
                 className="flex items-center gap-1.5 px-5 py-2 bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors"
               >
-                {sent
-                  ? <><CheckCircle className="w-3.5 h-3.5" /> Sent!</>
-                  : <><Mail className="w-3.5 h-3.5" /> Send Mail</>
+                {sending
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+                  : sent
+                    ? <><CheckCircle className="w-3.5 h-3.5" /> Sent!</>
+                    : <><Mail className="w-3.5 h-3.5" /> Send Mail</>
                 }
               </button>
               <button onClick={onClose}
