@@ -17,7 +17,7 @@ SCOPES = [
     "offline_access",
 ]
 
-MS_REDIRECT_URI = f"{BACKEND_URL}/msgraph/oauth/callback"
+MS_REDIRECT_URI = f"{FRONTEND_URL}/api/msgraph/oauth/callback"
 
 
 def get_auth_url(user_id: str) -> str:
