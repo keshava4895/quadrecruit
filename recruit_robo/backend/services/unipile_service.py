@@ -68,7 +68,7 @@ async def search_people(
         "api":      "classic",
         "category": "people",
         "keywords": keywords,
-        "limit":    min(limit, 20),
+        "limit":    min(limit, 50),
     }
 
     async with httpx.AsyncClient(timeout=25) as c:

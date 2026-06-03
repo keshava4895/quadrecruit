@@ -318,6 +318,7 @@ export default function Candidates() {
   const [location,      setLocation]      = useState('')
   const [expMin,        setExpMin]        = useState('')
   const [expMax,        setExpMax]        = useState('')
+  const [limit,         setLimit]         = useState(10)
   const [jobs,          setJobs]          = useState([])
   const [results,       setResults]       = useState(null)
   const [loading,       setLoading]       = useState(false)
@@ -416,7 +417,7 @@ export default function Candidates() {
           location:       location.trim() || null,
           experience_min: expMin !== '' ? parseInt(expMin) : 0,
           experience_max: expMax !== '' ? parseInt(expMax) : 20,
-          limit: 10,
+          limit: limit,
         })
         res.data.candidates.forEach(c => all.push({ ...c, _portal: p }))
       }
@@ -684,6 +685,19 @@ export default function Candidates() {
               <input type="number" value={expMax} onChange={e => setExpMax(e.target.value)}
                 placeholder="Max" min={0} max={40} className={INPUT + ' w-16 text-center'} />
               <span className="text-xs text-zinc-400">yrs</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-400 whitespace-nowrap">Show</span>
+              <select
+                value={limit}
+                onChange={e => setLimit(Number(e.target.value))}
+                className="border border-zinc-200 rounded-lg px-2 py-2 text-sm bg-white text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 transition"
+              >
+                {[5, 10, 15, 20, 25, 30, 40, 50].map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <span className="text-xs text-zinc-400">candidates</span>
             </div>
           </div>
         )}

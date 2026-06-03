@@ -96,7 +96,7 @@ class CandidateSearchRequest(BaseModel):
     location: Optional[str] = None
     experience_min: Optional[int] = 0
     experience_max: Optional[int] = 20
-    limit: int = Field(default=10, ge=1, le=20)
+    limit: int = Field(default=10, ge=1, le=50)
 
 class ExternalCandidate(BaseModel):
     name: str
