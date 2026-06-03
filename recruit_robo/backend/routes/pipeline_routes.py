@@ -51,7 +51,7 @@ async def recent_activity(limit: int = 8):
     # New candidates added
     async for doc in db.candidate_info.find(
         {}, {"name": 1, "created_at": 1, "_id": 0}
-    ).sort("created_at", -1).limit(5):
+    ).limit(20):
         t = _iso(doc.get("created_at"))
         if t:
             activities.append({"type": "candidate_added",
@@ -61,7 +61,7 @@ async def recent_activity(limit: int = 8):
     # Jobs posted
     async for doc in db.job_info.find(
         {}, {"title": 1, "created_at": 1, "_id": 0}
-    ).sort("created_at", -1).limit(5):
+    ).limit(20):
         t = _iso(doc.get("created_at"))
         if t:
             activities.append({"type": "job_posted",
@@ -71,7 +71,7 @@ async def recent_activity(limit: int = 8):
     # Hires
     async for doc in db.candidate_info.find(
         {"status": "selected"}, {"name": 1, "created_at": 1, "_id": 0}
-    ).sort("created_at", -1).limit(5):
+    ).limit(20):
         t = _iso(doc.get("created_at"))
         if t:
             activities.append({"type": "candidate_hired",

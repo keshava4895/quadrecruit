@@ -64,7 +64,7 @@ async def schedule_interview(
 
 async def get_schedule(candidate_id: str) -> list:
     db = get_db()
-    cursor = db.interview_schedules.find(
-        {"candidateId": candidate_id}, {"_id": 0}
-    ).sort("round", 1)
-    return await cursor.to_list(length=20)
+    cursor = db.interview_schedules.find({"candidateId": candidate_id}, {"_id": 0})
+    docs = await cursor.to_list(length=20)
+    docs.sort(key=lambda d: d.get("round") or 0)
+    return docs

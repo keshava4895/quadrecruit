@@ -47,13 +47,10 @@ async def update_match_score(candidate_id: str, job_id: str, score: float):
 
 async def get_top_candidates(job_id: str, limit: int = 10) -> list:
     db = get_db()
-    cursor = (
-        db.job_candidates
-        .find({"jobId": job_id}, {"_id": 0})
-        .sort("match_score", -1)
-        .limit(limit)
-    )
-    return await cursor.to_list(length=limit)
+    cursor = db.job_candidates.find({"jobId": job_id}, {"_id": 0})
+    candidates = await cursor.to_list(length=limit * 5)
+    candidates.sort(key=lambda c: c.get("match_score") or 0, reverse=True)
+    return candidates[:limit]
 
 
 async def get_candidate(candidate_id: str) -> dict | None:
