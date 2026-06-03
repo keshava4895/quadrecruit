@@ -5,6 +5,22 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+// Attach JWT token to every request automatically
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('rr_token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+export const authApi = {
+  register: (data)  => api.post('/auth/register', data),
+  login:    (data)  => api.post('/auth/login', data),
+  me:       ()      => api.get('/auth/me'),
+  users:    ()      => api.get('/auth/users'),
+  deleteUser: (id)  => api.delete(`/auth/users/${id}`),
+}
+
 // ── Jobs ──────────────────────────────────────────────────────────────────────
 export const jobsApi = {
   list:   ()       => api.get('/jobs/'),

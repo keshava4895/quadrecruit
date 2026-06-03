@@ -20,6 +20,11 @@ EMBEDDING_MODEL        = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 # Standard OpenAI (fallback when Azure OpenAI is not configured)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
+# JWT Authentication
+JWT_SECRET      = os.getenv("JWT_SECRET", "change-this-secret")
+JWT_ALGORITHM   = os.getenv("JWT_ALGORITHM", "HS256")
+JWT_EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "7"))
+
 # Google OAuth
 GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
