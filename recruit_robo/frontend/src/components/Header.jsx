@@ -111,10 +111,6 @@ export default function Header() {
           onClick={() => setOpen(v => !v)}
           className="flex items-center gap-2 hover:bg-white/10 rounded-lg px-2 py-1.5 transition-colors"
         >
-          <div className="text-right leading-tight">
-            <div className="text-white text-sm font-medium">{user?.name || '—'}</div>
-            {user?.email && <div className="text-blue-200 text-xs">{user.email}</div>}
-          </div>
           <div className="w-8 h-8 bg-white/25 rounded-full flex items-center justify-center text-white text-sm font-semibold select-none">
             {avatar}
           </div>

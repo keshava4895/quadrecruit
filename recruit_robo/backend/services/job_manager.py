@@ -31,8 +31,10 @@ async def create_job(job_data: JobCreate) -> dict:
 
 async def list_jobs() -> list:
     db = get_db()
-    cursor = db.job_info.find({}, {"_id": 0}).sort("created_at", -1)
-    return await cursor.to_list(length=100)
+    cursor = db.job_info.find({}, {"_id": 0})
+    jobs = await cursor.to_list(length=100)
+    jobs.sort(key=lambda j: j.get("created_at") or "", reverse=True)
+    return jobs
 
 
 async def get_job(job_id: str) -> dict | None:
