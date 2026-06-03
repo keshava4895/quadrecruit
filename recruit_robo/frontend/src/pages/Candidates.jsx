@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { searchApi, jobsApi, candidatesApi, emailApi } from '../api'
+import { searchApi, jobsApi, candidatesApi, emailApi, linkedinApi } from '../api'
 import {
   Search, MapPin, Briefcase, ExternalLink,
   ChevronDown, Star, Loader2, AlertCircle,
@@ -236,7 +236,7 @@ function ScoreBar({ score }) {
   )
 }
 
-function CandidateCard({ candidate, onSendMail }) {
+function CandidateCard({ candidate, onSendMail, onLinkedInMessage }) {
   const avail        = AVAIL_STYLE[candidate.availability] || 'bg-zinc-100 text-zinc-500'
   const skills       = candidate.skills?.slice(0, 5) ?? []
   const extraSkills  = (candidate.skills?.length ?? 0) - 5
@@ -287,13 +287,24 @@ function CandidateCard({ candidate, onSendMail }) {
 
       <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2 mb-3">{candidate.summary}</p>
 
-      <button
-        onClick={() => onSendMail(candidate)}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-600 border border-zinc-200 rounded-lg hover:border-zinc-400 hover:text-zinc-900 transition-colors w-full justify-center"
-      >
-        <Mail className="w-3.5 h-3.5" />
-        Send Mail
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={() => onSendMail(candidate)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-600 border border-zinc-200 rounded-lg hover:border-zinc-400 hover:text-zinc-900 transition-colors flex-1 justify-center"
+        >
+          <Mail className="w-3.5 h-3.5" />
+          Email
+        </button>
+        {candidate.profile_url && onLinkedInMessage && (
+          <button
+            onClick={() => onLinkedInMessage(candidate)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors flex-1 justify-center"
+          >
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+            Message
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -321,6 +332,18 @@ export default function Candidates() {
   const [resumeResults, setResumeResults] = useState(null)
   const [dragOver,      setDragOver]      = useState(false)
 
+  // LinkedIn (Unipile) state
+  const [liAccounts,      setLiAccounts]      = useState([])
+  const [liConnecting,    setLiConnecting]    = useState(false)
+  const [liSearching,     setLiSearching]     = useState(false)
+  const [liSendTarget,    setLiSendTarget]    = useState(null)   // candidate to message
+  const [liMsg,           setLiMsg]           = useState('')
+  const [liSending,       setLiSending]       = useState(false)
+  const [liSendStatus,    setLiSendStatus]    = useState('')
+
+  const loadLiAccounts = () =>
+    linkedinApi.accounts().then(r => setLiAccounts(r.data.accounts || [])).catch(() => {})
+
   // Naukri session state
   const [showNaukriModal,  setShowNaukriModal]  = useState(false)
   const [naukriCurl,       setNaukriCurl]       = useState('')
@@ -333,6 +356,7 @@ export default function Candidates() {
 
   useEffect(() => { jobsApi.list().then(r => setJobs(r.data)).catch(() => {}) }, [])
   useEffect(() => { loadNaukriSession() }, [])
+  useEffect(() => { loadLiAccounts() }, [])
 
   useEffect(() => {
     const close = e => { if (portalRef.current && !portalRef.current.contains(e.target)) setPortalOpen(false) }
@@ -425,6 +449,59 @@ export default function Candidates() {
           jobTitle={activeJobTitle}
           onClose={() => setShowBulkMail(false)}
         />
+      )}
+
+      {/* LinkedIn Connect banner */}
+      {liAccounts.length === 0 && (
+        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-5 py-3 mb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-blue-900">Connect your LinkedIn account</p>
+              <p className="text-xs text-blue-600">Search real LinkedIn profiles and send outreach messages directly</p>
+            </div>
+          </div>
+          <button
+            disabled={liConnecting}
+            onClick={async () => {
+              setLiConnecting(true)
+              try {
+                const user = JSON.parse(localStorage.getItem('rr_user') || '{}')
+                const r = await linkedinApi.connectUrl(user.userId || 'user', user.name || 'Recruiter')
+                window.open(r.data.url, '_blank')
+                setTimeout(loadLiAccounts, 3000)
+              } catch { /* ignore */ } finally { setLiConnecting(false) }
+            }}
+            className="flex-shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            {liConnecting ? 'Opening…' : 'Connect LinkedIn'}
+          </button>
+        </div>
+      )}
+
+      {/* LinkedIn connected badge */}
+      {liAccounts.length > 0 && (
+        <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-2.5 mb-5">
+          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+          <p className="text-sm text-emerald-800 font-medium flex-1">
+            LinkedIn connected — {liAccounts.length} account{liAccounts.length > 1 ? 's' : ''} active
+          </p>
+          <div className="flex gap-2">
+            {liAccounts.map(acc => (
+              <div key={acc.id} className="flex items-center gap-2 text-xs text-emerald-700">
+                <span>{acc.name || acc.username || acc.id}</span>
+                <button onClick={async () => { await linkedinApi.disconnect(acc.id); loadLiAccounts() }}
+                  className="text-red-400 hover:text-red-600" title="Disconnect">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => { setLiConnecting(true); linkedinApi.connectUrl('new','').then(r => { window.open(r.data.url,'_blank'); setLiConnecting(false) }).catch(()=>setLiConnecting(false)) }}
+            className="text-xs text-blue-600 hover:underline">+ Add account</button>
+        </div>
       )}
 
       {/* Page header */}
@@ -699,7 +776,7 @@ export default function Candidates() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {results.candidates.map((c, i) => <CandidateCard key={i} candidate={c} onSendMail={setMailTarget} />)}
+              {results.candidates.map((c, i) => <CandidateCard key={i} candidate={c} onSendMail={setMailTarget} onLinkedInMessage={c.profile_url ? setLiSendTarget : null} />)}
             </div>
           )}
         </div>
@@ -717,6 +794,56 @@ export default function Candidates() {
               ? 'Select a job, add resume files, then click Screen.'
               : 'Choose a portal, enter requirements or a job description, then search.'}
           </p>
+        </div>
+      )}
+
+      {/* ── LinkedIn Message Modal ── */}
+      {liSendTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
+              <div>
+                <p className="text-base font-semibold text-zinc-900">Send LinkedIn Message</p>
+                <p className="text-xs text-zinc-400 mt-0.5">to {liSendTarget.name}</p>
+              </div>
+              <button onClick={() => { setLiSendTarget(null); setLiMsg(''); setLiSendStatus('') }}
+                className="text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <textarea rows={5}
+                className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                placeholder="Hi [Name], I came across your profile and would love to connect about an exciting opportunity…"
+                value={liMsg} onChange={e => setLiMsg(e.target.value)} />
+              {liSendStatus && (
+                <p className={`text-xs ${liSendStatus.includes('sent') ? 'text-emerald-600' : 'text-red-600'}`}>{liSendStatus}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-3 px-6 py-4 border-t border-zinc-100">
+              <button
+                disabled={liSending || !liMsg.trim() || liAccounts.length === 0}
+                onClick={async () => {
+                  setLiSending(true); setLiSendStatus('')
+                  try {
+                    await linkedinApi.sendMessage(liAccounts[0].id, liSendTarget.profile_url, liMsg.trim())
+                    setLiSendStatus('Message sent via LinkedIn!')
+                    setLiMsg('')
+                  } catch (e) {
+                    setLiSendStatus(e?.response?.data?.detail || 'Failed to send. Check LinkedIn connection.')
+                  } finally { setLiSending(false) }
+                }}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                {liSending ? 'Sending…' : 'Send via LinkedIn'}
+              </button>
+              <button onClick={() => { setLiSendTarget(null); setLiMsg(''); setLiSendStatus('') }}
+                className="px-5 py-2 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-sm font-medium rounded-lg">
+                Cancel
+              </button>
+              {liAccounts.length === 0 && (
+                <p className="text-xs text-amber-600">Connect LinkedIn first</p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
