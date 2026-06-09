@@ -240,31 +240,36 @@ _NAME_SECTION_KEYWORDS = {
 
 
 def _extract_name(text: str) -> str:
-    """Heuristic: find the candidate's name in the first 25 lines of a resume."""
-    for line in text.splitlines()[:25]:
+    """Heuristic: find the candidate's name in the first 15 lines of a resume."""
+    for line in text.splitlines()[:15]:
         line = line.strip()
         if not line:
             continue
         # Skip email / URL / digit-heavy lines
         if re.search(r"[@/\\]", line) or re.search(r"\d{4,}", line):
             continue
-        # Skip section headers ending with colon or dash
-        if re.search(r"[:\-–—]+\s*$", line):
+        # Skip any line with a colon — names never contain colons;
+        # this catches both "Key Skills:" and "Data Modelling: XML" etc.
+        if ':' in line:
             continue
         # Skip lines with brackets, pipes, or bullet symbols
         if re.search(r"[\[\]<>|•●◆▪★]", line):
             continue
         # Skip known resume section keywords
-        clean = re.sub(r"\s*[:\-–—]+\s*$", "", line).strip().lower()
+        clean = line.strip().lower()
         if clean in _NAME_SECTION_KEYWORDS:
             continue
-        # A name: 2–4 words, each starting with uppercase (allow hyphens like Mary-Jane)
+        # A name: 2–4 words, each starting with uppercase (handles Title Case and ALL CAPS)
         words = line.split()
         if 2 <= len(words) <= 4:
-            alpha_words = [re.sub(r"[^a-zA-Z]", "", w) for w in words]
-            alpha_words = [w for w in alpha_words if w]
-            if alpha_words and all(w[0].isupper() for w in alpha_words):
-                return line
+            alpha_words = [re.sub(r"[^a-zA-Z\-]", "", w) for w in words]
+            alpha_words = [w for w in alpha_words if re.sub(r"[^a-zA-Z]", "", w)]
+            if not alpha_words:
+                continue
+            all_upper = all(re.sub(r"[^a-zA-Z]", "", w).isupper() for w in alpha_words)
+            title_case = all(re.sub(r"[^a-zA-Z]", "", w)[0].isupper() for w in alpha_words)
+            if title_case or all_upper:
+                return line.title() if all_upper else line
     return ""
 
 
