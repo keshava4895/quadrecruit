@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { candidatesApi } from '../api'
 import {
   ChevronLeft, Mail, Phone, Briefcase, MapPin, Star,
   FileText, MessageSquare, Calendar, CheckCircle, XCircle,
-  Clock, ChevronDown, ChevronUp, Loader2,
+  Clock, ChevronDown, ChevronUp, Loader2, Download,
 } from 'lucide-react'
 
 const STATUS_STYLE = {
@@ -62,8 +62,10 @@ function Section({ title, icon, children, defaultOpen = true }) {
 
 export default function CandidateProfile() {
   const { candidateId } = useParams()
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const navigate                       = useNavigate()
+  const [profile, setProfile]         = useState(null)
+  const [loading, setLoading]         = useState(true)
+  const [dlLoading, setDlLoading]     = useState(false)
 
   useEffect(() => {
     candidatesApi.fullProfile(candidateId)
@@ -71,6 +73,18 @@ export default function CandidateProfile() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [candidateId])
+
+  async function downloadResume() {
+    setDlLoading(true)
+    try {
+      const r = await candidatesApi.resumeUrl(candidateId)
+      window.open(r.data.url, '_blank')
+    } catch {
+      alert('Resume file not available.')
+    } finally {
+      setDlLoading(false)
+    }
+  }
 
   if (loading) return (
     <div className="page flex items-center justify-center h-64 gap-2 text-zinc-400">
@@ -88,9 +102,10 @@ export default function CandidateProfile() {
     <div className="page max-w-4xl">
 
       {/* Back */}
-      <Link to="/jobs" className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 mb-4 transition-colors">
-        <ChevronLeft className="w-3.5 h-3.5" /> Back to Jobs
-      </Link>
+      <button onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 mb-4 transition-colors">
+        <ChevronLeft className="w-3.5 h-3.5" /> Back
+      </button>
 
       {/* Header card */}
       <div className="bg-white border border-zinc-200 rounded-2xl p-6 mb-4 flex items-start gap-5">
@@ -101,7 +116,18 @@ export default function CandidateProfile() {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
-              <h1 className="text-xl font-bold text-zinc-900">{profile.name}</h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-xl font-bold text-zinc-900">{profile.name}</h1>
+                {profile.resume_blob && (
+                  <button onClick={downloadResume} disabled={dlLoading}
+                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-zinc-900 hover:bg-zinc-700 text-white rounded-lg transition-colors disabled:opacity-50">
+                    {dlLoading
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : <Download className="w-3.5 h-3.5" />}
+                    Download Resume
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-sm text-zinc-400">
                 {profile.email && (
                   <a href={`mailto:${profile.email}`} className="flex items-center gap-1 hover:text-zinc-700 transition-colors">
