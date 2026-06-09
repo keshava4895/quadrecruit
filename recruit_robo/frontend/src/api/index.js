@@ -37,6 +37,7 @@ export const jobsApi = {
 export const candidatesApi = {
   top:          (jobId, limit = 10) => api.get(`/candidates/${jobId}/top?limit=${limit}`),
   get:          (id)                => api.get(`/candidates/profile/${id}`),
+  fullProfile:  (id)                => api.get(`/candidates/profile/${id}/full`),
   add:          (jobId, data)       => api.post(`/candidates/${jobId}`, data),
   remove:       (id, jobId)         => api.delete(`/candidates/${id}`, { params: { job_id: jobId } }),
   updateStatus: (id, status, jobId) => api.patch(`/candidates/${id}/status`, { status, jobId }),
@@ -68,10 +69,12 @@ export const feedbackApi = {
 
 // ── Pipeline ──────────────────────────────────────────────────────────────────
 export const pipelineApi = {
-  dashboard:      ()      => api.get('/pipeline/stats/dashboard'),
-  recentActivity: ()      => api.get('/pipeline/activity/recent'),
-  timeline:       (jobId) => api.get(`/pipeline/${jobId}/timeline`),
-  transition:     (data)  => api.post('/pipeline/transition', data),
+  dashboard:      ()           => api.get('/pipeline/stats/dashboard'),
+  recentActivity: ()           => api.get('/pipeline/activity/recent'),
+  timeline:       (jobId)      => api.get(`/pipeline/${jobId}/timeline`),
+  transition:     (data)       => api.post('/pipeline/transition', data),
+  board:          (jobId)      => api.get(`/pipeline/board/${jobId}`),
+  suggest:        (candidateId)=> api.get(`/pipeline/suggest/${candidateId}`),
 }
 
 // ── Microsoft Graph (Outlook OAuth) ──────────────────────────────────────────
@@ -120,6 +123,12 @@ export const searchApi = {
   naukriScrape:        (curl, limit) => api.post('/search/naukri-scrape', {
     curl_command: curl, max_results: limit || 10, save_session: true,
   }),
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+export const analyticsApi = {
+  overview: ()      => api.get('/analytics/overview'),
+  funnel:   (jobId) => api.get(`/analytics/funnel/${jobId}`),
 }
 
 export default api

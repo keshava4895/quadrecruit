@@ -18,6 +18,7 @@ from routes.msgraph_routes         import router as msgraph_router
 from routes.zoho_routes            import router as zoho_router
 from routes.portal_settings_routes import router as portal_settings_router
 from routes.interviewer_routes     import router as interviewers_router
+from routes.analytics_routes      import router as analytics_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -53,6 +54,7 @@ app.include_router(msgraph_router,         prefix="/msgraph",         tags=["Mic
 app.include_router(zoho_router,            prefix="/zoho",            tags=["Zoho Recruit"])
 app.include_router(portal_settings_router, prefix="/portal-settings", tags=["Portal Settings"])
 app.include_router(interviewers_router,    prefix="/interviewers",    tags=["Interviewers"])
+app.include_router(analytics_router,      prefix="/analytics",       tags=["Analytics"])
 
 @app.get("/", tags=["Health"])
 async def root():

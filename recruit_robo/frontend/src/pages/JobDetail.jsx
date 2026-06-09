@@ -288,7 +288,11 @@ export default function JobDetail() {
                         />
                       </td>
                       <td className="px-4 py-3 text-xs font-medium text-zinc-400">{i + 1}</td>
-                      <td className="px-4 py-3 font-medium text-zinc-900 whitespace-nowrap">{c.name}</td>
+                      <td className="px-4 py-3 font-medium whitespace-nowrap">
+                        <Link to={`/candidates/${c.candidateId}`} className="text-zinc-900 hover:text-blue-600 transition-colors">
+                          {c.name}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {c.skills?.slice(0, 3).map(s => (

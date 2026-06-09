@@ -94,6 +94,61 @@ async def candidate_profile(candidate_id: str):
     return c
 
 
+@router.get("/profile/{candidate_id}/full")
+async def candidate_full_profile(candidate_id: str):
+    from database import get_db as _get_db
+    db = _get_db()
+    c  = await get_candidate(candidate_id)
+    if not c:
+        raise HTTPException(404, "Candidate not found")
+
+    # Jobs this candidate appears in
+    job_entries = await db["job_candidates"].find(
+        {"candidateId": candidate_id}, {"_id": 0}
+    ).to_list(20)
+    jobs_detail = []
+    for je in job_entries:
+        job = await db["job_info"].find_one({"jobId": je["jobId"]}, {"_id": 0, "title": 1, "location": 1, "skills": 1})
+        jobs_detail.append({
+            "jobId":       je["jobId"],
+            "title":       job["title"] if job else je["jobId"],
+            "location":    job.get("location") if job else None,
+            "match_score": je.get("match_score", 0),
+            "status":      je.get("status", "sourced"),
+            "updated_at":  je.get("updated_at"),
+        })
+
+    # Interview feedback
+    feedback = await db["interview_feedback"].find(
+        {"candidateId": candidate_id}, {"_id": 0}
+    ).to_list(20)
+
+    # Interview assignments
+    assignments = await db["interview_assignments"].find(
+        {"candidateId": candidate_id}, {"_id": 0}
+    ).to_list(20)
+    for a in assignments:
+        job = await db["job_info"].find_one({"jobId": a.get("jobId")}, {"_id": 0, "title": 1})
+        a["jobTitle"] = job["title"] if job else a.get("jobId")
+
+    # Pipeline timeline (from each job)
+    timelines = []
+    for je in job_entries:
+        tl = await db["pipeline_timelines"].find_one({"jobId": je["jobId"]}, {"_id": 0})
+        if tl and tl.get("timeline"):
+            for entry in tl["timeline"]:
+                if candidate_id in str(entry.get("stage", "")):
+                    timelines.append({**entry, "jobId": je["jobId"]})
+
+    return {
+        **c,
+        "jobs":        jobs_detail,
+        "feedback":    feedback,
+        "assignments": assignments,
+        "timeline":    sorted(timelines, key=lambda x: x.get("ts", ""), reverse=True),
+    }
+
+
 @router.patch("/{candidate_id}/status")
 async def update_candidate_status(candidate_id: str, payload: dict):
     status  = payload.get("status")

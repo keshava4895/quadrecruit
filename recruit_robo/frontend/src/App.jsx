@@ -1,14 +1,17 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import Sidebar      from './components/Sidebar'
-import Login        from './pages/Login'
-import Register     from './pages/Register'
-import Dashboard    from './pages/Dashboard'
-import Jobs         from './pages/Jobs'
-import JobDetail    from './pages/JobDetail'
-import Candidates   from './pages/Candidates'
-import UploadResume  from './pages/UploadResume'
-import Interviewers  from './pages/Interviewers'
+import Sidebar          from './components/Sidebar'
+import Login            from './pages/Login'
+import Register         from './pages/Register'
+import Dashboard        from './pages/Dashboard'
+import Jobs             from './pages/Jobs'
+import JobDetail        from './pages/JobDetail'
+import Candidates       from './pages/Candidates'
+import UploadResume     from './pages/UploadResume'
+import Interviewers     from './pages/Interviewers'
+import Pipeline         from './pages/Pipeline'
+import CandidateProfile from './pages/CandidateProfile'
+import Analytics        from './pages/Analytics'
 
 function PrivateRoute({ children }) {
   const { user } = useAuth()
@@ -43,6 +46,9 @@ function AppShell() {
           <Route path="/candidates"  element={<PrivateRoute><Candidates /></PrivateRoute>} />
           <Route path="/upload"        element={<PrivateRoute><UploadResume /></PrivateRoute>} />
           <Route path="/interviewers" element={<PrivateRoute><Interviewers /></PrivateRoute>} />
+          <Route path="/pipeline"                  element={<PrivateRoute><Pipeline /></PrivateRoute>} />
+          <Route path="/candidates/:candidateId"   element={<PrivateRoute><CandidateProfile /></PrivateRoute>} />
+          <Route path="/analytics"                 element={<PrivateRoute><Analytics /></PrivateRoute>} />
           </Routes>
         </main>
       </div>
