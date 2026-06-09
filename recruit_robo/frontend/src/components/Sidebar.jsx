@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Briefcase, Users, Cpu,
+  LayoutDashboard, Briefcase, Users, Cpu, UserCheck,
   ChevronLeft, ChevronRight, LogOut,
   Link2, Link2Off, Settings, Mail, Eye, EyeOff, CheckCircle, ChevronUp,
 } from 'lucide-react'
@@ -13,7 +13,12 @@ const NAV = [
   { to: '/dashboard',  label: 'Dashboard',    icon: LayoutDashboard },
   { to: '/jobs',       label: 'Jobs',          icon: Briefcase },
   { to: '/candidates', label: 'Candidates',    icon: Users },
-  { to: '/upload',     label: 'Resume Scorer', icon: Cpu },
+  {
+    to: '/upload', label: 'Resume Scorer', icon: Cpu,
+    children: [
+      { to: '/interviewers', label: 'Interviewers', icon: UserCheck },
+    ],
+  },
 ]
 
 const LI_ICON = (
@@ -124,18 +129,45 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
-        {NAV.map(({ to, label, icon: Icon }) => {
+        {NAV.map(({ to, label, icon: Icon, children }) => {
           const active = to === '/dashboard'
             ? pathname === '/dashboard' || pathname === '/'
-            : pathname.startsWith(to)
+            : pathname === to
           return (
-            <Link key={to} to={to} title={collapsed ? label : undefined}
-              className={`flex items-center gap-3 rounded-lg text-sm font-medium transition-all select-none
-                ${collapsed ? 'justify-center px-0 py-2.5 mx-1' : 'px-3 py-2.5'}
-                ${active ? 'bg-white/10 text-white' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'}`}>
-              <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-              {!collapsed && <span className="truncate">{label}</span>}
-            </Link>
+            <div key={to}>
+              <Link to={to} title={collapsed ? label : undefined}
+                className={`flex items-center gap-3 rounded-lg text-sm font-medium transition-all select-none
+                  ${collapsed ? 'justify-center px-0 py-2.5 mx-1' : 'px-3 py-2.5'}
+                  ${active ? 'bg-white/10 text-white' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'}`}>
+                <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+                {!collapsed && <span className="truncate">{label}</span>}
+              </Link>
+
+              {/* Sub-items — same size as parent, indented by 12px */}
+              {!collapsed && children?.map(({ to: childTo, label: childLabel, icon: ChildIcon }) => {
+                const childActive = pathname === childTo
+                return (
+                  <Link key={childTo} to={childTo}
+                    className={`flex items-center gap-3 rounded-lg text-sm font-medium transition-all select-none px-3 py-2.5
+                      ${childActive ? 'bg-white/10 text-white' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'}`}>
+                    <ChildIcon className="w-[18px] h-[18px] flex-shrink-0" />
+                    <span className="truncate">{childLabel}</span>
+                  </Link>
+                )
+              })}
+
+              {/* Collapsed sub-items */}
+              {collapsed && children?.map(({ to: childTo, label: childLabel, icon: ChildIcon }) => {
+                const childActive = pathname === childTo
+                return (
+                  <Link key={childTo} to={childTo} title={childLabel}
+                    className={`flex justify-center px-0 py-2.5 mx-1 rounded-lg transition-all
+                      ${childActive ? 'text-white bg-white/10' : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5'}`}>
+                    <ChildIcon className="w-[18px] h-[18px]" />
+                  </Link>
+                )
+              })}
+            </div>
           )
         })}
       </nav>

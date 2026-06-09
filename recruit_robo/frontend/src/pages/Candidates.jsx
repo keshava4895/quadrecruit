@@ -5,7 +5,7 @@ import {
   Search, MapPin, Briefcase, ExternalLink,
   ChevronDown, Star, Loader2, AlertCircle,
   Upload, FileText, CheckCircle, XCircle, FolderOpen,
-  Mail, X, Settings, Trash2,
+  Mail, X, Settings, Trash2, Bookmark, BookmarkCheck,
 } from 'lucide-react'
 
 const PORTALS = [
@@ -276,6 +276,79 @@ function BulkMailModal({ candidates, job, onClose }) {
   )
 }
 
+function ShortlistModal({ candidate, jobs, preselectedJobId, onClose, onShortlisted }) {
+  const [jobId,   setJobId]   = useState(preselectedJobId || '')
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState('')
+
+  const handleShortlist = async () => {
+    if (!jobId) { setError('Select a job first'); return }
+    setSaving(true); setError('')
+    try {
+      await candidatesApi.add(jobId, {
+        name:       candidate.name,
+        email:      candidate.email || null,
+        phone:      null,
+        skills:     candidate.skills || [],
+        experience: candidate.experience_years || 0,
+        summary:    candidate.summary || candidate.headline || '',
+      })
+      onShortlisted(jobId)
+      onClose()
+    } catch (e) {
+      setError(e?.response?.data?.detail || 'Failed to shortlist candidate')
+    } finally { setSaving(false) }
+  }
+
+  const selectedJob = jobs.find(j => j.jobId === jobId)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-sm font-semibold text-zinc-900">Shortlist Candidate</p>
+            <p className="text-xs text-zinc-400 mt-0.5">{candidate.name}</p>
+          </div>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 mb-1.5">Add to Job *</label>
+            <select value={jobId} onChange={e => setJobId(e.target.value)}
+              className="w-full border border-zinc-200 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900 transition">
+              <option value="">— Select a job —</option>
+              {jobs.map(j => <option key={j.jobId} value={j.jobId}>{j.title}</option>)}
+            </select>
+          </div>
+
+          {selectedJob && (
+            <div className="bg-zinc-50 rounded-lg px-3 py-2.5 text-xs text-zinc-500 space-y-0.5">
+              {selectedJob.location && <p className="flex items-center gap-1"><MapPin className="w-3 h-3" />{selectedJob.location}</p>}
+              {selectedJob.experience_years && <p className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{selectedJob.experience_years}+ yrs experience required</p>}
+              {selectedJob.skills?.length > 0 && <p>Skills: {selectedJob.skills.slice(0, 4).join(', ')}</p>}
+            </div>
+          )}
+
+          {error && <p className="text-xs text-red-500">{error}</p>}
+
+          <div className="flex gap-2 pt-1">
+            <button onClick={handleShortlist} disabled={saving || !jobId}
+              className="flex-1 py-2 bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
+              {saving ? 'Shortlisting…' : 'Shortlist'}
+            </button>
+            <button onClick={onClose}
+              className="flex-1 py-2 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-sm font-medium rounded-lg transition-colors">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ScoreBar({ score }) {
   const pct   = Math.round(score * 100)
   const color = pct >= 85 ? 'bg-emerald-500' : pct >= 70 ? 'bg-amber-400' : 'bg-red-400'
@@ -289,13 +362,13 @@ function ScoreBar({ score }) {
   )
 }
 
-function CandidateCard({ candidate, onSendMail, onLinkedInMessage }) {
+function CandidateCard({ candidate, onSendMail, onLinkedInMessage, onShortlist, shortlisted }) {
   const avail        = AVAIL_STYLE[candidate.availability] || 'bg-zinc-100 text-zinc-500'
   const skills       = candidate.skills?.slice(0, 5) ?? []
   const extraSkills  = (candidate.skills?.length ?? 0) - 5
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-xl p-5 hover:border-zinc-300 hover:shadow-sm transition-all">
+    <div className={`bg-white border rounded-xl p-5 hover:shadow-sm transition-all ${shortlisted ? 'border-emerald-200 bg-emerald-50/20' : 'border-zinc-200 hover:border-zinc-300'}`}>
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-full bg-zinc-100 flex items-center justify-center flex-shrink-0 text-sm font-semibold text-zinc-600">
@@ -357,6 +430,20 @@ function CandidateCard({ candidate, onSendMail, onLinkedInMessage }) {
             Message
           </button>
         )}
+        <button
+          onClick={() => onShortlist(candidate)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex-1 justify-center ${
+            shortlisted
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default'
+              : 'text-zinc-600 border border-zinc-200 hover:border-zinc-900 hover:text-zinc-900 hover:bg-zinc-50'
+          }`}
+          disabled={shortlisted}
+        >
+          {shortlisted
+            ? <><BookmarkCheck className="w-3.5 h-3.5" /> Shortlisted</>
+            : <><Bookmark className="w-3.5 h-3.5" /> Shortlist</>
+          }
+        </button>
       </div>
     </div>
   )
@@ -376,8 +463,10 @@ export default function Candidates() {
   const [results,       setResults]       = useState(null)
   const [loading,       setLoading]       = useState(false)
   const [error,         setError]         = useState('')
-  const [mailTarget,    setMailTarget]    = useState(null)
-  const [showBulkMail,  setShowBulkMail]  = useState(false)
+  const [mailTarget,      setMailTarget]      = useState(null)
+  const [showBulkMail,    setShowBulkMail]    = useState(false)
+  const [shortlistTarget, setShortlistTarget] = useState(null)
+  const [shortlisted,     setShortlisted]     = useState(new Set())
   const portalRef = useRef(null)
 
   // Resume browse state
@@ -500,6 +589,18 @@ export default function Candidates() {
           candidates={resumeResults.filter(r => r.status === 'success')}
           job={activeJob}
           onClose={() => setShowBulkMail(false)}
+        />
+      )}
+
+      {shortlistTarget && (
+        <ShortlistModal
+          candidate={shortlistTarget}
+          jobs={jobs}
+          preselectedJobId={searchMode === 'job' ? selectedJobId : ''}
+          onClose={() => setShortlistTarget(null)}
+          onShortlisted={(jobId) => {
+            setShortlisted(prev => new Set([...prev, shortlistTarget.name + shortlistTarget.profile_url]))
+          }}
         />
       )}
 
@@ -762,13 +863,18 @@ export default function Candidates() {
                   </span>
                 )}
                 {r.status === 'success' && (
-                  <button
-                    onClick={() => setMailTarget(r)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-600 border border-zinc-200 rounded-lg hover:border-zinc-400 hover:text-zinc-900 transition-colors flex-shrink-0"
-                  >
-                    <Mail className="w-3.5 h-3.5" />
-                    Mail
-                  </button>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                      <BookmarkCheck className="w-3.5 h-3.5" /> Saved
+                    </span>
+                    <button
+                      onClick={() => setMailTarget(r)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-600 border border-zinc-200 rounded-lg hover:border-zinc-400 hover:text-zinc-900 transition-colors"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      Mail
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
@@ -797,7 +903,16 @@ export default function Candidates() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {results.candidates.map((c, i) => <CandidateCard key={i} candidate={c} onSendMail={setMailTarget} onLinkedInMessage={c.profile_url ? setLiSendTarget : null} />)}
+              {results.candidates.map((c, i) => (
+                <CandidateCard
+                  key={i}
+                  candidate={c}
+                  onSendMail={setMailTarget}
+                  onLinkedInMessage={c.profile_url ? setLiSendTarget : null}
+                  onShortlist={setShortlistTarget}
+                  shortlisted={shortlisted.has(c.name + c.profile_url)}
+                />
+              ))}
             </div>
           )}
         </div>

@@ -17,6 +17,7 @@ from routes.search_routes          import router as search_router
 from routes.msgraph_routes         import router as msgraph_router
 from routes.zoho_routes            import router as zoho_router
 from routes.portal_settings_routes import router as portal_settings_router
+from routes.interviewer_routes     import router as interviewers_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -51,6 +52,7 @@ app.include_router(search_router,          prefix="/search",          tags=["Sea
 app.include_router(msgraph_router,         prefix="/msgraph",         tags=["Microsoft Graph"])
 app.include_router(zoho_router,            prefix="/zoho",            tags=["Zoho Recruit"])
 app.include_router(portal_settings_router, prefix="/portal-settings", tags=["Portal Settings"])
+app.include_router(interviewers_router,    prefix="/interviewers",    tags=["Interviewers"])
 
 @app.get("/", tags=["Health"])
 async def root():

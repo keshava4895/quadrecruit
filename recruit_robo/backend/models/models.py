@@ -41,7 +41,7 @@ class JobResponse(JobCreate):
 # ── Candidate models ──────────────────────────────────────────────────────────
 class CandidateCreate(BaseModel):
     name: str
-    email: EmailStr
+    email: Optional[str] = None
     phone: Optional[str] = None
     skills: List[str] = []
     experience: int = 0
@@ -81,6 +81,8 @@ class InterviewerFeedback(BaseModel):
     rating: int = Field(..., ge=1, le=10)
     comments: str
     decision: str    # "Next Round" | "Selected" | "Rejected"
+    interviewer_email: Optional[str] = None
+    interviewer_name: Optional[str] = None
 
 class CandidateFeedback(BaseModel):
     candidateId: str

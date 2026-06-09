@@ -37,6 +37,8 @@ export const jobsApi = {
 export const candidatesApi = {
   top:          (jobId, limit = 10) => api.get(`/candidates/${jobId}/top?limit=${limit}`),
   get:          (id)                => api.get(`/candidates/profile/${id}`),
+  add:          (jobId, data)       => api.post(`/candidates/${jobId}`, data),
+  remove:       (id, jobId)         => api.delete(`/candidates/${id}`, { params: { job_id: jobId } }),
   updateStatus: (id, status, jobId) => api.patch(`/candidates/${id}/status`, { status, jobId }),
   uploadResume: (jobId, file) => {
     const form = new FormData()
@@ -61,6 +63,7 @@ export const feedbackApi = {
   submitInterviewer: (data) => api.post('/feedback/interviewer', data),
   submitCandidate:   (data) => api.post('/feedback/candidate',   data),
   summary:           (id)   => api.get(`/feedback/summary/${id}`),
+  interviewers:      ()     => api.get('/feedback/interviewers'),
 }
 
 // ── Pipeline ──────────────────────────────────────────────────────────────────
@@ -95,6 +98,14 @@ export const portalSettingsApi = {
   getLinkedIn:  ()     => api.get('/portal-settings/linkedin'),
   saveLinkedIn: (data) => api.post('/portal-settings/linkedin', data),
   clearLinkedIn:()     => api.delete('/portal-settings/linkedin'),
+}
+
+// ── Interviewers ──────────────────────────────────────────────────────────────
+export const interviewersApi = {
+  list:   ()                       => api.get('/interviewers/'),
+  add:    (data)                   => api.post('/interviewers/', data),
+  remove: (id)                     => api.delete(`/interviewers/${id}`),
+  assign: (id, data)               => api.post(`/interviewers/${id}/assign`, data),
 }
 
 // ── Job Portal Search ─────────────────────────────────────────────────────────

@@ -58,3 +58,12 @@ async def get_candidate(candidate_id: str) -> dict | None:
     return await db.candidate_info.find_one(
         {"candidateId": candidate_id}, {"_id": 0}
     )
+
+
+async def delete_candidate(candidate_id: str, job_id: str = None):
+    db = get_db()
+    await db.candidate_info.delete_one({"candidateId": candidate_id})
+    if job_id:
+        await db.job_candidates.delete_one({"candidateId": candidate_id, "jobId": job_id})
+    else:
+        await db.job_candidates.delete_many({"candidateId": candidate_id})

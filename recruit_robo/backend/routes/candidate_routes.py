@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from models.models import CandidateCreate
 from services.candidate_manager import (
-    add_candidate, get_top_candidates, get_candidate, update_status
+    add_candidate, get_top_candidates, get_candidate, update_status, delete_candidate
 )
 from services.screening_service import screen_resume, extract_text_from_bytes
 from services.matching_service  import compute_match
@@ -13,6 +13,10 @@ router = APIRouter()
 
 @router.post("/{job_id}")
 async def add_candidate_route(job_id: str, candidate: CandidateCreate):
+    if not candidate.email:
+        import re as _re, time as _time
+        slug = _re.sub(r"[^a-z0-9]", ".", candidate.name.lower())[:30]
+        candidate.email = f"ext.{slug}.{int(_time.time())}@portal.placeholder"
     return await add_candidate(job_id, candidate)
 
 
@@ -98,3 +102,9 @@ async def update_candidate_status(candidate_id: str, payload: dict):
         raise HTTPException(400, "status required")
     await update_status(candidate_id, status, job_id)
     return {"updated": True}
+
+
+@router.delete("/{candidate_id}")
+async def delete_candidate_route(candidate_id: str, job_id: str = None):
+    await delete_candidate(candidate_id, job_id)
+    return {"deleted": True}

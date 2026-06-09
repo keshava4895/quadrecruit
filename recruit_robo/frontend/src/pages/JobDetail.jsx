@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { jobsApi, candidatesApi, pipelineApi, emailApi } from '../api'
 import { useAuth } from '../context/AuthContext'
-import { Mail, Calendar, RefreshCw, ChevronLeft, MapPin, Briefcase, X, Send, Loader2 } from 'lucide-react'
+import { Mail, Calendar, RefreshCw, ChevronLeft, MapPin, Briefcase, X, Send, Loader2, Trash2 } from 'lucide-react'
 
 const STATUS_STYLE = {
   sourced:     'bg-zinc-100 text-zinc-600',
@@ -65,12 +65,16 @@ export default function JobDetail() {
   const [loading,    setLoading]    = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
+  // Multi-select
+  const [selected,  setSelected]  = useState(new Set())
+  const [deleting,  setDeleting]  = useState(false)
+
   // Email compose modal
-  const [emailModal,   setEmailModal]   = useState(null)  // { candidate } | null
+  const [emailModal,   setEmailModal]   = useState(null)
   const [emailSubject, setEmailSubject] = useState('')
   const [emailBody,    setEmailBody]    = useState('')
   const [sending,      setSending]      = useState(false)
-  const [sendResult,   setSendResult]   = useState(null)  // { ok, msg }
+  const [sendResult,   setSendResult]   = useState(null)
 
   function openEmail(candidate) {
     const { subject, body } = buildEmailTemplate(candidate, job || {}, user)
@@ -86,7 +90,6 @@ export default function JobDetail() {
     try {
       await emailApi.send(emailModal.email, emailSubject, emailBody)
       setSendResult({ ok: true, msg: `Email sent to ${emailModal.email}` })
-      // update candidate status to emailed
       await candidatesApi.updateStatus(emailModal.candidateId, 'emailed', jobId)
       setCandidates(prev => prev.map(c =>
         c.candidateId === emailModal.candidateId ? { ...c, status: 'emailed' } : c
@@ -103,16 +106,53 @@ export default function JobDetail() {
     if (!quiet) setLoading(true); else setRefreshing(true)
     const [j, c, t] = await Promise.allSettled([
       jobsApi.get(jobId),
-      candidatesApi.top(jobId, 10),
+      candidatesApi.top(jobId, 50),
       pipelineApi.timeline(jobId),
     ])
     if (j.status === 'fulfilled') setJob(j.value.data)
     if (c.status === 'fulfilled') setCandidates(c.value.data)
     if (t.status === 'fulfilled') setTimeline(t.value.data?.timeline ?? [])
     setLoading(false); setRefreshing(false)
+    setSelected(new Set())
   }
 
   useEffect(() => { load() }, [jobId])
+
+  // ── Selection helpers ─────────────────────────────────────────────────────
+  const allIds       = candidates.map(c => c.candidateId)
+  const allChecked   = allIds.length > 0 && allIds.every(id => selected.has(id))
+  const someChecked  = allIds.some(id => selected.has(id))
+
+  const toggleOne = (id) =>
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+
+  const toggleAll = () =>
+    setSelected(allChecked ? new Set() : new Set(allIds))
+
+  // ── Delete handlers ───────────────────────────────────────────────────────
+  const deleteSingle = async (c) => {
+    if (!window.confirm(`Remove ${c.name} from this job?`)) return
+    try {
+      await candidatesApi.remove(c.candidateId, jobId)
+      setCandidates(prev => prev.filter(x => x.candidateId !== c.candidateId))
+      setSelected(prev => { const n = new Set(prev); n.delete(c.candidateId); return n })
+    } catch { /* silent */ }
+  }
+
+  const deleteSelected = async () => {
+    if (!window.confirm(`Remove ${selected.size} candidate${selected.size !== 1 ? 's' : ''} from this job?`)) return
+    setDeleting(true)
+    try {
+      await Promise.all([...selected].map(id => candidatesApi.remove(id, jobId)))
+      setCandidates(prev => prev.filter(c => !selected.has(c.candidateId)))
+      setSelected(new Set())
+    } catch { /* silent */ }
+    finally { setDeleting(false) }
+  }
 
   if (loading) return (
     <div className="page">
@@ -174,23 +214,46 @@ export default function JobDetail() {
             <h2 className="text-sm font-semibold text-zinc-900">Top Candidates</h2>
             <p className="text-xs text-zinc-400 mt-0.5">Ranked by AI match score</p>
           </div>
-          <button
-            onClick={() => candidates.forEach(c => c.email && openEmail(c))}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-zinc-900 hover:bg-zinc-700 text-white text-xs font-medium rounded-lg transition-colors">
-            <Mail className="w-3.5 h-3.5" /> Email All
-          </button>
+          <div className="flex items-center gap-2">
+            {selected.size > 0 && (
+              <button
+                onClick={deleteSelected}
+                disabled={deleting}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors"
+              >
+                {deleting
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Deleting…</>
+                  : <><Trash2 className="w-3.5 h-3.5" /> Delete ({selected.size})</>
+                }
+              </button>
+            )}
+            <button
+              onClick={() => candidates.forEach(c => c.email && openEmail(c))}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-zinc-900 hover:bg-zinc-700 text-white text-xs font-medium rounded-lg transition-colors">
+              <Mail className="w-3.5 h-3.5" /> Email All
+            </button>
+          </div>
         </div>
 
         {candidates.length === 0 ? (
           <div className="text-center py-16 text-zinc-400">
             <p className="text-sm">No candidates yet.</p>
-            <p className="text-xs mt-1 text-zinc-300">Upload resumes from the Resume Scorer page to get started.</p>
+            <p className="text-xs mt-1 text-zinc-300">Shortlist candidates from the Candidates tab or upload resumes in Resume Scorer.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-100">
+                <tr className="border-b border-zinc-100 bg-zinc-50/60">
+                  <th className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allChecked}
+                      ref={el => { if (el) el.indeterminate = someChecked && !allChecked }}
+                      onChange={toggleAll}
+                      className="w-3 h-3 rounded border-zinc-300 cursor-pointer accent-zinc-900"
+                    />
+                  </th>
                   {['#', 'Name', 'Skills', 'Exp', 'Email', 'Score', 'Status', 'Phase', ''].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wide whitespace-nowrap">
                       {h}
@@ -199,43 +262,64 @@ export default function JobDetail() {
                 </tr>
               </thead>
               <tbody>
-                {candidates.map((c, i) => (
-                  <tr key={c.candidateId} className="border-b border-zinc-50 hover:bg-zinc-50/60 transition-colors last:border-0">
-                    <td className="px-4 py-3 text-xs font-medium text-zinc-400">{i + 1}</td>
-                    <td className="px-4 py-3 font-medium text-zinc-900 whitespace-nowrap">{c.name}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {c.skills?.slice(0, 3).map(s => (
-                          <span key={s} className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 text-xs rounded">{s}</span>
-                        ))}
-                        {c.skills?.length > 3 && <span className="text-xs text-zinc-400">+{c.skills.length - 3}</span>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-zinc-500 whitespace-nowrap">{c.experience}y</td>
-                    <td className="px-4 py-3 text-xs text-zinc-400 whitespace-nowrap">{c.email}</td>
-                    <td className="px-4 py-3"><ScoreBadge score={c.match_score} /></td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLE[c.status] || STATUS_STYLE.sourced}`}>
-                        {c.status?.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-zinc-400 whitespace-nowrap">
-                      {c.interview_phase?.replace(/_/g, ' ')}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => openEmail(c)}
-                          className="p-1.5 rounded-lg text-zinc-300 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Send email">
-                          <Mail className="w-3.5 h-3.5" />
-                        </button>
-                        <button className="p-1.5 rounded-lg text-zinc-300 hover:text-zinc-700 hover:bg-zinc-100 transition-colors" title="Schedule interview">
-                          <Calendar className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {candidates.map((c, i) => {
+                  const isSelected = selected.has(c.candidateId)
+                  return (
+                    <tr
+                      key={c.candidateId}
+                      className={`border-b border-zinc-50 transition-colors last:border-0 ${
+                        isSelected ? 'bg-zinc-50' : 'hover:bg-zinc-50/60'
+                      }`}
+                    >
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleOne(c.candidateId)}
+                          className="w-3 h-3 rounded border-zinc-300 cursor-pointer accent-zinc-900"
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-xs font-medium text-zinc-400">{i + 1}</td>
+                      <td className="px-4 py-3 font-medium text-zinc-900 whitespace-nowrap">{c.name}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {c.skills?.slice(0, 3).map(s => (
+                            <span key={s} className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 text-xs rounded">{s}</span>
+                          ))}
+                          {c.skills?.length > 3 && <span className="text-xs text-zinc-400">+{c.skills.length - 3}</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-zinc-500 whitespace-nowrap">{c.experience}y</td>
+                      <td className="px-4 py-3 text-xs text-zinc-400 whitespace-nowrap">{c.email}</td>
+                      <td className="px-4 py-3"><ScoreBadge score={c.match_score} /></td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLE[c.status] || STATUS_STYLE.sourced}`}>
+                          {c.status?.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-zinc-400 whitespace-nowrap">
+                        {c.interview_phase?.replace(/_/g, ' ')}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => openEmail(c)}
+                            className="p-1.5 rounded-lg text-zinc-300 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Send email">
+                            <Mail className="w-3.5 h-3.5" />
+                          </button>
+                          <button className="p-1.5 rounded-lg text-zinc-300 hover:text-zinc-700 hover:bg-zinc-100 transition-colors" title="Schedule interview">
+                            <Calendar className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => deleteSingle(c)}
+                            className="p-1.5 rounded-lg text-zinc-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="Remove candidate">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -265,7 +349,6 @@ export default function JobDetail() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
 
-            {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
               <div>
                 <h2 className="text-sm font-semibold text-zinc-900">Compose Email</h2>
@@ -276,7 +359,6 @@ export default function JobDetail() {
               </button>
             </div>
 
-            {/* Body */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               <div>
                 <label className="text-xs font-medium text-zinc-500 block mb-1">Subject</label>
@@ -310,7 +392,6 @@ export default function JobDetail() {
               )}
             </div>
 
-            {/* Footer */}
             <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-zinc-100">
               <button
                 onClick={() => setEmailModal(null)}

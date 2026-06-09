@@ -7,7 +7,8 @@ import Dashboard    from './pages/Dashboard'
 import Jobs         from './pages/Jobs'
 import JobDetail    from './pages/JobDetail'
 import Candidates   from './pages/Candidates'
-import UploadResume from './pages/UploadResume'
+import UploadResume  from './pages/UploadResume'
+import Interviewers  from './pages/Interviewers'
 
 function PrivateRoute({ children }) {
   const { user } = useAuth()
@@ -40,7 +41,8 @@ function AppShell() {
           <Route path="/jobs"        element={<PrivateRoute><Jobs /></PrivateRoute>} />
           <Route path="/jobs/:jobId" element={<PrivateRoute><JobDetail /></PrivateRoute>} />
           <Route path="/candidates"  element={<PrivateRoute><Candidates /></PrivateRoute>} />
-          <Route path="/upload"      element={<PrivateRoute><UploadResume /></PrivateRoute>} />
+          <Route path="/upload"        element={<PrivateRoute><UploadResume /></PrivateRoute>} />
+          <Route path="/interviewers" element={<PrivateRoute><Interviewers /></PrivateRoute>} />
           </Routes>
         </main>
       </div>

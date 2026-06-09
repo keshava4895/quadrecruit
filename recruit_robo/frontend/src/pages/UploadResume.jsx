@@ -1,18 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { jobsApi, candidatesApi } from '../api'
 import { Upload, FileText, CheckCircle, XCircle, Cpu } from 'lucide-react'
 
 const SELECT = 'w-full border border-zinc-200 rounded-lg px-3 py-2.5 text-sm bg-white text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition'
 
 export default function UploadResume() {
-  const [jobs,    setJobs]    = useState([])
-  const [jobId,   setJobId]   = useState('')
-  const [files,   setFiles]   = useState([])
-  const [results, setResults] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [jobs,     setJobs]     = useState([])
+  const [jobId,    setJobId]    = useState('')
+  const [files,    setFiles]    = useState([])
+  const [results,  setResults]  = useState([])
+  const [loading,  setLoading]  = useState(false)
   const [dragOver, setDragOver] = useState(false)
 
-  useState(() => { jobsApi.list().then(r => setJobs(r.data)) })
+  useEffect(() => { jobsApi.list().then(r => setJobs(r.data)).catch(() => {}) }, [])
 
   const submit = async () => {
     if (!jobId || files.length === 0) return
@@ -34,14 +34,16 @@ export default function UploadResume() {
   const handleDrop = (e) => {
     e.preventDefault()
     setDragOver(false)
-    const dropped = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.pdf') || f.name.endsWith('.txt'))
+    const dropped = Array.from(e.dataTransfer.files).filter(
+      f => f.name.endsWith('.pdf') || f.name.endsWith('.txt') ||
+           f.name.endsWith('.doc') || f.name.endsWith('.docx')
+    )
     if (dropped.length) setFiles(dropped)
   }
 
   return (
     <div className="page max-w-3xl">
 
-      {/* Page header */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-1">
           <Cpu className="w-5 h-5 text-zinc-400" />
@@ -52,7 +54,6 @@ export default function UploadResume() {
 
       <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
 
-        {/* Select job */}
         <div className="px-6 py-5 border-b border-zinc-100">
           <label className="block text-xs font-medium text-zinc-500 mb-2">Target Job</label>
           <select className={SELECT} value={jobId} onChange={e => setJobId(e.target.value)}>
@@ -61,7 +62,6 @@ export default function UploadResume() {
           </select>
         </div>
 
-        {/* Upload area */}
         <div className="px-6 py-5 border-b border-zinc-100">
           <label className="block text-xs font-medium text-zinc-500 mb-2">Resumes</label>
           <label
@@ -73,9 +73,11 @@ export default function UploadResume() {
             }`}
           >
             <Upload className={`w-7 h-7 mb-2 transition-colors ${dragOver ? 'text-zinc-600' : 'text-zinc-300'}`} />
-            <p className="text-sm font-medium text-zinc-500">Drop files here or <span className="text-zinc-900 underline underline-offset-2">browse</span></p>
-            <p className="text-xs text-zinc-400 mt-1">PDF or TXT files</p>
-            <input type="file" multiple accept=".pdf,.txt" className="hidden"
+            <p className="text-sm font-medium text-zinc-500">
+              Drop files here or <span className="text-zinc-900 underline underline-offset-2">browse</span>
+            </p>
+            <p className="text-xs text-zinc-400 mt-1">PDF, Word (.doc/.docx) or TXT files supported</p>
+            <input type="file" multiple accept=".pdf,.doc,.docx,.txt" className="hidden"
               onChange={e => setFiles(Array.from(e.target.files))} />
           </label>
 
@@ -92,7 +94,6 @@ export default function UploadResume() {
           )}
         </div>
 
-        {/* Action */}
         <div className="px-6 py-4">
           <button
             onClick={submit}
@@ -106,7 +107,6 @@ export default function UploadResume() {
         </div>
       </div>
 
-      {/* Results */}
       {results.length > 0 && (
         <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden mt-4">
           <div className="px-6 py-4 border-b border-zinc-100">
