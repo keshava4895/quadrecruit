@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from models.models import CandidateCreate
 from services.candidate_manager import (
     add_candidate, get_top_candidates, get_candidate, update_status,
-    delete_candidate, list_all_candidates,
+    delete_candidate, list_all_candidates, add_standalone_candidate,
 )
 from services.screening_service import screen_resume, extract_text_from_bytes
 from services.matching_service  import compute_match
@@ -19,6 +19,68 @@ async def add_candidate_route(job_id: str, candidate: CandidateCreate):
         slug = _re.sub(r"[^a-z0-9]", ".", candidate.name.lower())[:30]
         candidate.email = f"ext.{slug}.{int(_time.time())}@portal.placeholder"
     return await add_candidate(job_id, candidate)
+
+
+@router.post("/upload-resume")
+async def upload_to_pool(
+    file: UploadFile = File(...),
+    job_id: str = Form(default=None),
+):
+    """Upload a resume to the talent pool. Optionally link to a job."""
+    import re as _re
+    file_bytes  = await file.read()
+    resume_text = extract_text_from_bytes(file_bytes, file.filename or "")
+
+    if not resume_text.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="Could not extract text from the uploaded file.",
+        )
+
+    parsed = await screen_resume(resume_text)
+
+    # Clean filename fallback
+    fallback_name = ""
+    if file.filename:
+        fn = _re.sub(r"\.(pdf|doc|docx|txt)$", "", file.filename, flags=_re.IGNORECASE)
+        fn = _re.sub(r"[_\-\.]+", " ", fn).strip()
+        fn = _re.sub(r"(?i)\b(resume|cv)\b", "", fn).strip()
+        fallback_name = " ".join(w.capitalize() for w in fn.split() if w) or file.filename
+
+    email = parsed.get("email") or f"pool.{fallback_name.lower().replace(' ', '.')}.{int(__import__('time').time())}@placeholder.com"
+    email = email.strip()
+
+    candidate = CandidateCreate(
+        name=parsed.get("name") or fallback_name or "Unknown",
+        email=email,
+        phone=parsed.get("phone"),
+        skills=parsed.get("skills", []),
+        experience=parsed.get("experience", 0),
+        summary=parsed.get("summary"),
+        resume_text=resume_text,
+    )
+
+    if job_id:
+        # Link to job — use existing flow
+        result = await add_candidate(job_id, candidate)
+        candidate_id = result["candidateId"]
+        job = await get_job(job_id)
+        if job:
+            score = await compute_match(
+                job_skills=job.get("skills", []),
+                candidate_skills=parsed.get("skills", []),
+                experience_required=job.get("experience_years", 0),
+                experience_actual=parsed.get("experience", 0),
+            )
+            await update_match_score(candidate_id, job_id, score)
+            result["match_score"] = score
+    else:
+        result = await add_standalone_candidate(candidate)
+
+    result["name"]  = parsed.get("name")  or fallback_name or "Unknown"
+    result["email"] = parsed.get("email") or ""
+    result["phone"] = parsed.get("phone") or ""
+    return result
 
 
 @router.post("/{job_id}/upload-resume")

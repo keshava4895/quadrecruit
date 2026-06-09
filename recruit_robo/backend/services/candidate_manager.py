@@ -82,6 +82,22 @@ async def list_all_candidates(search: str = "", status: str = "", skip: int = 0,
     return {"total": total, "candidates": candidates}
 
 
+async def add_standalone_candidate(candidate: CandidateCreate) -> dict:
+    """Store a candidate in candidate_info only (no job link)."""
+    db = get_db()
+    candidate_id = f"C_{str(uuid4())[:8].upper()}"
+    doc = candidate.model_dump()
+    doc.update({
+        "candidateId": candidate_id,
+        "status": "sourced",
+        "interview_phase": "not_started",
+        "match_score": 0.0,
+        "created_at": datetime.now(timezone.utc),
+    })
+    await db.candidate_info.insert_one(doc)
+    return {"candidateId": candidate_id}
+
+
 async def get_candidate(candidate_id: str) -> dict | None:
     db = get_db()
     return await db.candidate_info.find_one(

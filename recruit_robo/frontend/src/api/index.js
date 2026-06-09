@@ -39,6 +39,14 @@ export const candidatesApi = {
   get:          (id)                => api.get(`/candidates/profile/${id}`),
   fullProfile:  (id)                => api.get(`/candidates/profile/${id}/full`),
   listAll:      (params)            => api.get('/candidates/all', { params }),
+  uploadToPool: (file, jobId) => {
+    const form = new FormData()
+    form.append('file', file)
+    if (jobId) form.append('job_id', jobId)
+    return api.post('/candidates/upload-resume', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
   add:          (jobId, data)       => api.post(`/candidates/${jobId}`, data),
   remove:       (id, jobId)         => api.delete(`/candidates/${id}`, { params: { job_id: jobId } }),
   updateStatus: (id, status, jobId) => api.patch(`/candidates/${id}/status`, { status, jobId }),

@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { candidatesApi } from '../api'
+import { candidatesApi, jobsApi } from '../api'
 import {
   Database, Search, X, Filter, Users, ChevronLeft, ChevronRight,
-  Loader2, RefreshCw, Mail, Phone, Briefcase, Star, Trash2,
-  ExternalLink,
+  Loader2, RefreshCw, Mail, Phone, Briefcase, Trash2,
+  ExternalLink, Upload, FileText, CheckCircle, AlertCircle,
+  CloudUpload, ChevronDown,
 } from 'lucide-react'
 
 const STATUS_OPTS = ['', 'sourced', 'emailed', 'interested', 'scheduled', 'selected', 'rejected', 'no_response']
@@ -21,8 +22,8 @@ const STATUS_STYLE = {
 
 function inferSource(email) {
   if (!email) return { label: 'Direct', color: 'bg-zinc-100 text-zinc-500' }
-  if (email.includes('@portal.placeholder')) return { label: 'Portal', color: 'bg-blue-50 text-blue-600' }
-  if (email.includes('@placeholder'))        return { label: 'Upload', color: 'bg-amber-50 text-amber-700' }
+  if (email.includes('@portal.placeholder')) return { label: 'Portal',  color: 'bg-blue-50 text-blue-600' }
+  if (email.includes('@placeholder'))        return { label: 'Upload',  color: 'bg-amber-50 text-amber-700' }
   return { label: 'Direct', color: 'bg-emerald-50 text-emerald-700' }
 }
 
@@ -39,6 +40,200 @@ function ScoreBar({ score }) {
   )
 }
 
+// ── Upload Modal ──────────────────────────────────────────────────────────────
+function UploadModal({ onClose, onDone }) {
+  const [jobs, setJobs]           = useState([])
+  const [jobId, setJobId]         = useState('')
+  const [files, setFiles]         = useState([])   // [{file, status, result, error}]
+  const [uploading, setUploading] = useState(false)
+  const [dragOver, setDragOver]   = useState(false)
+  const inputRef                  = useRef(null)
+
+  useEffect(() => {
+    jobsApi.list()
+      .then(r => setJobs(r.data || []))
+      .catch(() => {})
+  }, [])
+
+  function addFiles(newFiles) {
+    const valid = Array.from(newFiles).filter(f =>
+      /\.(pdf|doc|docx|txt)$/i.test(f.name)
+    )
+    setFiles(prev => {
+      const existing = new Set(prev.map(x => x.file.name))
+      const fresh = valid.filter(f => !existing.has(f.name)).map(f => ({
+        file: f, status: 'pending', result: null, error: null,
+      }))
+      return [...prev, ...fresh]
+    })
+  }
+
+  function removeFile(name) {
+    setFiles(prev => prev.filter(x => x.file.name !== name))
+  }
+
+  async function handleUpload() {
+    if (!files.length) return
+    setUploading(true)
+
+    const updated = [...files]
+    for (let i = 0; i < updated.length; i++) {
+      if (updated[i].status === 'done') continue
+      updated[i] = { ...updated[i], status: 'uploading' }
+      setFiles([...updated])
+      try {
+        const r = await candidatesApi.uploadToPool(updated[i].file, jobId || null)
+        updated[i] = { ...updated[i], status: 'done', result: r.data }
+      } catch (e) {
+        const msg = e.response?.data?.detail || 'Upload failed'
+        updated[i] = { ...updated[i], status: 'error', error: msg }
+      }
+      setFiles([...updated])
+    }
+
+    setUploading(false)
+    const anyDone = updated.some(x => x.status === 'done')
+    if (anyDone) setTimeout(() => { onDone(); onClose() }, 800)
+  }
+
+  const allDone    = files.length > 0 && files.every(x => x.status === 'done')
+  const pendingCnt = files.filter(x => x.status === 'pending').length
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
+          <div className="flex items-center gap-2">
+            <CloudUpload className="w-4 h-4 text-violet-500" />
+            <h2 className="text-sm font-semibold text-zinc-900">Upload Resumes to Talent Pool</h2>
+          </div>
+          <button onClick={onClose} disabled={uploading}
+            className="text-zinc-400 hover:text-zinc-700 disabled:opacity-40 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+
+          {/* Drag-drop zone */}
+          <div
+            onClick={() => !uploading && inputRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={e => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files) }}
+            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all
+              ${dragOver
+                ? 'border-violet-400 bg-violet-50'
+                : 'border-zinc-200 hover:border-violet-300 hover:bg-zinc-50'
+              } ${uploading ? 'pointer-events-none opacity-50' : ''}`}
+          >
+            <Upload className="w-6 h-6 text-zinc-400 mx-auto mb-2" />
+            <p className="text-sm font-medium text-zinc-700">
+              Drop resume files here, or <span className="text-violet-600">click to browse</span>
+            </p>
+            <p className="text-xs text-zinc-400 mt-1">PDF, DOC, DOCX, TXT — multiple files supported</p>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.txt"
+              className="hidden"
+              onChange={e => addFiles(e.target.files)}
+            />
+          </div>
+
+          {/* File list */}
+          {files.length > 0 && (
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {files.map(({ file, status, result, error }) => (
+                <div key={file.name}
+                  className="flex items-center gap-3 px-3 py-2.5 bg-zinc-50 rounded-xl">
+                  <FileText className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-zinc-800 truncate">{file.name}</p>
+                    {status === 'done' && result && (
+                      <p className="text-[10px] text-emerald-600 truncate">
+                        {result.name}{result.email ? ` · ${result.email}` : ''}
+                      </p>
+                    )}
+                    {status === 'error' && (
+                      <p className="text-[10px] text-red-500 truncate">{error}</p>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0">
+                    {status === 'pending'   && !uploading && (
+                      <button onClick={() => removeFile(file.name)}
+                        className="text-zinc-400 hover:text-red-500 transition-colors">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {status === 'uploading' && <Loader2 className="w-3.5 h-3.5 text-violet-500 animate-spin" />}
+                    {status === 'done'      && <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />}
+                    {status === 'error'     && <AlertCircle className="w-3.5 h-3.5 text-red-400" />}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Optional job link */}
+          <div>
+            <label className="block text-xs font-medium text-zinc-700 mb-1.5">
+              Link to a job <span className="text-zinc-400 font-normal">(optional)</span>
+            </label>
+            <div className="relative">
+              <select
+                value={jobId}
+                onChange={e => setJobId(e.target.value)}
+                disabled={uploading}
+                className="w-full pl-3 pr-8 py-2 text-sm border border-zinc-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-violet-500 appearance-none disabled:opacity-50">
+                <option value="">No job — add to pool only</option>
+                {jobs.map(j => (
+                  <option key={j.jobId} value={j.jobId}>{j.title}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+            </div>
+            {jobId && (
+              <p className="text-[10px] text-zinc-400 mt-1">
+                Candidates will be linked to this job and scored against it.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-5 py-4 border-t border-zinc-100 bg-zinc-50">
+          <p className="text-xs text-zinc-400">
+            {files.length === 0 ? 'No files selected' : `${files.length} file${files.length > 1 ? 's' : ''} selected`}
+            {uploading && pendingCnt > 0 && ` · ${pendingCnt} remaining`}
+          </p>
+          <div className="flex gap-2">
+            <button onClick={onClose} disabled={uploading}
+              className="px-3 py-1.5 text-xs text-zinc-600 border border-zinc-200 rounded-lg hover:bg-zinc-100 disabled:opacity-40 transition-colors">
+              Cancel
+            </button>
+            <button
+              onClick={handleUpload}
+              disabled={files.length === 0 || uploading || allDone}
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white rounded-lg transition-colors">
+              {uploading
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading…</>
+                : allDone
+                  ? <><CheckCircle className="w-3.5 h-3.5" /> Done</>
+                  : <><Upload className="w-3.5 h-3.5" /> Upload {files.length > 0 ? files.length : ''} Resume{files.length !== 1 ? 's' : ''}</>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 25
 
 export default function CandidateDatabase() {
@@ -49,6 +244,7 @@ export default function CandidateDatabase() {
   const [statusFilter, setStatus]   = useState('')
   const [page, setPage]             = useState(0)
   const [deleting, setDeleting]     = useState(null)
+  const [showUpload, setShowUpload] = useState(false)
   const searchTimer                 = useRef(null)
 
   const load = useCallback((q = search, s = statusFilter, p = page) => {
@@ -59,7 +255,7 @@ export default function CandidateDatabase() {
       .finally(() => setLoading(false))
   }, [search, statusFilter, page])
 
-  useEffect(() => { load() }, [])  // initial load
+  useEffect(() => { load() }, [])
 
   function onSearchChange(val) {
     setSearch(val)
@@ -95,6 +291,13 @@ export default function CandidateDatabase() {
   return (
     <div className="page">
 
+      {showUpload && (
+        <UploadModal
+          onClose={() => setShowUpload(false)}
+          onDone={() => { setPage(0); load(search, statusFilter, 0) }}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
@@ -105,10 +308,16 @@ export default function CandidateDatabase() {
             {total > 0 ? `${total.toLocaleString()} candidates stored` : 'All candidates in your database'}
           </p>
         </div>
-        <button onClick={() => load()}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-500 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors">
-          <RefreshCw className="w-3.5 h-3.5" /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => load()}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-500 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" /> Refresh
+          </button>
+          <button onClick={() => setShowUpload(true)}
+            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors">
+            <Upload className="w-3.5 h-3.5" /> Load Resume
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -156,9 +365,14 @@ export default function CandidateDatabase() {
             <p className="text-sm text-zinc-400">
               {search || statusFilter ? 'No candidates match your filters.' : 'No candidates in the database yet.'}
             </p>
-            {(search || statusFilter) && (
+            {(search || statusFilter) ? (
               <button onClick={() => { setSearch(''); setStatus(''); setPage(0); load('', '', 0) }}
                 className="mt-2 text-xs text-blue-600 hover:underline">Clear filters</button>
+            ) : (
+              <button onClick={() => setShowUpload(true)}
+                className="mt-3 flex items-center gap-1.5 px-4 py-2 text-xs font-medium bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors mx-auto">
+                <Upload className="w-3.5 h-3.5" /> Upload first resume
+              </button>
             )}
           </div>
         ) : (
@@ -186,7 +400,6 @@ export default function CandidateDatabase() {
                     <tr key={c.candidateId} className="hover:bg-zinc-50 transition-colors group">
                       <td className="px-4 py-3 text-xs text-zinc-400">{page * PAGE_SIZE + i + 1}</td>
 
-                      {/* Name + ID */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
@@ -203,7 +416,6 @@ export default function CandidateDatabase() {
                         </div>
                       </td>
 
-                      {/* Contact */}
                       <td className="px-4 py-3">
                         <div className="space-y-0.5">
                           {displayEmail && (
@@ -221,7 +433,6 @@ export default function CandidateDatabase() {
                         </div>
                       </td>
 
-                      {/* Skills */}
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1 max-w-[180px]">
                           {c.skills?.slice(0, 3).map(s => (
@@ -234,7 +445,6 @@ export default function CandidateDatabase() {
                         </div>
                       </td>
 
-                      {/* Experience */}
                       <td className="px-4 py-3 whitespace-nowrap">
                         {c.experience > 0 ? (
                           <span className="flex items-center gap-1 text-xs text-zinc-600">
@@ -243,12 +453,10 @@ export default function CandidateDatabase() {
                         ) : <span className="text-zinc-300 text-xs">—</span>}
                       </td>
 
-                      {/* Best Match Score */}
                       <td className="px-4 py-3">
                         <ScoreBar score={c.best_score} />
                       </td>
 
-                      {/* Jobs count */}
                       <td className="px-4 py-3">
                         {c.job_count > 0 ? (
                           <span className="inline-flex items-center justify-center w-5 h-5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-full">
@@ -257,7 +465,6 @@ export default function CandidateDatabase() {
                         ) : <span className="text-zinc-300 text-xs">—</span>}
                       </td>
 
-                      {/* Status */}
                       <td className="px-4 py-3">
                         {c.status ? (
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${STATUS_STYLE[c.status] || STATUS_STYLE.sourced}`}>
@@ -266,14 +473,12 @@ export default function CandidateDatabase() {
                         ) : <span className="text-zinc-300 text-xs">—</span>}
                       </td>
 
-                      {/* Source */}
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${src.color}`}>
                           {src.label}
                         </span>
                       </td>
 
-                      {/* Actions */}
                       <td className="px-4 py-3">
                         <button
                           onClick={() => handleDelete(c)}
