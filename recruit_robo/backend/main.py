@@ -15,6 +15,7 @@ from routes.feedback_routes  import router as feedback_router
 from routes.pipeline_routes  import router as pipeline_router
 from routes.search_routes    import router as search_router
 from routes.msgraph_routes   import router as msgraph_router
+from routes.zoho_routes      import router as zoho_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -47,6 +48,7 @@ app.include_router(feedback_router,  prefix="/feedback",   tags=["Feedback"])
 app.include_router(pipeline_router,  prefix="/pipeline",   tags=["Pipeline"])
 app.include_router(search_router,    prefix="/search",     tags=["Search"])
 app.include_router(msgraph_router,   prefix="/msgraph",    tags=["Microsoft Graph"])
+app.include_router(zoho_router,      prefix="/zoho",        tags=["Zoho Recruit"])
 
 @app.get("/", tags=["Health"])
 async def root():
