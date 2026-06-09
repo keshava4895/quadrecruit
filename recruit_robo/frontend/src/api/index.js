@@ -87,6 +87,16 @@ export const linkedinApi = {
   disconnect:  (accountId)                            => api.delete(`/linkedin/accounts/${accountId}`),
 }
 
+// ── Portal Settings (API credentials) ────────────────────────────────────────
+export const portalSettingsApi = {
+  getNaukri:    ()     => api.get('/portal-settings/naukri'),
+  saveNaukri:   (data) => api.post('/portal-settings/naukri', data),
+  clearNaukri:  ()     => api.delete('/portal-settings/naukri'),
+  getLinkedIn:  ()     => api.get('/portal-settings/linkedin'),
+  saveLinkedIn: (data) => api.post('/portal-settings/linkedin', data),
+  clearLinkedIn:()     => api.delete('/portal-settings/linkedin'),
+}
+
 // ── Job Portal Search ─────────────────────────────────────────────────────────
 export const searchApi = {
   portals:    ()     => api.get('/search/portals'),

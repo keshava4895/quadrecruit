@@ -12,40 +12,46 @@ Capabilities used:
 import httpx
 from config import UNIPILE_API_KEY, UNIPILE_BASE_URL, FRONTEND_URL
 
-_HEADERS = {
-    "X-API-KEY": UNIPILE_API_KEY,
-    "accept":    "application/json",
-    "Content-Type": "application/json",
-}
+
+def _headers(api_key: str) -> dict:
+    return {
+        "X-API-KEY":    api_key,
+        "accept":       "application/json",
+        "Content-Type": "application/json",
+    }
 
 
-async def get_accounts() -> list[dict]:
+async def get_accounts(api_key: str = "", base_url: str = "") -> list[dict]:
     """List all connected LinkedIn accounts."""
+    key = api_key or UNIPILE_API_KEY
+    url = base_url or UNIPILE_BASE_URL
     async with httpx.AsyncClient(timeout=15) as c:
-        r = await c.get(f"{UNIPILE_BASE_URL}/api/v1/accounts", headers=_HEADERS)
+        r = await c.get(f"{url}/api/v1/accounts", headers=_headers(key))
         r.raise_for_status()
         data = r.json()
         return data.get("items", [])
 
 
-async def generate_connect_link(user_name: str, user_id: str) -> str:
+async def generate_connect_link(user_name: str, user_id: str, api_key: str = "", base_url: str = "") -> str:
     """
     Generate a Unipile hosted-auth URL so the user can connect their
     LinkedIn account. Redirect back to Quad Recruit after auth.
     """
+    key = api_key or UNIPILE_API_KEY
+    url = base_url or UNIPILE_BASE_URL
     payload = {
         "type":                 "create",
         "providers":            ["LINKEDIN"],
         "expiresOn":            "2026-12-31T23:59:59.999Z",
-        "api_url":              UNIPILE_BASE_URL,
-        "name":                 f"{user_id}",         # echoed back in webhook
+        "api_url":              url,
+        "name":                 f"{user_id}",
         "success_redirect_url": f"{FRONTEND_URL}/candidates?linkedin=connected",
         "failure_redirect_url": f"{FRONTEND_URL}/candidates?linkedin=failed",
     }
     async with httpx.AsyncClient(timeout=15) as c:
         r = await c.post(
-            f"{UNIPILE_BASE_URL}/api/v1/hosted/accounts/link",
-            headers=_HEADERS, json=payload,
+            f"{url}/api/v1/hosted/accounts/link",
+            headers=_headers(key), json=payload,
         )
         r.raise_for_status()
         return r.json()["url"]
@@ -56,31 +62,30 @@ async def search_people(
     query: str,
     location: str = "",
     limit: int = 10,
+    api_key: str = "",
+    base_url: str = "",
 ) -> list[dict]:
     """
     Search LinkedIn profiles via Unipile using POST /linkedin/search.
     Paginates automatically using cursor until `limit` results are collected.
-    Unipile returns 10 per page for classic LinkedIn search.
     """
-    keywords = f"{query} {location}".strip() if location else query
+    key       = api_key or UNIPILE_API_KEY
+    url       = base_url or UNIPILE_BASE_URL
+    keywords  = f"{query} {location}".strip() if location else query
     collected = []
     cursor    = None
-    page_size = 10   # Unipile classic LinkedIn search always returns 10 per page
+    page_size = 10
 
     async with httpx.AsyncClient(timeout=30) as c:
         while len(collected) < limit:
-            body = {
-                "api":      "classic",
-                "category": "people",
-                "keywords": keywords,
-            }
+            body   = {"api": "classic", "category": "people", "keywords": keywords}
             params = {"account_id": account_id}
             if cursor:
                 params["cursor"] = cursor
 
             r = await c.post(
-                f"{UNIPILE_BASE_URL}/api/v1/linkedin/search",
-                headers=_HEADERS,
+                f"{url}/api/v1/linkedin/search",
+                headers=_headers(key),
                 params=params,
                 json=body,
             )
@@ -88,53 +93,48 @@ async def search_people(
             raw    = r.json()
             items  = raw.get("items", [])
             cursor = raw.get("cursor")
-
             collected.extend(items)
 
-            # Stop if no more pages
             if not cursor or not items or len(items) < page_size:
                 break
 
     return [_normalise_person(p) for p in collected[:limit]]
 
 
-async def get_profile(account_id: str, profile_url: str) -> dict:
+async def get_profile(account_id: str, profile_url: str, api_key: str = "", base_url: str = "") -> dict:
     """Fetch a single LinkedIn profile by URL."""
+    key = api_key or UNIPILE_API_KEY
+    url = base_url or UNIPILE_BASE_URL
     async with httpx.AsyncClient(timeout=15) as c:
         r = await c.get(
-            f"{UNIPILE_BASE_URL}/api/v1/linkedin/profile",
-            headers=_HEADERS,
+            f"{url}/api/v1/linkedin/profile",
+            headers=_headers(key),
             params={"account_id": account_id, "url": profile_url},
         )
         r.raise_for_status()
         return _normalise_person(r.json())
 
 
-async def send_linkedin_message(account_id: str, profile_url: str, message: str) -> dict:
-    """
-    Send a LinkedIn DM to a profile.
-    Creates a new chat if one doesn't exist.
-    """
+async def send_linkedin_message(account_id: str, profile_url: str, message: str, api_key: str = "", base_url: str = "") -> dict:
+    """Send a LinkedIn DM to a profile. Creates a new chat if one doesn't exist."""
+    key = api_key or UNIPILE_API_KEY
+    url = base_url or UNIPILE_BASE_URL
     payload = {
-        "account_id":       account_id,
-        "attendees_ids":    [profile_url],
-        "text":             message,
+        "account_id":    account_id,
+        "attendees_ids": [profile_url],
+        "text":          message,
     }
     async with httpx.AsyncClient(timeout=20) as c:
-        r = await c.post(
-            f"{UNIPILE_BASE_URL}/api/v1/chats",
-            headers=_HEADERS, json=payload,
-        )
+        r = await c.post(f"{url}/api/v1/chats", headers=_headers(key), json=payload)
         r.raise_for_status()
         return r.json()
 
 
-async def disconnect_account(account_id: str) -> bool:
+async def disconnect_account(account_id: str, api_key: str = "", base_url: str = "") -> bool:
+    key = api_key or UNIPILE_API_KEY
+    url = base_url or UNIPILE_BASE_URL
     async with httpx.AsyncClient(timeout=10) as c:
-        r = await c.delete(
-            f"{UNIPILE_BASE_URL}/api/v1/accounts/{account_id}",
-            headers=_HEADERS,
-        )
+        r = await c.delete(f"{url}/api/v1/accounts/{account_id}", headers=_headers(key))
         return r.status_code in (200, 204)
 
 
