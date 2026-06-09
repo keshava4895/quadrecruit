@@ -30,11 +30,19 @@ function buildEmailTemplate(candidate, job, user) {
 
   const subject = `Exciting Job Opportunity – ${jobTitle}`
 
+  const roleDesc = job.description?.trim() ||
+    `We are looking for a ${jobTitle} with ${expRange} of experience. ` +
+    `The ideal candidate should have expertise in ${skills || 'the relevant technical areas'}` +
+    (location ? ` and will be based in ${location}.` : '.')
+
   const body = `Dear ${candidate.name},
 
 I hope you are doing well.
 
 We came across your profile and were impressed by your experience and skills. We currently have an exciting opportunity for the position of ${jobTitle}, and we believe your background could be a great fit for this role.
+
+About the Role:
+${roleDesc}
 
 Job Details:
 

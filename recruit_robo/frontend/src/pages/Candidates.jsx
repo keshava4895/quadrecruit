@@ -36,6 +36,11 @@ function buildTemplate(candidate, job, user) {
   const sender   = user?.name  || '[Your Name]'
   const email    = user?.email || '[Email Address]'
 
+  const roleDesc = job?.description?.trim() ||
+    `We are looking for a ${title} with ${expRange} of experience. ` +
+    `The ideal candidate should have expertise in ${skills || 'the relevant technical areas'}` +
+    (location && location !== '[Location]' ? ` and will be based in ${location}.` : '.')
+
   return {
     subject: `Exciting Job Opportunity – ${title}`,
     body:
@@ -44,6 +49,9 @@ function buildTemplate(candidate, job, user) {
 I hope you are doing well.
 
 We came across your profile and were impressed by your experience and skills. We currently have an exciting opportunity for the position of ${title}, and we believe your background could be a great fit for this role.
+
+About the Role:
+${roleDesc}
 
 Job Details:
 
