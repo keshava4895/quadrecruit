@@ -190,4 +190,5 @@ async def list_portals():
         {"value": "monster",   "label": "Monster"},
         {"value": "glassdoor", "label": "Glassdoor"},
         {"value": "github",    "label": "GitHub"},
+        {"value": "zoho",      "label": "Zoho Recruit"},
     ]

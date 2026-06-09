@@ -66,3 +66,11 @@ NAUKRI_API_KEY    = os.getenv("NAUKRI_API_KEY", "")
 MONSTER_API_KEY   = os.getenv("MONSTER_API_KEY", "")
 GLASSDOOR_API_KEY = os.getenv("GLASSDOOR_API_KEY", "")
 GITHUB_TOKEN      = os.getenv("GITHUB_TOKEN", "")
+
+# Zoho Recruit API (OAuth 2.0)
+ZOHO_CLIENT_ID     = os.getenv("ZOHO_CLIENT_ID", "")
+ZOHO_CLIENT_SECRET = os.getenv("ZOHO_CLIENT_SECRET", "")
+ZOHO_REFRESH_TOKEN = os.getenv("ZOHO_REFRESH_TOKEN", "")           # optional: set after first OAuth login
+ZOHO_BASE_URL      = os.getenv("ZOHO_BASE_URL", "https://recruit.zoho.com")
+ZOHO_ACCOUNTS_URL  = os.getenv("ZOHO_ACCOUNTS_URL", "https://accounts.zoho.com")  # use .zoho.eu / .zoho.in for other regions
+ZOHO_REDIRECT_URI  = f"{FRONTEND_URL}/api/zoho/oauth/callback"

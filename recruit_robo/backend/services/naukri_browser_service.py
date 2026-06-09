@@ -14,8 +14,9 @@ _session: dict = {
     "expires_at": None,
 }
 
-_RESDEX_SEARCH = "https://resdex.naukri.com/recruiter/search/result"
-_LOGIN_PAGE    = "https://www.naukri.com/nlogin/login?URL=https://resdex.naukri.com/"
+_BASE_URL      = "https://recruit.naukri.com"
+_RESDEX_SEARCH = f"{_BASE_URL}/recruiter/search/result"
+_LOGIN_PAGE    = f"https://www.naukri.com/nlogin/login?URL={_BASE_URL}/"
 
 
 def _session_valid() -> bool:
@@ -70,7 +71,7 @@ async def browser_login(email: str, password: str) -> dict:
 
         # Wait for navigation or dashboard
         try:
-            await page.wait_for_url("**/resdex/**", timeout=15000)
+            await page.wait_for_url("*recruit.naukri.com*", timeout=15000)
         except Exception:
             # May redirect to dashboard — still ok
             await page.wait_for_timeout(3000)
@@ -129,7 +130,7 @@ async def search_candidates(
 
         # Inject saved cookies into browser context
         cookie_list = [
-            {"name": k, "value": v, "domain": ".naukri.com", "path": "/"}
+            {"name": k, "value": v, "domain": ".naukri.com", "path": "/", "sameSite": "Lax"}
             for k, v in cookies.items()
         ]
         await ctx.add_cookies(cookie_list)
@@ -149,7 +150,7 @@ async def search_candidates(
         await page.wait_for_timeout(2000)
 
         # If redirected to login, session expired — re-login
-        if "/nlogin/" in page.url or "/login" in page.url:
+        if "/nlogin/" in page.url or "naukri.com/login" in page.url:
             await browser.close()
             _session["cookies"] = {}
             return await search_candidates(query, location, experience_min, experience_max, limit, email, password)

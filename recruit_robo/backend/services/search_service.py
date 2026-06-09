@@ -14,15 +14,17 @@ from config import (
     OPENAI_API_KEY,
     LINKEDIN_API_KEY, INDEED_API_KEY, NAUKRI_API_KEY,
     MONSTER_API_KEY, GLASSDOOR_API_KEY, GITHUB_TOKEN,
+    ZOHO_CLIENT_ID, ZOHO_REFRESH_TOKEN,
 )
 
 PORTAL_LABELS = {
-    "linkedin":  "LinkedIn",
-    "indeed":    "Indeed",
-    "naukri":    "Naukri",
-    "monster":   "Monster",
-    "glassdoor": "Glassdoor",
-    "github":    "GitHub",
+    "linkedin":     "LinkedIn",
+    "indeed":       "Indeed",
+    "naukri":       "Naukri",
+    "monster":      "Monster",
+    "glassdoor":    "Glassdoor",
+    "github":       "GitHub",
+    "zoho":         "Zoho Recruit",
 }
 
 _PORTAL_KEYS = {
@@ -32,6 +34,7 @@ _PORTAL_KEYS = {
     "monster":   MONSTER_API_KEY,
     "glassdoor": GLASSDOOR_API_KEY,
     "github":    GITHUB_TOKEN,
+    "zoho":      ZOHO_CLIENT_ID,
 }
 
 # ── Tier detection ────────────────────────────────────────────────────────────
@@ -64,6 +67,10 @@ async def search_portal_candidates(
     # Naukri uses session-based scraper — always route through regardless of api_key
     if portal == "naukri":
         return await _search_naukri(query, location, experience_min, experience_max, limit, api_key)
+
+    # Zoho Recruit — always attempt real API (falls back to mock on failure)
+    if portal == "zoho":
+        return await _search_zoho(query, location, experience_min, experience_max, limit)
 
     if api_key:
         if portal == "github":
@@ -164,6 +171,29 @@ async def _search_linkedin(query, location, exp_min, exp_max, limit, api_key):
     except Exception as e:
         print(f"[LinkedIn] Unipile search error: {e}")
         return await _generate_candidates(query, "LinkedIn", location, exp_min, exp_max, limit)
+
+async def _search_zoho(query, location, exp_min, exp_max, limit):
+    """Search Zoho Recruit using stored OAuth refresh token."""
+    from fastapi import HTTPException
+    from services.zoho_service import search_candidates as zoho_search
+    from database import get_db
+
+    db  = get_db()
+    doc = await db["settings"].find_one({"key": "zoho_tokens"})
+    refresh_token = (doc.get("refresh_token", "") if doc else "") or ZOHO_REFRESH_TOKEN or None
+
+    if not refresh_token:
+        raise HTTPException(
+            status_code=400,
+            detail="Zoho Recruit is not connected. Visit GET /zoho/auth to complete OAuth setup.",
+        )
+
+    return await zoho_search(
+        query=query, location=location,
+        exp_min=exp_min, exp_max=exp_max,
+        limit=limit, refresh_token=refresh_token,
+    )
+
 
 async def _search_indeed(query, location, exp_min, exp_max, limit, api_key):
     raise NotImplementedError("Indeed API key set but integration not yet wired")
