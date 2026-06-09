@@ -19,7 +19,7 @@ export const authApi = {
   me:                ()         => api.get('/auth/me'),
   users:             ()         => api.get('/auth/users'),
   deleteUser:        (id)       => api.delete(`/auth/users/${id}`),
-  saveEmailSettings: (smtpPass) => api.post('/auth/email-settings', { smtp_pass: smtpPass }),
+  saveEmailSettings: (smtpPass, smtpEmail = '') => api.post('/auth/email-settings', { smtp_pass: smtpPass, smtp_email: smtpEmail }),
   getEmailSettings:  ()         => api.get('/auth/email-settings'),
   clearEmailSettings:()         => api.delete('/auth/email-settings'),
 }
@@ -85,6 +85,16 @@ export const linkedinApi = {
   search:      (accountId, query, location, limit)    => api.get('/linkedin/search', { params: { account_id: accountId, query, location: location || '', limit: limit || 10 } }),
   sendMessage: (accountId, profileUrl, message)       => api.post('/linkedin/message', { account_id: accountId, profile_url: profileUrl, message }),
   disconnect:  (accountId)                            => api.delete(`/linkedin/accounts/${accountId}`),
+}
+
+// ── Portal Settings (API credentials) ────────────────────────────────────────
+export const portalSettingsApi = {
+  getNaukri:    ()     => api.get('/portal-settings/naukri'),
+  saveNaukri:   (data) => api.post('/portal-settings/naukri', data),
+  clearNaukri:  ()     => api.delete('/portal-settings/naukri'),
+  getLinkedIn:  ()     => api.get('/portal-settings/linkedin'),
+  saveLinkedIn: (data) => api.post('/portal-settings/linkedin', data),
+  clearLinkedIn:()     => api.delete('/portal-settings/linkedin'),
 }
 
 // ── Job Portal Search ─────────────────────────────────────────────────────────

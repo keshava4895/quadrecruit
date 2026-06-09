@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { LogOut, ChevronDown, Link2, Link2Off, Settings, Mail, Eye, EyeOff, CheckCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { linkedinApi, searchApi, authApi } from '../api'
+import { linkedinApi, searchApi, authApi, portalSettingsApi } from '../api'
 
 const LI_ICON = (
   <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
@@ -26,9 +26,27 @@ export default function Header() {
   const [showNaukriInput, setShowNaukriInput] = useState(false)
   const [activeTab,     setActiveTab]     = useState('portals')
 
+  // Portal API credentials
+  const [naukriCreds,       setNaukriCreds]       = useState(null)
+  const [showNaukriCreds,   setShowNaukriCreds]   = useState(false)
+  const [naukriApiKey,      setNaukriApiKey]       = useState('')
+  const [naukriEmail,       setNaukriEmail]        = useState('')
+  const [naukriPassword,    setNaukriPassword]     = useState('')
+  const [naukriCredsMsg,    setNaukriCredsMsg]     = useState('')
+  const [naukriCredsSaving, setNaukriCredsSaving]  = useState(false)
+
+  const [liCreds,       setLiCreds]       = useState(null)
+  const [showLiCreds,   setShowLiCreds]   = useState(false)
+  const [liApiKey,      setLiApiKey]       = useState('')
+  const [liBaseUrl,     setLiBaseUrl]      = useState('')
+  const [liCredsMsg,    setLiCredsMsg]     = useState('')
+  const [liCredsSaving, setLiCredsSaving]  = useState(false)
+
   // Email settings state
   const [emailConfigured, setEmailConfigured] = useState(false)
+  const [emailConfiguredAddr, setEmailConfiguredAddr] = useState('')
   const [showEmailInput,  setShowEmailInput]  = useState(false)
+  const [emailAddr,       setEmailAddr]       = useState('')
   const [emailPass,       setEmailPass]       = useState('')
   const [showPass,        setShowPass]        = useState(false)
   const [emailSaving,     setEmailSaving]     = useState(false)
@@ -52,7 +70,12 @@ export default function Header() {
     if (!open) return
     linkedinApi.accounts().then(r => setLiAccounts(r.data.accounts || [])).catch(() => {})
     searchApi.getNaukriSession().then(r => setNaukriSession(r.data)).catch(() => {})
-    authApi.getEmailSettings().then(r => setEmailConfigured(r.data.configured)).catch(() => {})
+    portalSettingsApi.getNaukri().then(r => setNaukriCreds(r.data)).catch(() => {})
+    portalSettingsApi.getLinkedIn().then(r => setLiCreds(r.data)).catch(() => {})
+    authApi.getEmailSettings().then(r => {
+      setEmailConfigured(r.data.configured)
+      setEmailConfiguredAddr(r.data.email || '')
+    }).catch(() => {})
   }, [open])
 
   function handleLogout() {
@@ -165,34 +188,73 @@ export default function Header() {
                       {LI_ICON}
                     </div>
                     <span className="text-sm font-medium text-gray-800">LinkedIn</span>
-                    {liAccounts.length > 0
-                      ? <span className="ml-auto flex items-center gap-1 text-xs text-emerald-600 font-medium"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />Connected</span>
-                      : <span className="ml-auto text-xs text-gray-400">Not connected</span>
+                    {liCreds?.configured
+                      ? <span className="ml-auto flex items-center gap-1 text-xs text-emerald-600 font-medium"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />API Key Set</span>
+                      : <span className="ml-auto text-xs text-amber-500 font-medium">API Key Required</span>
                     }
                   </div>
 
-                  {liAccounts.length > 0 ? (
-                    <div className="space-y-1">
-                      {liAccounts.map(acc => (
-                        <div key={acc.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-2.5 py-1.5">
-                          <span className="text-xs text-gray-700 truncate">{acc.name || acc.id}</span>
-                          <button onClick={() => disconnectLinkedIn(acc.id)}
-                            className="text-red-400 hover:text-red-600 ml-2 flex-shrink-0" title="Disconnect">
-                            <Link2Off className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                      <button onClick={connectLinkedIn} disabled={liLoading}
-                        className="w-full mt-1 text-xs text-blue-600 hover:underline disabled:opacity-50">
-                        {liLoading ? 'Opening…' : '+ Add another account'}
-                      </button>
-                    </div>
-                  ) : (
-                    <button onClick={connectLinkedIn} disabled={liLoading}
-                      className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors">
-                      <Link2 className="w-3 h-3" />
-                      {liLoading ? 'Opening…' : 'Connect LinkedIn'}
+                  {/* Unipile API credentials */}
+                  {!showLiCreds ? (
+                    <button onClick={() => { setShowLiCreds(true); setLiApiKey(''); setLiBaseUrl(liCreds?.unipile_base_url || ''); setLiCredsMsg('') }}
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors mb-2">
+                      <Settings className="w-3 h-3" />
+                      {liCreds?.configured ? 'Update API Key' : 'Set Unipile API Key'}
                     </button>
+                  ) : (
+                    <div className="space-y-2 mb-2">
+                      <input type="password" placeholder="Unipile API Key"
+                        value={liApiKey} onChange={e => setLiApiKey(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                      <input type="text" placeholder="Base URL (e.g. https://api45.unipile.com:17538)"
+                        value={liBaseUrl} onChange={e => setLiBaseUrl(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                      {liCredsMsg && <p className={`text-xs ${liCredsMsg.includes('Saved') ? 'text-emerald-600' : 'text-red-500'}`}>{liCredsMsg}</p>}
+                      <div className="flex gap-2">
+                        <button disabled={liCredsSaving || !liApiKey.trim()} onClick={async () => {
+                          setLiCredsSaving(true); setLiCredsMsg('')
+                          try {
+                            await portalSettingsApi.saveLinkedIn({ unipile_api_key: liApiKey.trim(), unipile_base_url: liBaseUrl.trim() || 'https://api45.unipile.com:17538' })
+                            const r = await portalSettingsApi.getLinkedIn()
+                            setLiCreds(r.data)
+                            setLiCredsMsg('Saved!')
+                            setShowLiCreds(false)
+                          } catch { setLiCredsMsg('Failed to save.') }
+                          finally { setLiCredsSaving(false) }
+                        }} className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-medium rounded-lg">
+                          {liCredsSaving ? 'Saving…' : 'Save'}
+                        </button>
+                        <button onClick={() => { setShowLiCreds(false); setLiCredsMsg('') }}
+                          className="flex-1 py-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-medium rounded-lg">Cancel</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Connect LinkedIn accounts (only if API key is set) */}
+                  {liCreds?.configured && (
+                    liAccounts.length > 0 ? (
+                      <div className="space-y-1">
+                        {liAccounts.map(acc => (
+                          <div key={acc.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-2.5 py-1.5">
+                            <span className="text-xs text-gray-700 truncate">{acc.name || acc.id}</span>
+                            <button onClick={() => disconnectLinkedIn(acc.id)}
+                              className="text-red-400 hover:text-red-600 ml-2 flex-shrink-0" title="Disconnect">
+                              <Link2Off className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                        <button onClick={connectLinkedIn} disabled={liLoading}
+                          className="w-full mt-1 text-xs text-blue-600 hover:underline disabled:opacity-50">
+                          {liLoading ? 'Opening…' : '+ Add another account'}
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={connectLinkedIn} disabled={liLoading}
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors">
+                        <Link2 className="w-3 h-3" />
+                        {liLoading ? 'Opening…' : 'Connect LinkedIn Account'}
+                      </button>
+                    )
                   )}
                 </div>
 
@@ -201,48 +263,91 @@ export default function Header() {
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-6 h-6 bg-orange-500 rounded-md flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">N</div>
                     <span className="text-sm font-medium text-gray-800">Naukri Resdex</span>
-                    {naukriSession?.configured
-                      ? <span className="ml-auto flex items-center gap-1 text-xs text-emerald-600 font-medium"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />Active</span>
-                      : <span className="ml-auto text-xs text-gray-400">Not configured</span>
+                    {naukriCreds?.configured
+                      ? <span className="ml-auto flex items-center gap-1 text-xs text-emerald-600 font-medium"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />API Key Set</span>
+                      : <span className="ml-auto text-xs text-amber-500 font-medium">API Key Required</span>
                     }
                   </div>
 
-                  {naukriSession?.configured && !showNaukriInput && (
-                    <div className="flex items-center justify-between bg-gray-50 rounded-lg px-2.5 py-1.5 mb-1.5">
-                      <p className="text-xs text-gray-500 truncate">{naukriSession.preview}</p>
-                      <button onClick={clearNaukri} className="text-red-400 hover:text-red-600 ml-2 flex-shrink-0" title="Remove">
-                        <Link2Off className="w-3.5 h-3.5" />
-                      </button>
+                  {/* RapidAPI credentials */}
+                  {!showNaukriCreds ? (
+                    <button onClick={() => { setShowNaukriCreds(true); setNaukriApiKey(''); setNaukriEmail(naukriCreds?.email || ''); setNaukriPassword(''); setNaukriCredsMsg('') }}
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors mb-2">
+                      <Settings className="w-3 h-3" />
+                      {naukriCreds?.configured ? 'Update API Key' : 'Set RapidAPI Key'}
+                    </button>
+                  ) : (
+                    <div className="space-y-2 mb-2">
+                      <input type="password" placeholder="RapidAPI Key (naukri-cv-scraper)"
+                        value={naukriApiKey} onChange={e => setNaukriApiKey(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                      <input type="email" placeholder="Naukri email (optional)"
+                        value={naukriEmail} onChange={e => setNaukriEmail(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                      <input type="password" placeholder="Naukri password (optional)"
+                        value={naukriPassword} onChange={e => setNaukriPassword(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                      {naukriCredsMsg && <p className={`text-xs ${naukriCredsMsg.includes('Saved') ? 'text-emerald-600' : 'text-red-500'}`}>{naukriCredsMsg}</p>}
+                      <div className="flex gap-2">
+                        <button disabled={naukriCredsSaving || !naukriApiKey.trim()} onClick={async () => {
+                          setNaukriCredsSaving(true); setNaukriCredsMsg('')
+                          try {
+                            await portalSettingsApi.saveNaukri({ rapidapi_key: naukriApiKey.trim(), email: naukriEmail.trim(), password: naukriPassword })
+                            const r = await portalSettingsApi.getNaukri()
+                            setNaukriCreds(r.data)
+                            setNaukriCredsMsg('Saved!')
+                            setShowNaukriCreds(false)
+                          } catch { setNaukriCredsMsg('Failed to save.') }
+                          finally { setNaukriCredsSaving(false) }
+                        }} className="flex-1 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium rounded-lg">
+                          {naukriCredsSaving ? 'Saving…' : 'Save'}
+                        </button>
+                        <button onClick={() => { setShowNaukriCreds(false); setNaukriCredsMsg('') }}
+                          className="flex-1 py-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-medium rounded-lg">Cancel</button>
+                      </div>
                     </div>
                   )}
 
-                  {!showNaukriInput ? (
-                    <button onClick={() => setShowNaukriInput(true)}
-                      className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-lg transition-colors">
-                      <Settings className="w-3 h-3" />
-                      {naukriSession?.configured ? 'Update Session' : 'Setup Session'}
-                    </button>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-xs text-gray-500">
-                        Log into <strong>resdex.naukri.com</strong> → search → F12 → Network → copy request as cURL
-                      </p>
-                      <textarea rows={3}
-                        className="w-full border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-mono text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-orange-400 resize-none"
-                        placeholder="curl 'https://resdex.naukri.com/...' -H 'Cookie: ...'"
-                        value={naukriCurl} onChange={e => setNaukriCurl(e.target.value)} />
-                      {naukriMsg && <p className={`text-xs ${naukriMsg === 'Saved!' ? 'text-emerald-600' : 'text-red-500'}`}>{naukriMsg}</p>}
-                      <div className="flex gap-2">
-                        <button onClick={saveNaukri} disabled={naukriSaving || !naukriCurl.trim()}
-                          className="flex-1 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium rounded-lg">
-                          {naukriSaving ? 'Saving…' : 'Save'}
+                  {/* Naukri session curl (only if API key is set) */}
+                  {naukriCreds?.configured && (
+                    <>
+                      {naukriSession?.configured && !showNaukriInput && (
+                        <div className="flex items-center justify-between bg-gray-50 rounded-lg px-2.5 py-1.5 mb-1.5">
+                          <p className="text-xs text-gray-500 truncate">{naukriSession.preview}</p>
+                          <button onClick={clearNaukri} className="text-red-400 hover:text-red-600 ml-2 flex-shrink-0" title="Remove">
+                            <Link2Off className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                      {!showNaukriInput ? (
+                        <button onClick={() => setShowNaukriInput(true)}
+                          className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-lg transition-colors">
+                          <Settings className="w-3 h-3" />
+                          {naukriSession?.configured ? 'Update Session' : 'Setup Session'}
                         </button>
-                        <button onClick={() => { setShowNaukriInput(false); setNaukriCurl(''); setNaukriMsg('') }}
-                          className="flex-1 py-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-medium rounded-lg">
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="text-xs text-gray-500">
+                            Log into <strong>resdex.naukri.com</strong> → search → F12 → Network → copy request as cURL
+                          </p>
+                          <textarea rows={3}
+                            className="w-full border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-mono text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-orange-400 resize-none"
+                            placeholder="curl 'https://resdex.naukri.com/...' -H 'Cookie: ...'"
+                            value={naukriCurl} onChange={e => setNaukriCurl(e.target.value)} />
+                          {naukriMsg && <p className={`text-xs ${naukriMsg === 'Saved!' ? 'text-emerald-600' : 'text-red-500'}`}>{naukriMsg}</p>}
+                          <div className="flex gap-2">
+                            <button onClick={saveNaukri} disabled={naukriSaving || !naukriCurl.trim()}
+                              className="flex-1 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium rounded-lg">
+                              {naukriSaving ? 'Saving…' : 'Save'}
+                            </button>
+                            <button onClick={() => { setShowNaukriInput(false); setNaukriCurl(''); setNaukriMsg('') }}
+                              className="flex-1 py-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-medium rounded-lg">
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -290,17 +395,18 @@ export default function Header() {
                     }
                   </div>
                   <p className="text-xs text-gray-400 mb-2">
-                    Save your Outlook password so emails send from <strong>{user?.email}</strong>
+                    Configure your Outlook account for sending emails
                   </p>
 
                   {emailConfigured && !showEmailInput && (
                     <div className="flex gap-2 mb-2">
-                      <div className="flex-1 bg-gray-50 rounded-lg px-2.5 py-1.5 text-xs text-gray-500">
-                        Password saved ••••••••
+                      <div className="flex-1 bg-gray-50 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 truncate">
+                        {emailConfiguredAddr || 'Configured'} ••••••••
                       </div>
                       <button onClick={async () => {
                         await authApi.clearEmailSettings()
                         setEmailConfigured(false)
+                        setEmailConfiguredAddr('')
                         setEmailMsg('')
                       }} className="text-red-400 hover:text-red-600 px-1" title="Remove">
                         <Link2Off className="w-3.5 h-3.5" />
@@ -309,17 +415,24 @@ export default function Header() {
                   )}
 
                   {!showEmailInput ? (
-                    <button onClick={() => { setShowEmailInput(true); setEmailMsg('') }}
+                    <button onClick={() => { setShowEmailInput(true); setEmailMsg(''); setEmailAddr(emailConfiguredAddr || '') }}
                       className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-colors">
                       <Settings className="w-3 h-3" />
-                      {emailConfigured ? 'Update Password' : 'Set Email Password'}
+                      {emailConfigured ? 'Update Credentials' : 'Set Outlook Credentials'}
                     </button>
                   ) : (
                     <div className="space-y-2">
+                      <input
+                        type="email"
+                        placeholder="your@outlook.com"
+                        value={emailAddr}
+                        onChange={e => setEmailAddr(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                      />
                       <div className="relative">
                         <input
                           type={showPass ? 'text' : 'password'}
-                          placeholder="Your Outlook password"
+                          placeholder="Outlook password or App Password"
                           value={emailPass}
                           onChange={e => setEmailPass(e.target.value)}
                           className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 pr-8 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-gray-400"
@@ -337,13 +450,14 @@ export default function Header() {
                       )}
                       <div className="flex gap-2">
                         <button
-                          disabled={emailSaving || !emailPass.trim()}
+                          disabled={emailSaving || !emailPass.trim() || !emailAddr.trim()}
                           onClick={async () => {
                             setEmailSaving(true); setEmailMsg('')
                             try {
-                              await authApi.saveEmailSettings(emailPass.trim())
+                              await authApi.saveEmailSettings(emailPass.trim(), emailAddr.trim())
                               setEmailConfigured(true)
-                              setEmailMsg('Saved! Emails will send from your address.')
+                              setEmailConfiguredAddr(emailAddr.trim())
+                              setEmailMsg('Saved! Emails will send from your Outlook address.')
                               setEmailPass('')
                               setShowEmailInput(false)
                             } catch { setEmailMsg('Failed to save.') }
@@ -352,7 +466,7 @@ export default function Header() {
                           className="flex-1 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-white text-xs font-medium rounded-lg">
                           {emailSaving ? 'Saving…' : 'Save'}
                         </button>
-                        <button onClick={() => { setShowEmailInput(false); setEmailPass(''); setEmailMsg('') }}
+                        <button onClick={() => { setShowEmailInput(false); setEmailPass(''); setEmailAddr(''); setEmailMsg('') }}
                           className="flex-1 py-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-medium rounded-lg">
                           Cancel
                         </button>

@@ -14,22 +14,23 @@ Flow:
 import json
 import httpx
 
-RAPIDAPI_KEY  = "c386cdad9fmshb9971d3bf4d14b3p119ad1jsn53a8f2841b4a"
-RAPIDAPI_HOST = "naukri-cv-scraper.p.rapidapi.com"
-SCRAPE_URL    = f"https://{RAPIDAPI_HOST}/api/scrape"
-
-_HEADERS = {
-    "x-rapidapi-key":  RAPIDAPI_KEY,
-    "x-rapidapi-host": RAPIDAPI_HOST,
-    "Content-Type":    "application/json",
-}
+_RAPIDAPI_HOST = "naukri-cv-scraper.p.rapidapi.com"
+_SCRAPE_URL    = f"https://{_RAPIDAPI_HOST}/api/scrape"
 
 
-async def scrape_naukri_candidates(curl_command: str, max_results: int = 10) -> list[dict]:
+async def scrape_naukri_candidates(curl_command: str, max_results: int = 10, rapidapi_key: str = "") -> list[dict]:
     """
     Send the Naukri Resdex curl command to the scraper API.
     Returns a list of normalised candidate dicts.
     """
+    if not rapidapi_key:
+        raise RuntimeError("Naukri RapidAPI key not configured. Go to Account settings → Portals → Naukri.")
+
+    headers = {
+        "x-rapidapi-key":  rapidapi_key,
+        "x-rapidapi-host": _RAPIDAPI_HOST,
+        "Content-Type":    "application/json",
+    }
     payload = {
         "curlCommand": curl_command,
         "maxResults":  max_results,
@@ -37,7 +38,7 @@ async def scrape_naukri_candidates(curl_command: str, max_results: int = 10) -> 
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(SCRAPE_URL, headers=_HEADERS, json=payload)
+            resp = await client.post(_SCRAPE_URL, headers=headers, json=payload)
             resp.raise_for_status()
             raw = resp.json()
     except httpx.HTTPStatusError as e:

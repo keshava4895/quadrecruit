@@ -4,8 +4,9 @@ from models.models import CandidateSearchRequest
 from services.search_service import search_portal_candidates
 from services.naukri_service import scrape_naukri_candidates
 from services.naukri_browser_service import browser_login, _session as naukri_session
-from config import NAUKRI_EMAIL
+from services.portal_settings import get_naukri_creds
 from database import get_db
+
 
 router = APIRouter()
 
@@ -83,11 +84,15 @@ async def naukri_scrape(request: NaukriScrapeRequest):
             upsert=True,
         )
 
+    naukri_creds = await get_naukri_creds()
     try:
         candidates = await scrape_naukri_candidates(
             curl_command=request.curl_command,
             max_results=request.max_results,
+            rapidapi_key=naukri_creds["rapidapi_key"],
         )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         raise HTTPException(
             status_code=502,
@@ -144,14 +149,15 @@ async def delete_naukri_session():
 async def naukri_status():
     """Check if Naukri credentials are configured and session is active."""
     from datetime import datetime, timezone
+    creds = await get_naukri_creds()
     session_active = bool(
         naukri_session.get("cookies") and
         naukri_session.get("expires_at") and
         datetime.now(timezone.utc) < naukri_session["expires_at"]
     )
     return {
-        "credentials_configured": bool(NAUKRI_EMAIL),
-        "email":          NAUKRI_EMAIL if NAUKRI_EMAIL else None,
+        "credentials_configured": bool(creds.get("rapidapi_key")),
+        "email":          creds.get("email") or None,
         "session_active": session_active,
         "expires_at":     naukri_session.get("expires_at").isoformat() if naukri_session.get("expires_at") else None,
     }
@@ -160,13 +166,14 @@ async def naukri_status():
 @router.post("/naukri-login")
 async def test_naukri_login():
     """Trigger browser-based Naukri login and verify credentials work."""
-    if not NAUKRI_EMAIL:
-        raise HTTPException(400, "NAUKRI_EMAIL not set in .env")
+    creds = await get_naukri_creds()
+    if not creds.get("email"):
+        raise HTTPException(400, "Naukri email not configured. Go to Account settings → Portals → Naukri.")
     try:
         cookies = await browser_login()
         return {
             "success":       True,
-            "email":         NAUKRI_EMAIL,
+            "email":         creds["email"],
             "cookies_count": len(cookies),
             "message":       "Naukri login successful via browser — session is active",
         }
