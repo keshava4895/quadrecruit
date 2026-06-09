@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useAuth } from '../context/AuthContext'
 import { searchApi, jobsApi, candidatesApi, emailApi, linkedinApi } from '../api'
 import {
   Search, MapPin, Briefcase, ExternalLink,
@@ -27,21 +28,51 @@ const AVAIL_STYLE = {
 const INPUT = 'border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition'
 const SELECT = 'w-full border border-zinc-200 rounded-lg px-3 py-2.5 text-sm bg-white text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition'
 
-function MailModal({ candidate, jobTitle, onClose }) {
-  const [to,       setTo]       = useState(candidate?.email || '')
-  const [subject,  setSubject]  = useState('')
-  const [body,     setBody]     = useState('')
-  const [drafting, setDrafting] = useState(true)
-  const [sending,  setSending]  = useState(false)
-  const [sent,     setSent]     = useState(false)
-  const [error,    setError]    = useState('')
+function buildTemplate(candidate, job, user) {
+  const title    = job?.title    || '[Job Title]'
+  const location = job?.location || '[Location]'
+  const expRange = job?.experience_years ? `${job.experience_years}+ Years` : '[X–Y Years]'
+  const skills   = (job?.skills || []).join(', ') || '[Key Skills]'
+  const sender   = user?.name  || '[Your Name]'
+  const email    = user?.email || '[Email Address]'
 
-  useEffect(() => {
-    emailApi.draft(candidate.name, jobTitle || 'the role')
-      .then(r => { setSubject(r.data.subject); setBody(r.data.body) })
-      .catch(() => { setSubject('Exciting Opportunity for You'); setBody('') })
-      .finally(() => setDrafting(false))
-  }, [])
+  return {
+    subject: `Exciting Job Opportunity – ${title}`,
+    body:
+`Dear ${candidate.name},
+
+I hope you are doing well.
+
+We came across your profile and were impressed by your experience and skills. We currently have an exciting opportunity for the position of ${title}, and we believe your background could be a great fit for this role.
+
+Job Details:
+
+Position: ${title}
+Location: ${location}
+Experience Required: ${expRange}
+Employment Type: Full-Time
+Skills Required: ${skills}
+
+If you are interested in exploring this opportunity, please reply to this email with your updated resume and contact details. We would be happy to discuss the role and answer any questions you may have.
+
+Looking forward to hearing from you.
+
+Best Regards,
+${sender}
+Recruiter
+${email}`,
+  }
+}
+
+function MailModal({ candidate, job, onClose }) {
+  const { user }  = useAuth()
+  const template  = buildTemplate(candidate, job, user)
+  const [to,      setTo]      = useState(candidate?.email || '')
+  const [subject, setSubject] = useState(template.subject)
+  const [body,    setBody]    = useState(template.body)
+  const [sending, setSending] = useState(false)
+  const [sent,    setSent]    = useState(false)
+  const [error,   setError]   = useState('')
 
   const handleSend = async () => {
     if (!to.trim()) return
@@ -72,13 +103,7 @@ function MailModal({ candidate, jobTitle, onClose }) {
           </button>
         </div>
 
-        {drafting ? (
-          <div className="flex items-center justify-center py-12 gap-2 text-zinc-400">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-sm">Drafting email…</span>
-          </div>
-        ) : (
-          <div className="space-y-3">
+        <div className="space-y-3">
             <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1">To</label>
               <input type="email" value={to} onChange={e => setTo(e.target.value)}
@@ -130,7 +155,6 @@ function MailModal({ candidate, jobTitle, onClose }) {
               </button>
             </div>
           </div>
-        )}
       </div>
     </div>
   )
@@ -469,19 +493,19 @@ export default function Candidates() {
   const isResumeMode = searchMode === 'resume'
 
   const activeJobId    = searchMode === 'job' ? selectedJobId : searchMode === 'resume' ? resumeJobId : null
-  const activeJobTitle = jobs.find(j => j.jobId === activeJobId)?.title || ''
+  const activeJob      = jobs.find(j => j.jobId === activeJobId) || null
 
   return (
     <div className="page">
 
       {mailTarget && (
-        <MailModal candidate={mailTarget} jobTitle={activeJobTitle} onClose={() => setMailTarget(null)} />
+        <MailModal candidate={mailTarget} job={activeJob} onClose={() => setMailTarget(null)} />
       )}
 
       {showBulkMail && resumeResults && (
         <BulkMailModal
           candidates={resumeResults.filter(r => r.status === 'success')}
-          jobTitle={activeJobTitle}
+          jobTitle={activeJob?.title || ''}
           onClose={() => setShowBulkMail(false)}
         />
       )}

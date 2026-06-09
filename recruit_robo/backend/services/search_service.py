@@ -161,12 +161,20 @@ async def _search_linkedin(query, location, exp_min, exp_max, limit, api_key):
     """Use Unipile with the first connected LinkedIn account."""
     try:
         from services.unipile_service import get_accounts, search_people
-        accounts = await get_accounts()
+        from services.portal_settings import get_linkedin_creds
+        creds = await get_linkedin_creds()
+        if not creds.get("unipile_api_key"):
+            print("[LinkedIn] Unipile API key not configured — falling back to mock")
+            return await _generate_candidates(query, "LinkedIn", location, exp_min, exp_max, limit)
+        accounts = await get_accounts(api_key=creds["unipile_api_key"], base_url=creds["unipile_base_url"])
         if not accounts:
             print("[LinkedIn] No account connected via Unipile — falling back to mock")
             return await _generate_candidates(query, "LinkedIn", location, exp_min, exp_max, limit)
         account_id = accounts[0]["id"]
-        candidates = await search_people(account_id=account_id, query=query, location=location or "", limit=limit)
+        candidates = await search_people(
+            account_id=account_id, query=query, location=location or "", limit=limit,
+            api_key=creds["unipile_api_key"], base_url=creds["unipile_base_url"],
+        )
         return candidates if candidates else await _generate_candidates(query, "LinkedIn", location, exp_min, exp_max, limit)
     except Exception as e:
         print(f"[LinkedIn] Unipile search error: {e}")
@@ -199,33 +207,41 @@ async def _search_indeed(query, location, exp_min, exp_max, limit, api_key):
     raise NotImplementedError("Indeed API key set but integration not yet wired")
 
 async def _search_naukri(query, location, exp_min, exp_max, limit, api_key):
-    from config import NAUKRI_EMAIL
+    from services.portal_settings import get_naukri_creds
+    from database import get_db
+
+    creds = await get_naukri_creds()
 
     # Tier 1: Browser-based login (bypasses Akamai bot protection)
-    if NAUKRI_EMAIL:
+    if creds.get("email") and creds.get("password"):
         try:
             from services.naukri_browser_service import search_candidates as browser_search
             candidates = await browser_search(
                 query=query, location=location or "",
                 experience_min=exp_min, experience_max=exp_max, limit=limit,
+                email=creds["email"], password=creds["password"],
             )
             if candidates:
                 return candidates
         except Exception as e:
             print(f"[Naukri] Browser search error: {e} — trying curl fallback")
 
-    # Tier 2: curl-based scraper (manual session paste)
-    try:
-        from services.naukri_service import scrape_naukri_candidates
-        from database import get_db
-        doc = await get_db()["settings"].find_one({"key": "naukri_session"})
-        curl = doc.get("curl_command", "") if doc else ""
-        if curl:
-            candidates = await scrape_naukri_candidates(curl_command=curl, max_results=limit)
-            if candidates:
-                return candidates
-    except Exception as e:
-        print(f"[Naukri] Curl scraper error: {e}")
+    # Tier 2: curl-based scraper via RapidAPI
+    if creds.get("rapidapi_key"):
+        try:
+            from services.naukri_service import scrape_naukri_candidates
+            doc  = await get_db()["settings"].find_one({"key": "naukri_session"})
+            curl = doc.get("curl_command", "") if doc else ""
+            if curl:
+                candidates = await scrape_naukri_candidates(
+                    curl_command=curl,
+                    max_results=limit,
+                    rapidapi_key=creds["rapidapi_key"],
+                )
+                if candidates:
+                    return candidates
+        except Exception as e:
+            print(f"[Naukri] Curl scraper error: {e}")
 
     print("[Naukri] No real data — using mock")
     return await _generate_candidates(query, "Naukri", location, exp_min, exp_max, limit)
