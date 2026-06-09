@@ -12,15 +12,6 @@ from services.job_manager       import get_job
 router = APIRouter()
 
 
-@router.post("/{job_id}")
-async def add_candidate_route(job_id: str, candidate: CandidateCreate):
-    if not candidate.email:
-        import re as _re, time as _time
-        slug = _re.sub(r"[^a-z0-9]", ".", candidate.name.lower())[:30]
-        candidate.email = f"ext.{slug}.{int(_time.time())}@portal.placeholder"
-    return await add_candidate(job_id, candidate)
-
-
 @router.post("/upload-resume")
 async def upload_to_pool(
     file: UploadFile = File(...),
@@ -81,6 +72,15 @@ async def upload_to_pool(
     result["email"] = parsed.get("email") or ""
     result["phone"] = parsed.get("phone") or ""
     return result
+
+
+@router.post("/{job_id}")
+async def add_candidate_route(job_id: str, candidate: CandidateCreate):
+    if not candidate.email:
+        import re as _re, time as _time
+        slug = _re.sub(r"[^a-z0-9]", ".", candidate.name.lower())[:30]
+        candidate.email = f"ext.{slug}.{int(_time.time())}@portal.placeholder"
+    return await add_candidate(job_id, candidate)
 
 
 @router.post("/{job_id}/upload-resume")
