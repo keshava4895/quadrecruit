@@ -225,17 +225,46 @@ def _extract_phone(text: str) -> str:
     return m.group(0).strip() if m else ""
 
 
+_NAME_SECTION_KEYWORDS = {
+    'key skills', 'skills', 'technical skills', 'soft skills', 'core competencies',
+    'profile summary', 'professional summary', 'summary', 'career summary',
+    'objective', 'career objective', 'professional objective',
+    'experience', 'work experience', 'professional experience', 'employment history',
+    'education', 'academic background', 'qualifications', 'academic qualifications',
+    'projects', 'project details', 'certifications', 'achievements', 'accomplishments',
+    'references', 'languages', 'contact', 'contact information', 'contact details',
+    'personal information', 'personal details', 'hobbies', 'interests',
+    'areas of expertise', 'host extender info', 'curriculum vitae', 'resume', 'cv',
+    'profile', 'about me', 'declaration', 'strengths', 'overview', 'highlights',
+}
+
+
 def _extract_name(text: str) -> str:
-    """Heuristic: first non-empty line that isn't an email/phone/URL and is ≤ 5 words."""
-    for line in text.splitlines():
+    """Heuristic: find the candidate's name in the first 25 lines of a resume."""
+    for line in text.splitlines()[:25]:
         line = line.strip()
         if not line:
             continue
-        if re.search(r"[@/\\:\d]{3,}", line):
+        # Skip email / URL / digit-heavy lines
+        if re.search(r"[@/\\]", line) or re.search(r"\d{4,}", line):
             continue
+        # Skip section headers ending with colon or dash
+        if re.search(r"[:\-–—]+\s*$", line):
+            continue
+        # Skip lines with brackets, pipes, or bullet symbols
+        if re.search(r"[\[\]<>|•●◆▪★]", line):
+            continue
+        # Skip known resume section keywords
+        clean = re.sub(r"\s*[:\-–—]+\s*$", "", line).strip().lower()
+        if clean in _NAME_SECTION_KEYWORDS:
+            continue
+        # A name: 2–4 words, each starting with uppercase (allow hyphens like Mary-Jane)
         words = line.split()
-        if 1 < len(words) <= 5 and all(w[0].isupper() for w in words if w.isalpha()):
-            return line
+        if 2 <= len(words) <= 4:
+            alpha_words = [re.sub(r"[^a-zA-Z]", "", w) for w in words]
+            alpha_words = [w for w in alpha_words if w]
+            if alpha_words and all(w[0].isupper() for w in alpha_words):
+                return line
     return ""
 
 

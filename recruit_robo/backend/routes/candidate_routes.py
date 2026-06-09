@@ -62,7 +62,15 @@ async def upload_and_screen(
         result["match_score"] = score
 
     # Always surface extracted contact info to the frontend
-    result["name"]  = parsed.get("name")  or file.filename or "Unknown"
+    # Clean name fallback: strip extension and underscores from filename
+    fallback_name = ""
+    if file.filename:
+        import re as _re
+        fn = _re.sub(r"\.(pdf|doc|docx|txt)$", "", file.filename, flags=_re.IGNORECASE)
+        fn = _re.sub(r"[_\-\.]+", " ", fn).strip()
+        fn = _re.sub(r"(?i)\b(resume|cv)\b", "", fn).strip()
+        fallback_name = " ".join(w.capitalize() for w in fn.split() if w) or file.filename
+    result["name"]  = parsed.get("name")  or fallback_name or "Unknown"
     result["email"] = parsed.get("email") or ""
     result["phone"] = parsed.get("phone") or ""
 
