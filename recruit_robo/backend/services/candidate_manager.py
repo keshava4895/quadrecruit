@@ -53,6 +53,35 @@ async def get_top_candidates(job_id: str, limit: int = 10) -> list:
     return candidates[:limit]
 
 
+async def list_all_candidates(search: str = "", status: str = "", skip: int = 0, limit: int = 50) -> dict:
+    db = get_db()
+    query: dict = {}
+    if status:
+        query["status"] = status
+    if search:
+        query["$or"] = [
+            {"name":  {"$regex": search, "$options": "i"}},
+            {"email": {"$regex": search, "$options": "i"}},
+            {"skills": {"$elemMatch": {"$regex": search, "$options": "i"}}},
+        ]
+    total = await db.candidate_info.count_documents(query)
+    cursor = db.candidate_info.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit)
+    candidates = await cursor.to_list(length=limit)
+
+    # Enrich each candidate with job count + best match score
+    for c in candidates:
+        cid = c.get("candidateId")
+        job_entries = await db.job_candidates.find(
+            {"candidateId": cid}, {"_id": 0, "jobId": 1, "match_score": 1, "status": 1, "title": 1}
+        ).to_list(20)
+        scores = [j.get("match_score", 0) for j in job_entries if j.get("match_score")]
+        c["job_count"]   = len(job_entries)
+        c["best_score"]  = max(scores) if scores else 0
+        c["job_entries"] = job_entries
+
+    return {"total": total, "candidates": candidates}
+
+
 async def get_candidate(candidate_id: str) -> dict | None:
     db = get_db()
     return await db.candidate_info.find_one(

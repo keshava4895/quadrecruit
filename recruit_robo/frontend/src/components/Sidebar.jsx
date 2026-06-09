@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Briefcase, Users, Cpu, UserCheck, GitBranch, BarChart2,
+  LayoutDashboard, Briefcase, Users, Cpu, UserCheck, GitBranch, BarChart2, Database,
   ChevronLeft, ChevronRight, LogOut,
   Link2, Link2Off, Settings, Mail, Eye, EyeOff, CheckCircle, ChevronUp,
 } from 'lucide-react'
@@ -14,7 +14,8 @@ const NAV = [
   { to: '/jobs',       label: 'Jobs',          icon: Briefcase },
   { to: '/candidates', label: 'Candidates',    icon: Users },
   { to: '/pipeline',   label: 'Pipeline',      icon: GitBranch },
-  { to: '/analytics',  label: 'Analytics',     icon: BarChart2 },
+  { to: '/analytics',           label: 'Analytics',   icon: BarChart2 },
+  { to: '/candidate-database',  label: 'Talent Pool',  icon: Database  },
   {
     to: '/upload', label: 'Resume Scorer', icon: Cpu,
     children: [

@@ -38,6 +38,7 @@ export const candidatesApi = {
   top:          (jobId, limit = 10) => api.get(`/candidates/${jobId}/top?limit=${limit}`),
   get:          (id)                => api.get(`/candidates/profile/${id}`),
   fullProfile:  (id)                => api.get(`/candidates/profile/${id}/full`),
+  listAll:      (params)            => api.get('/candidates/all', { params }),
   add:          (jobId, data)       => api.post(`/candidates/${jobId}`, data),
   remove:       (id, jobId)         => api.delete(`/candidates/${id}`, { params: { job_id: jobId } }),
   updateStatus: (id, status, jobId) => api.patch(`/candidates/${id}/status`, { status, jobId }),

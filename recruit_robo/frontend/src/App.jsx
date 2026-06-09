@@ -10,8 +10,9 @@ import Candidates       from './pages/Candidates'
 import UploadResume     from './pages/UploadResume'
 import Interviewers     from './pages/Interviewers'
 import Pipeline         from './pages/Pipeline'
-import CandidateProfile from './pages/CandidateProfile'
-import Analytics        from './pages/Analytics'
+import CandidateProfile  from './pages/CandidateProfile'
+import Analytics         from './pages/Analytics'
+import CandidateDatabase from './pages/CandidateDatabase'
 
 function PrivateRoute({ children }) {
   const { user } = useAuth()
@@ -49,6 +50,7 @@ function AppShell() {
           <Route path="/pipeline"                  element={<PrivateRoute><Pipeline /></PrivateRoute>} />
           <Route path="/candidates/:candidateId"   element={<PrivateRoute><CandidateProfile /></PrivateRoute>} />
           <Route path="/analytics"                 element={<PrivateRoute><Analytics /></PrivateRoute>} />
+          <Route path="/candidate-database"        element={<PrivateRoute><CandidateDatabase /></PrivateRoute>} />
           </Routes>
         </main>
       </div>

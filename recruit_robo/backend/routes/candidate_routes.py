@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from models.models import CandidateCreate
 from services.candidate_manager import (
-    add_candidate, get_top_candidates, get_candidate, update_status, delete_candidate
+    add_candidate, get_top_candidates, get_candidate, update_status,
+    delete_candidate, list_all_candidates,
 )
 from services.screening_service import screen_resume, extract_text_from_bytes
 from services.matching_service  import compute_match
@@ -79,6 +80,11 @@ async def upload_and_screen(
     result["phone"] = parsed.get("phone") or ""
 
     return result
+
+
+@router.get("/all")
+async def all_candidates(search: str = "", status: str = "", skip: int = 0, limit: int = 50):
+    return await list_all_candidates(search=search, status=status, skip=skip, limit=limit)
 
 
 @router.get("/{job_id}/top")
