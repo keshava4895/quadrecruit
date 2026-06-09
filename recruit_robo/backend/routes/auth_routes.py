@@ -85,16 +85,22 @@ async def delete_user(user_id: str, current_user=Depends(get_current_user)):
 # ── Email / SMTP settings per user ────────────────────────────────────────────
 
 class EmailSettingsBody(BaseModel):
-    smtp_pass: str
+    smtp_pass:  str
+    smtp_email: str = ""
 
 
 @router.post("/email-settings")
 async def save_email_settings(body: EmailSettingsBody, current_user=Depends(get_current_user)):
-    """Save the logged-in user's SMTP password so they can send emails from their own address."""
+    """Save the logged-in user's SMTP credentials (password + optional sending email)."""
     db = get_db()
+    update: dict = {"smtp_pass": body.smtp_pass}
+    if body.smtp_email.strip():
+        update["smtp_email"] = body.smtp_email.strip().lower()
+    else:
+        update["smtp_email"] = ""
     await db["users"].update_one(
         {"userId": current_user["userId"]},
-        {"$set": {"smtp_pass": body.smtp_pass}},
+        {"$set": update},
     )
     return {"saved": True}
 
@@ -105,9 +111,10 @@ async def get_email_settings(current_user=Depends(get_current_user)):
     db   = get_db()
     user = await db["users"].find_one({"userId": current_user["userId"]})
     configured = bool(user and user.get("smtp_pass"))
+    smtp_email = (user or {}).get("smtp_email", "") or current_user["email"]
     return {
         "configured": configured,
-        "email":      current_user["email"],
+        "email":      smtp_email,
     }
 
 

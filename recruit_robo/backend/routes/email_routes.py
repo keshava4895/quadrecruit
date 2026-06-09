@@ -33,7 +33,9 @@ async def send_via_smtp(req: SmtpSendRequest, current_user=Depends(get_current_u
     # Fall back to SMTP password
     db   = get_db()
     user = await db["users"].find_one({"userId": user_id})
-    smtp_pass = user.get("smtp_pass", "") if user else ""
+    smtp_pass  = user.get("smtp_pass",  "") if user else ""
+    smtp_email = user.get("smtp_email", "") if user else ""
+    from_email = smtp_email or current_user["email"]
 
     if not smtp_pass:
         raise HTTPException(
@@ -43,7 +45,7 @@ async def send_via_smtp(req: SmtpSendRequest, current_user=Depends(get_current_u
     try:
         return await send_email_smtp(
             to=req.to, subject=req.subject, body=req.body,
-            from_email=current_user["email"],
+            from_email=from_email,
             from_pass=smtp_pass,
         )
     except Exception as e:

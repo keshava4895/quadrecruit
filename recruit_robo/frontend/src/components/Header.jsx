@@ -28,7 +28,9 @@ export default function Header() {
 
   // Email settings state
   const [emailConfigured, setEmailConfigured] = useState(false)
+  const [emailConfiguredAddr, setEmailConfiguredAddr] = useState('')
   const [showEmailInput,  setShowEmailInput]  = useState(false)
+  const [emailAddr,       setEmailAddr]       = useState('')
   const [emailPass,       setEmailPass]       = useState('')
   const [showPass,        setShowPass]        = useState(false)
   const [emailSaving,     setEmailSaving]     = useState(false)
@@ -52,7 +54,10 @@ export default function Header() {
     if (!open) return
     linkedinApi.accounts().then(r => setLiAccounts(r.data.accounts || [])).catch(() => {})
     searchApi.getNaukriSession().then(r => setNaukriSession(r.data)).catch(() => {})
-    authApi.getEmailSettings().then(r => setEmailConfigured(r.data.configured)).catch(() => {})
+    authApi.getEmailSettings().then(r => {
+      setEmailConfigured(r.data.configured)
+      setEmailConfiguredAddr(r.data.email || '')
+    }).catch(() => {})
   }, [open])
 
   function handleLogout() {
@@ -290,17 +295,18 @@ export default function Header() {
                     }
                   </div>
                   <p className="text-xs text-gray-400 mb-2">
-                    Save your Outlook password so emails send from <strong>{user?.email}</strong>
+                    Configure your Outlook account for sending emails
                   </p>
 
                   {emailConfigured && !showEmailInput && (
                     <div className="flex gap-2 mb-2">
-                      <div className="flex-1 bg-gray-50 rounded-lg px-2.5 py-1.5 text-xs text-gray-500">
-                        Password saved ••••••••
+                      <div className="flex-1 bg-gray-50 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 truncate">
+                        {emailConfiguredAddr || 'Configured'} ••••••••
                       </div>
                       <button onClick={async () => {
                         await authApi.clearEmailSettings()
                         setEmailConfigured(false)
+                        setEmailConfiguredAddr('')
                         setEmailMsg('')
                       }} className="text-red-400 hover:text-red-600 px-1" title="Remove">
                         <Link2Off className="w-3.5 h-3.5" />
@@ -309,17 +315,24 @@ export default function Header() {
                   )}
 
                   {!showEmailInput ? (
-                    <button onClick={() => { setShowEmailInput(true); setEmailMsg('') }}
+                    <button onClick={() => { setShowEmailInput(true); setEmailMsg(''); setEmailAddr(emailConfiguredAddr || '') }}
                       className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-colors">
                       <Settings className="w-3 h-3" />
-                      {emailConfigured ? 'Update Password' : 'Set Email Password'}
+                      {emailConfigured ? 'Update Credentials' : 'Set Outlook Credentials'}
                     </button>
                   ) : (
                     <div className="space-y-2">
+                      <input
+                        type="email"
+                        placeholder="your@outlook.com"
+                        value={emailAddr}
+                        onChange={e => setEmailAddr(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                      />
                       <div className="relative">
                         <input
                           type={showPass ? 'text' : 'password'}
-                          placeholder="Your Outlook password"
+                          placeholder="Outlook password or App Password"
                           value={emailPass}
                           onChange={e => setEmailPass(e.target.value)}
                           className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 pr-8 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-gray-400"
@@ -337,13 +350,14 @@ export default function Header() {
                       )}
                       <div className="flex gap-2">
                         <button
-                          disabled={emailSaving || !emailPass.trim()}
+                          disabled={emailSaving || !emailPass.trim() || !emailAddr.trim()}
                           onClick={async () => {
                             setEmailSaving(true); setEmailMsg('')
                             try {
-                              await authApi.saveEmailSettings(emailPass.trim())
+                              await authApi.saveEmailSettings(emailPass.trim(), emailAddr.trim())
                               setEmailConfigured(true)
-                              setEmailMsg('Saved! Emails will send from your address.')
+                              setEmailConfiguredAddr(emailAddr.trim())
+                              setEmailMsg('Saved! Emails will send from your Outlook address.')
                               setEmailPass('')
                               setShowEmailInput(false)
                             } catch { setEmailMsg('Failed to save.') }
@@ -352,7 +366,7 @@ export default function Header() {
                           className="flex-1 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-white text-xs font-medium rounded-lg">
                           {emailSaving ? 'Saving…' : 'Save'}
                         </button>
-                        <button onClick={() => { setShowEmailInput(false); setEmailPass(''); setEmailMsg('') }}
+                        <button onClick={() => { setShowEmailInput(false); setEmailPass(''); setEmailAddr(''); setEmailMsg('') }}
                           className="flex-1 py-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-medium rounded-lg">
                           Cancel
                         </button>

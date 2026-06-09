@@ -19,7 +19,7 @@ export const authApi = {
   me:                ()         => api.get('/auth/me'),
   users:             ()         => api.get('/auth/users'),
   deleteUser:        (id)       => api.delete(`/auth/users/${id}`),
-  saveEmailSettings: (smtpPass) => api.post('/auth/email-settings', { smtp_pass: smtpPass }),
+  saveEmailSettings: (smtpPass, smtpEmail = '') => api.post('/auth/email-settings', { smtp_pass: smtpPass, smtp_email: smtpEmail }),
   getEmailSettings:  ()         => api.get('/auth/email-settings'),
   clearEmailSettings:()         => api.delete('/auth/email-settings'),
 }
