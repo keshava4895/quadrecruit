@@ -217,11 +217,10 @@ export default function JobDetail() {
 
       {/* Candidate table */}
       <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden mb-6">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
-          <div>
-            <h2 className="text-sm font-semibold text-zinc-900">Top Candidates</h2>
-            <p className="text-xs text-zinc-400 mt-0.5">Ranked by AI match score</p>
-          </div>
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 bg-zinc-50/60">
+          <span className="text-xs font-semibold text-zinc-700">Top Candidates
+            <span className="ml-2 text-zinc-400 font-normal">Ranked by AI match score</span>
+          </span>
           <div className="flex items-center gap-2">
             {selected.size > 0 && (
               <button
@@ -250,10 +249,10 @@ export default function JobDetail() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-zinc-100 bg-zinc-50/60">
-                  <th className="px-4 py-3 w-10">
+                <tr>
+                  <th className="px-3 py-2 bg-zinc-50 border-b border-zinc-200 w-10">
                     <input
                       type="checkbox"
                       checked={allChecked}
@@ -263,7 +262,7 @@ export default function JobDetail() {
                     />
                   </th>
                   {['#', 'Name', 'Skills', 'Exp', 'Email', 'Score', 'Status', 'Phase', ''].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wide whitespace-nowrap">
+                    <th key={h} className="px-3 py-2 text-left text-[11px] font-medium text-zinc-500 bg-zinc-50 border-b border-zinc-200 border-l border-zinc-100 whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -273,13 +272,9 @@ export default function JobDetail() {
                 {candidates.map((c, i) => {
                   const isSelected = selected.has(c.candidateId)
                   return (
-                    <tr
-                      key={c.candidateId}
-                      className={`border-b border-zinc-50 transition-colors last:border-0 ${
-                        isSelected ? 'bg-zinc-50' : 'hover:bg-zinc-50/60'
-                      }`}
-                    >
-                      <td className="px-4 py-3">
+                    <tr key={c.candidateId}
+                      className={`transition-colors ${isSelected ? 'bg-zinc-50' : 'hover:bg-zinc-50/80'}`}>
+                      <td className="px-3 py-1.5 border-b border-zinc-100">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -287,44 +282,42 @@ export default function JobDetail() {
                           className="w-3 h-3 rounded border-zinc-300 cursor-pointer accent-zinc-900"
                         />
                       </td>
-                      <td className="px-4 py-3 text-xs font-medium text-zinc-400">{i + 1}</td>
-                      <td className="px-4 py-3 font-medium whitespace-nowrap">
-                        <Link to={`/candidates/${c.candidateId}`} className="text-zinc-900 hover:text-blue-600 transition-colors">
+                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 text-[11px] text-zinc-400">{i + 1}</td>
+                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 whitespace-nowrap">
+                        <Link to={`/candidates/${c.candidateId}`} className="text-xs font-medium text-blue-600 hover:underline transition-colors">
                           {c.name}
                         </Link>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100">
                         <div className="flex flex-wrap gap-1">
                           {c.skills?.slice(0, 3).map(s => (
-                            <span key={s} className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 text-xs rounded">{s}</span>
+                            <span key={s} className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 text-[10px] rounded">{s}</span>
                           ))}
-                          {c.skills?.length > 3 && <span className="text-xs text-zinc-400">+{c.skills.length - 3}</span>}
+                          {c.skills?.length > 3 && <span className="text-[10px] text-zinc-400">+{c.skills.length - 3}</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-xs text-zinc-500 whitespace-nowrap">{c.experience}y</td>
-                      <td className="px-4 py-3 text-xs text-zinc-400 whitespace-nowrap">{c.email}</td>
-                      <td className="px-4 py-3"><ScoreBadge score={c.match_score} /></td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLE[c.status] || STATUS_STYLE.sourced}`}>
+                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 text-xs text-zinc-500 whitespace-nowrap">{c.experience}y</td>
+                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 text-xs text-zinc-400 whitespace-nowrap max-w-[160px] truncate">{c.email}</td>
+                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100"><ScoreBadge score={c.match_score} /></td>
+                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_STYLE[c.status] || STATUS_STYLE.sourced}`}>
                           {c.status?.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs text-zinc-400 whitespace-nowrap">
+                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 text-xs text-zinc-400 whitespace-nowrap">
                         {c.interview_phase?.replace(/_/g, ' ')}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => openEmail(c)}
-                            className="p-1.5 rounded-lg text-zinc-300 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Send email">
+                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100">
+                        <div className="flex gap-0.5">
+                          <button onClick={() => openEmail(c)}
+                            className="p-1 rounded text-zinc-300 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Send email">
                             <Mail className="w-3.5 h-3.5" />
                           </button>
-                          <button className="p-1.5 rounded-lg text-zinc-300 hover:text-zinc-700 hover:bg-zinc-100 transition-colors" title="Schedule interview">
+                          <button className="p-1 rounded text-zinc-300 hover:text-zinc-700 hover:bg-zinc-100 transition-colors" title="Schedule interview">
                             <Calendar className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() => deleteSingle(c)}
-                            className="p-1.5 rounded-lg text-zinc-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="Remove candidate">
+                          <button onClick={() => deleteSingle(c)}
+                            className="p-1 rounded text-zinc-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="Remove candidate">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>

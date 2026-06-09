@@ -5,7 +5,7 @@ from database import get_db
 from models.models import CandidateCreate
 
 
-async def add_candidate(job_id: str, candidate: CandidateCreate) -> dict:
+async def add_candidate(job_id: str, candidate: CandidateCreate, extra: dict = None) -> dict:
     db = get_db()
     candidate_id = f"C_{str(uuid4())[:8].upper()}"
     doc = candidate.model_dump()
@@ -17,6 +17,8 @@ async def add_candidate(job_id: str, candidate: CandidateCreate) -> dict:
         "match_score": 0.0,
         "created_at": datetime.now(timezone.utc),
     })
+    if extra:
+        doc.update(extra)
 
     await db.candidate_info.insert_one(doc)
     await db.job_candidates.insert_one(doc)
@@ -65,8 +67,12 @@ async def list_all_candidates(search: str = "", status: str = "", skip: int = 0,
             {"skills": {"$elemMatch": {"$regex": search, "$options": "i"}}},
         ]
     total = await db.candidate_info.count_documents(query)
-    cursor = db.candidate_info.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit)
-    candidates = await cursor.to_list(length=limit)
+    # Cosmos DB rejects sort+skip combos — fetch, sort in Python, then slice
+    fetch_limit = min(skip + limit, 1000)
+    cursor = db.candidate_info.find(query, {"_id": 0}).limit(fetch_limit)
+    all_cands = await cursor.to_list(length=fetch_limit)
+    all_cands.sort(key=lambda c: str(c.get("created_at", "")), reverse=True)
+    candidates = all_cands[skip: skip + limit]
 
     # Enrich each candidate with job count + best match score
     for c in candidates:
@@ -82,7 +88,7 @@ async def list_all_candidates(search: str = "", status: str = "", skip: int = 0,
     return {"total": total, "candidates": candidates}
 
 
-async def add_standalone_candidate(candidate: CandidateCreate) -> dict:
+async def add_standalone_candidate(candidate: CandidateCreate, extra: dict = None) -> dict:
     """Store a candidate in candidate_info only (no job link)."""
     db = get_db()
     candidate_id = f"C_{str(uuid4())[:8].upper()}"
@@ -94,6 +100,8 @@ async def add_standalone_candidate(candidate: CandidateCreate) -> dict:
         "match_score": 0.0,
         "created_at": datetime.now(timezone.utc),
     })
+    if extra:
+        doc.update(extra)
     await db.candidate_info.insert_one(doc)
     return {"candidateId": candidate_id}
 

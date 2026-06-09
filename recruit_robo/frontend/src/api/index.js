@@ -39,6 +39,7 @@ export const candidatesApi = {
   get:          (id)                => api.get(`/candidates/profile/${id}`),
   fullProfile:  (id)                => api.get(`/candidates/profile/${id}/full`),
   listAll:      (params)            => api.get('/candidates/all', { params }),
+  resumeUrl:    (id)              => api.get(`/candidates/${id}/resume-url`),
   uploadToPool: (file, jobId) => {
     const form = new FormData()
     form.append('file', file)

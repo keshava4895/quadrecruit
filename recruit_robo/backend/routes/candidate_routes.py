@@ -8,6 +8,7 @@ from services.screening_service import screen_resume, extract_text_from_bytes
 from services.matching_service  import compute_match
 from services.candidate_manager import update_match_score
 from services.job_manager       import get_job
+from services.blob_service      import upload_resume as blob_upload_resume, get_sas_url
 
 router = APIRouter()
 
@@ -52,8 +53,7 @@ async def upload_to_pool(
     )
 
     if job_id:
-        # Link to job — use existing flow
-        result = await add_candidate(job_id, candidate)
+        result       = await add_candidate(job_id, candidate)
         candidate_id = result["candidateId"]
         job = await get_job(job_id)
         if job:
@@ -66,7 +66,19 @@ async def upload_to_pool(
             await update_match_score(candidate_id, job_id, score)
             result["match_score"] = score
     else:
-        result = await add_standalone_candidate(candidate)
+        result       = await add_standalone_candidate(candidate)
+        candidate_id = result["candidateId"]
+
+    # Upload original file to Azure Blob Storage (best-effort — won't fail the request)
+    blob_name, resume_url = await blob_upload_resume(candidate_id, file.filename or "resume", file_bytes)
+    if blob_name:
+        from database import get_db as _get_db
+        db = _get_db()
+        await db.candidate_info.update_one(
+            {"candidateId": candidate_id},
+            {"$set": {"resume_blob": blob_name, "resume_url": resume_url}},
+        )
+        result["resume_url"] = resume_url
 
     result["name"]  = parsed.get("name")  or fallback_name or "Unknown"
     result["email"] = parsed.get("email") or ""
@@ -128,8 +140,18 @@ async def upload_and_screen(
         await update_match_score(candidate_id, job_id, score)
         result["match_score"] = score
 
-    # Always surface extracted contact info to the frontend
-    # Clean name fallback: strip extension and underscores from filename
+    # Upload original file to Azure Blob Storage (best-effort)
+    blob_name, resume_url = await blob_upload_resume(candidate_id, file.filename or "resume", file_bytes)
+    if blob_name:
+        from database import get_db as _get_db
+        db = _get_db()
+        await db.candidate_info.update_one(
+            {"candidateId": candidate_id},
+            {"$set": {"resume_blob": blob_name, "resume_url": resume_url}},
+        )
+        result["resume_url"] = resume_url
+
+    # Clean name fallback
     fallback_name = ""
     if file.filename:
         import re as _re
@@ -215,6 +237,21 @@ async def candidate_full_profile(candidate_id: str):
         "assignments": assignments,
         "timeline":    sorted(timelines, key=lambda x: x.get("ts", ""), reverse=True),
     }
+
+
+@router.get("/{candidate_id}/resume-url")
+async def candidate_resume_url(candidate_id: str):
+    """Return a fresh SAS URL for the candidate's stored resume file."""
+    c = await get_candidate(candidate_id)
+    if not c:
+        raise HTTPException(404, "Candidate not found")
+    blob_name = c.get("resume_blob")
+    if not blob_name:
+        raise HTTPException(404, "No resume file stored for this candidate")
+    url = get_sas_url(blob_name)
+    if not url:
+        raise HTTPException(503, "Blob storage not configured")
+    return {"url": url, "blob": blob_name}
 
 
 @router.patch("/{candidate_id}/status")

@@ -67,6 +67,10 @@ MONSTER_API_KEY   = os.getenv("MONSTER_API_KEY", "")
 GLASSDOOR_API_KEY = os.getenv("GLASSDOOR_API_KEY", "")
 GITHUB_TOKEN      = os.getenv("GITHUB_TOKEN", "")
 
+# Azure Blob Storage (resume files)
+AZURE_BLOB_CONNECTION_STRING = os.getenv("AZURE_BLOB_CONNECTION_STRING", "")
+AZURE_BLOB_CONTAINER         = os.getenv("AZURE_BLOB_CONTAINER", "resumes")
+
 # Zoho Recruit API (OAuth 2.0)
 ZOHO_CLIENT_ID     = os.getenv("ZOHO_CLIENT_ID", "")
 ZOHO_CLIENT_SECRET = os.getenv("ZOHO_CLIENT_SECRET", "")

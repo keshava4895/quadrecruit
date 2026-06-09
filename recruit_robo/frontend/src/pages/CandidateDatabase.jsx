@@ -21,7 +21,7 @@ const STATUS_STYLE = {
 }
 
 function inferSource(email) {
-  if (!email) return { label: 'Direct', color: 'bg-zinc-100 text-zinc-500' }
+  if (!email) return { label: 'Direct', color: 'bg-emerald-50 text-emerald-700' }
   if (email.includes('@portal.placeholder')) return { label: 'Portal',  color: 'bg-blue-50 text-blue-600' }
   if (email.includes('@placeholder'))        return { label: 'Upload',  color: 'bg-amber-50 text-amber-700' }
   return { label: 'Direct', color: 'bg-emerald-50 text-emerald-700' }
@@ -44,7 +44,7 @@ function ScoreBar({ score }) {
 function UploadModal({ onClose, onDone }) {
   const [jobs, setJobs]           = useState([])
   const [jobId, setJobId]         = useState('')
-  const [files, setFiles]         = useState([])   // [{file, status, result, error}]
+  const [files, setFiles]         = useState([])
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver]   = useState(false)
   const inputRef                  = useRef(null)
@@ -75,7 +75,6 @@ function UploadModal({ onClose, onDone }) {
   async function handleUpload() {
     if (!files.length) return
     setUploading(true)
-
     const updated = [...files]
     for (let i = 0; i < updated.length; i++) {
       if (updated[i].status === 'done') continue
@@ -90,7 +89,6 @@ function UploadModal({ onClose, onDone }) {
       }
       setFiles([...updated])
     }
-
     setUploading(false)
   }
 
@@ -106,7 +104,6 @@ function UploadModal({ onClose, onDone }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
 
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
           <div className="flex items-center gap-2">
             <CloudUpload className="w-4 h-4 text-violet-500" />
@@ -119,40 +116,28 @@ function UploadModal({ onClose, onDone }) {
         </div>
 
         <div className="p-5 space-y-4">
-
-          {/* Drag-drop zone */}
           <div
             onClick={() => !uploading && inputRef.current?.click()}
             onDragOver={e => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
             onDrop={e => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files) }}
             className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all
-              ${dragOver
-                ? 'border-violet-400 bg-violet-50'
-                : 'border-zinc-200 hover:border-violet-300 hover:bg-zinc-50'
-              } ${uploading ? 'pointer-events-none opacity-50' : ''}`}
+              ${dragOver ? 'border-violet-400 bg-violet-50' : 'border-zinc-200 hover:border-violet-300 hover:bg-zinc-50'}
+              ${uploading ? 'pointer-events-none opacity-50' : ''}`}
           >
             <Upload className="w-6 h-6 text-zinc-400 mx-auto mb-2" />
             <p className="text-sm font-medium text-zinc-700">
               Drop resume files here, or <span className="text-violet-600">click to browse</span>
             </p>
             <p className="text-xs text-zinc-400 mt-1">PDF, DOC, DOCX, TXT — multiple files supported</p>
-            <input
-              ref={inputRef}
-              type="file"
-              multiple
-              accept=".pdf,.doc,.docx,.txt"
-              className="hidden"
-              onChange={e => addFiles(e.target.files)}
-            />
+            <input ref={inputRef} type="file" multiple accept=".pdf,.doc,.docx,.txt"
+              className="hidden" onChange={e => addFiles(e.target.files)} />
           </div>
 
-          {/* File list */}
           {files.length > 0 && (
             <div className="space-y-1.5 max-h-48 overflow-y-auto">
               {files.map(({ file, status, result, error }) => (
-                <div key={file.name}
-                  className="flex items-center gap-3 px-3 py-2.5 bg-zinc-50 rounded-xl">
+                <div key={file.name} className="flex items-center gap-3 px-3 py-2.5 bg-zinc-50 rounded-xl">
                   <FileText className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-zinc-800 truncate">{file.name}</p>
@@ -167,8 +152,7 @@ function UploadModal({ onClose, onDone }) {
                   </div>
                   <div className="flex-shrink-0">
                     {status === 'pending'   && !uploading && (
-                      <button onClick={() => removeFile(file.name)}
-                        className="text-zinc-400 hover:text-red-500 transition-colors">
+                      <button onClick={() => removeFile(file.name)} className="text-zinc-400 hover:text-red-500 transition-colors">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -181,21 +165,15 @@ function UploadModal({ onClose, onDone }) {
             </div>
           )}
 
-          {/* Optional job link */}
           <div>
             <label className="block text-xs font-medium text-zinc-700 mb-1.5">
               Link to a job <span className="text-zinc-400 font-normal">(optional)</span>
             </label>
             <div className="relative">
-              <select
-                value={jobId}
-                onChange={e => setJobId(e.target.value)}
-                disabled={uploading}
+              <select value={jobId} onChange={e => setJobId(e.target.value)} disabled={uploading}
                 className="w-full pl-3 pr-8 py-2 text-sm border border-zinc-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-violet-500 appearance-none disabled:opacity-50">
                 <option value="">No job — add to pool only</option>
-                {jobs.map(j => (
-                  <option key={j.jobId} value={j.jobId}>{j.title}</option>
-                ))}
+                {jobs.map(j => <option key={j.jobId} value={j.jobId}>{j.title}</option>)}
               </select>
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
             </div>
@@ -207,7 +185,6 @@ function UploadModal({ onClose, onDone }) {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between px-5 py-4 border-t border-zinc-100 bg-zinc-50">
           <p className="text-xs text-zinc-400">
             {files.length === 0 ? 'No files selected' : `${files.length} file${files.length > 1 ? 's' : ''} selected`}
@@ -218,16 +195,13 @@ function UploadModal({ onClose, onDone }) {
               className="px-3 py-1.5 text-xs text-zinc-600 border border-zinc-200 rounded-lg hover:bg-zinc-100 disabled:opacity-40 transition-colors">
               Cancel
             </button>
-            <button
-              onClick={handleUpload}
-              disabled={files.length === 0 || uploading || allDone}
+            <button onClick={handleUpload} disabled={files.length === 0 || uploading || allDone}
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white rounded-lg transition-colors">
               {uploading
                 ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading…</>
                 : allDone
                   ? <><CheckCircle className="w-3.5 h-3.5" /> Done</>
-                  : <><Upload className="w-3.5 h-3.5" /> Upload {files.length > 0 ? files.length : ''} Resume{files.length !== 1 ? 's' : ''}</>
-              }
+                  : <><Upload className="w-3.5 h-3.5" /> Upload {files.length > 0 ? files.length : ''} Resume{files.length !== 1 ? 's' : ''}</>}
             </button>
           </div>
         </div>
@@ -236,22 +210,28 @@ function UploadModal({ onClose, onDone }) {
   )
 }
 
+// ── Shared cell classes (matches Analytics grid style) ────────────────────────
+const TH  = 'px-3 py-2 text-left text-[11px] font-medium text-zinc-500 bg-zinc-50 border-b border-zinc-200 whitespace-nowrap'
+const THL = `${TH} border-l border-zinc-100`
+const TD  = 'px-3 py-1.5 text-xs text-zinc-700 border-b border-zinc-100'
+const TDL = `${TD} border-l border-zinc-100`
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 25
 
 export default function CandidateDatabase() {
-  const [candidates, setCandidates]   = useState([])
-  const [total, setTotal]             = useState(0)
-  const [loading, setLoading]         = useState(true)
-  const [search, setSearch]           = useState('')
-  const [statusFilter, setStatus]     = useState('')
-  const [page, setPage]               = useState(0)
-  const [deleting, setDeleting]       = useState(null)
-  const [showUpload, setShowUpload]   = useState(false)
-  const [selected, setSelected]       = useState(new Set())
+  const [candidates, setCandidates]     = useState([])
+  const [total, setTotal]               = useState(0)
+  const [loading, setLoading]           = useState(true)
+  const [search, setSearch]             = useState('')
+  const [statusFilter, setStatus]       = useState('')
+  const [page, setPage]                 = useState(0)
+  const [deleting, setDeleting]         = useState(null)
+  const [showUpload, setShowUpload]     = useState(false)
+  const [selected, setSelected]         = useState(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
-  const searchTimer                   = useRef(null)
-  const selectAllRef                  = useRef(null)
+  const searchTimer                     = useRef(null)
+  const selectAllRef                    = useRef(null)
 
   const load = useCallback((q = search, s = statusFilter, p = page) => {
     setLoading(true)
@@ -264,24 +244,19 @@ export default function CandidateDatabase() {
   useEffect(() => { load() }, [])
 
   function onSearchChange(val) {
-    setSearch(val)
-    setPage(0)
+    setSearch(val); setPage(0)
     clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(() => load(val, statusFilter, 0), 350)
   }
 
   function onStatusChange(val) {
-    setStatus(val)
-    setPage(0)
-    load(search, val, 0)
+    setStatus(val); setPage(0); load(search, val, 0)
   }
 
   function onPageChange(newPage) {
-    setPage(newPage)
-    load(search, statusFilter, newPage)
+    setPage(newPage); load(search, statusFilter, newPage)
   }
 
-  // keep indeterminate checkbox in sync
   useEffect(() => {
     if (!selectAllRef.current) return
     const allChecked  = candidates.length > 0 && candidates.every(c => selected.has(c.candidateId))
@@ -291,11 +266,7 @@ export default function CandidateDatabase() {
   }, [selected, candidates])
 
   function toggleOne(id) {
-    setSelected(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
   }
 
   function toggleAll() {
@@ -322,8 +293,7 @@ export default function CandidateDatabase() {
   async function deleteSelected() {
     if (!window.confirm(`Permanently delete ${selected.size} candidate${selected.size > 1 ? 's' : ''}? This cannot be undone.`)) return
     setBulkDeleting(true)
-    const ids = [...selected]
-    for (const id of ids) {
+    for (const id of [...selected]) {
       try {
         await candidatesApi.remove(id)
         setCandidates(prev => prev.filter(x => x.candidateId !== id))
@@ -343,8 +313,7 @@ export default function CandidateDatabase() {
         <UploadModal
           onClose={() => setShowUpload(false)}
           onDone={() => {
-            setPage(0)
-            setLoading(true)
+            setPage(0); setLoading(true)
             candidatesApi.listAll({ search, status: statusFilter, skip: 0, limit: PAGE_SIZE })
               .then(r => { setCandidates(r.data.candidates || []); setTotal(r.data.total || 0) })
               .catch(() => {})
@@ -353,23 +322,18 @@ export default function CandidateDatabase() {
         />
       )}
 
-      {/* Header */}
+      {/* Page header */}
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
-            <Database className="w-5 h-5 text-violet-500" /> Candidate Database
-          </h1>
-          <p className="text-sm text-zinc-400 mt-0.5">
-            {total > 0 ? `${total.toLocaleString()} candidates stored` : 'All candidates in your database'}
-          </p>
+        <div className="flex items-center gap-2">
+          <Database className="w-5 h-5 text-violet-500" />
+          <h1 className="text-lg font-bold text-zinc-900">Talent Pool</h1>
+          <span className="text-xs text-zinc-400 ml-1">Candidate database</span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {selected.size > 0 && (
             <button onClick={deleteSelected} disabled={bulkDeleting}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-lg transition-colors">
-              {bulkDeleting
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : <Trash2 className="w-3.5 h-3.5" />}
+              {bulkDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
               Delete {selected.size} selected
             </button>
           )}
@@ -384,41 +348,50 @@ export default function CandidateDatabase() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
-          <input
-            type="text"
-            placeholder="Search name, email, skills…"
-            value={search}
-            onChange={e => onSearchChange(e.target.value)}
-            className="w-full pl-9 pr-8 py-2 text-sm border border-zinc-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-          {search && (
-            <button onClick={() => onSearchChange('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        <div className="relative">
-          <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
-          <select
-            value={statusFilter}
-            onChange={e => onStatusChange(e.target.value)}
-            className="pl-8 pr-4 py-2 text-sm border border-zinc-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none">
-            <option value="">All statuses</option>
-            {STATUS_OPTS.filter(Boolean).map(s => (
-              <option key={s} value={s}>{s.replace('_', ' ').replace(/^\w/, c => c.toUpperCase())}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Table */}
+      {/* White panel — panel header + filters + table all in one card */}
       <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
+
+        {/* Panel header strip (matches Analytics style) */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 bg-zinc-50/60 flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="Search name, email, skills…"
+                value={search}
+                onChange={e => onSearchChange(e.target.value)}
+                className="pl-7 pr-6 py-1 text-[11px] border border-zinc-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 w-52"
+              />
+              {search && (
+                <button onClick={() => onSearchChange('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Status filter */}
+            <div className="relative">
+              <Filter className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-400 pointer-events-none" />
+              <select value={statusFilter} onChange={e => onStatusChange(e.target.value)}
+                className="pl-6 pr-6 py-1 text-[11px] border border-zinc-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 appearance-none cursor-pointer">
+                <option value="">All statuses</option>
+                {STATUS_OPTS.filter(Boolean).map(s => (
+                  <option key={s} value={s}>{s.replace('_', ' ').replace(/^\w/, c => c.toUpperCase())}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-400 pointer-events-none" />
+            </div>
+          </div>
+
+          <span className="text-[11px] text-zinc-400">
+            {total > 0 ? `${total.toLocaleString()} candidate${total !== 1 ? 's' : ''}` : 'No candidates yet'}
+          </span>
+        </div>
+
+        {/* Table content */}
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-zinc-400">
             <Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Loading…</span>
@@ -441,120 +414,122 @@ export default function CandidateDatabase() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-zinc-50 border-b border-zinc-200">
+            <table className="w-full border-collapse text-xs">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 w-8">
+                  <th className={TH + ' w-8'}>
                     <input type="checkbox" ref={selectAllRef} onChange={toggleAll}
                       className="w-3 h-3 rounded accent-zinc-900 cursor-pointer" />
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 w-8">#</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500">Candidate</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500">Contact</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500">Skills</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500">Exp</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500">Best Score</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500">Jobs</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500">Source</th>
-                  <th className="px-4 py-3 w-10" />
+                  <th className={`${THL} w-8`}>#</th>
+                  <th className={THL}>Candidate</th>
+                  <th className={THL}>Contact</th>
+                  <th className={THL}>Skills</th>
+                  <th className={THL}>Exp</th>
+                  <th className={THL}>Best Score</th>
+                  <th className={THL}>Jobs</th>
+                  <th className={THL}>Status</th>
+                  <th className={THL}>Source</th>
+                  <th className={`${THL} w-10`} />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-50">
+              <tbody>
                 {candidates.map((c, i) => {
                   const src = inferSource(c.email)
                   const displayEmail = c.email?.includes('@portal.placeholder') || c.email?.includes('@placeholder') ? '' : c.email
+                  const isSelected = selected.has(c.candidateId)
+                  const rowBase = isSelected ? 'bg-red-50/40' : 'hover:bg-zinc-50/80'
                   return (
-                    <tr key={c.candidateId}
-                      className={`transition-colors group ${selected.has(c.candidateId) ? 'bg-red-50/40' : 'hover:bg-zinc-50'}`}>
-                      <td className="px-4 py-3">
+                    <tr key={c.candidateId} className={`transition-colors group ${rowBase}`}>
+                      <td className={TD}>
                         <input type="checkbox"
-                          checked={selected.has(c.candidateId)}
+                          checked={isSelected}
                           onChange={() => toggleOne(c.candidateId)}
                           className="w-3 h-3 rounded accent-zinc-900 cursor-pointer" />
                       </td>
-                      <td className="px-4 py-3 text-xs text-zinc-400">{page * PAGE_SIZE + i + 1}</td>
+                      <td className={`${TDL} text-zinc-400`}>{page * PAGE_SIZE + i + 1}</td>
 
-                      <td className="px-4 py-3">
+                      <td className={TDL}>
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-zinc-900 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
                             {c.name?.charAt(0)?.toUpperCase()}
                           </div>
                           <div>
                             <Link to={`/candidates/${c.candidateId}`}
-                              className="font-medium text-zinc-900 hover:text-blue-600 transition-colors whitespace-nowrap flex items-center gap-1">
+                              className="font-medium text-blue-600 hover:underline whitespace-nowrap flex items-center gap-1">
                               {c.name}
-                              <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                              <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-50 transition-opacity" />
                             </Link>
                             <p className="text-[10px] text-zinc-400 font-mono">{c.candidateId}</p>
                           </div>
                         </div>
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td className={TDL}>
                         <div className="space-y-0.5">
                           {displayEmail && (
                             <a href={`mailto:${displayEmail}`}
-                              className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-800 transition-colors whitespace-nowrap">
+                              className="flex items-center gap-1 text-zinc-500 hover:text-zinc-800 transition-colors whitespace-nowrap">
                               <Mail className="w-3 h-3 flex-shrink-0" />
-                              <span className="max-w-[140px] truncate">{displayEmail}</span>
+                              <span className="max-w-[130px] truncate">{displayEmail}</span>
                             </a>
                           )}
                           {c.phone && (
-                            <p className="flex items-center gap-1 text-xs text-zinc-400">
+                            <p className="flex items-center gap-1 text-zinc-400">
                               <Phone className="w-3 h-3 flex-shrink-0" />{c.phone}
                             </p>
                           )}
+                          {!displayEmail && !c.phone && <span className="text-zinc-300">—</span>}
                         </div>
                       </td>
 
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1 max-w-[180px]">
+                      <td className={TDL}>
+                        <div className="flex flex-wrap gap-1 max-w-[170px]">
                           {c.skills?.slice(0, 3).map(s => (
                             <span key={s} className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[10px]">{s}</span>
                           ))}
                           {c.skills?.length > 3 && (
                             <span className="text-[10px] text-zinc-400">+{c.skills.length - 3}</span>
                           )}
-                          {(!c.skills || c.skills.length === 0) && <span className="text-xs text-zinc-300">—</span>}
+                          {(!c.skills || c.skills.length === 0) && <span className="text-zinc-300">—</span>}
                         </div>
                       </td>
 
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className={TDL + ' whitespace-nowrap'}>
                         {c.experience > 0 ? (
-                          <span className="flex items-center gap-1 text-xs text-zinc-600">
+                          <span className="flex items-center gap-1 text-zinc-600">
                             <Briefcase className="w-3 h-3 text-zinc-400" />{c.experience} yr{c.experience !== 1 ? 's' : ''}
                           </span>
-                        ) : <span className="text-zinc-300 text-xs">—</span>}
+                        ) : <span className="text-zinc-300">—</span>}
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td className={TDL}>
                         <ScoreBar score={c.best_score} />
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td className={TDL + ' text-center'}>
                         {c.job_count > 0 ? (
                           <span className="inline-flex items-center justify-center w-5 h-5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-full">
                             {c.job_count}
                           </span>
-                        ) : <span className="text-zinc-300 text-xs">—</span>}
+                        ) : <span className="text-zinc-300">—</span>}
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td className={TDL}>
                         {c.status ? (
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${STATUS_STYLE[c.status] || STATUS_STYLE.sourced}`}>
                             {c.status.replace('_', ' ')}
                           </span>
-                        ) : <span className="text-zinc-300 text-xs">—</span>}
+                        ) : <span className="text-zinc-300">—</span>}
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td className={TDL}>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${src.color}`}>
                           {src.label}
                         </span>
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td className={TDL}>
                         <button
                           onClick={() => handleDelete(c)}
                           disabled={deleting === c.candidateId}
@@ -572,43 +547,37 @@ export default function CandidateDatabase() {
             </table>
           </div>
         )}
-      </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4 px-1">
-          <p className="text-xs text-zinc-400">
-            Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total.toLocaleString()}
-          </p>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onPageChange(page - 1)}
-              disabled={page === 0}
-              className="p-1.5 rounded-lg border border-zinc-200 text-zinc-500 hover:bg-zinc-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-              <ChevronLeft className="w-3.5 h-3.5" />
-            </button>
-            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-              const p = totalPages <= 7 ? i : page < 4 ? i : page > totalPages - 4 ? totalPages - 7 + i : page - 3 + i
-              return (
-                <button key={p} onClick={() => onPageChange(p)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border ${
-                    p === page
-                      ? 'bg-zinc-900 text-white border-zinc-900'
-                      : 'border-zinc-200 text-zinc-500 hover:bg-zinc-50'
-                  }`}>
-                  {p + 1}
-                </button>
-              )
-            })}
-            <button
-              onClick={() => onPageChange(page + 1)}
-              disabled={page >= totalPages - 1}
-              className="p-1.5 rounded-lg border border-zinc-200 text-zinc-500 hover:bg-zinc-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
+        {/* Pagination — inside the card */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-2.5 border-t border-zinc-100 bg-zinc-50/40">
+            <p className="text-[11px] text-zinc-400">
+              Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total.toLocaleString()}
+            </p>
+            <div className="flex items-center gap-1">
+              <button onClick={() => onPageChange(page - 1)} disabled={page === 0}
+                className="p-1 rounded border border-zinc-200 text-zinc-500 hover:bg-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                const p = totalPages <= 7 ? i : page < 4 ? i : page > totalPages - 4 ? totalPages - 7 + i : page - 3 + i
+                return (
+                  <button key={p} onClick={() => onPageChange(p)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors border ${
+                      p === page ? 'bg-zinc-900 text-white border-zinc-900' : 'border-zinc-200 text-zinc-500 hover:bg-zinc-50'
+                    }`}>
+                    {p + 1}
+                  </button>
+                )
+              })}
+              <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages - 1}
+                className="p-1 rounded border border-zinc-200 text-zinc-500 hover:bg-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
