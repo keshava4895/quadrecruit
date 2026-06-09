@@ -5,7 +5,7 @@ import {
   Database, Search, X, Filter, Users, ChevronLeft, ChevronRight,
   Loader2, RefreshCw, Mail, Phone, Briefcase, Trash2,
   ExternalLink, Upload, FileText, CheckCircle, AlertCircle,
-  CloudUpload, ChevronDown,
+  CloudUpload, ChevronDown, ShieldAlert,
 } from 'lucide-react'
 
 const STATUS_OPTS = ['', 'sourced', 'emailed', 'interested', 'scheduled', 'selected', 'rejected', 'no_response']
@@ -92,8 +92,11 @@ function UploadModal({ onClose, onDone }) {
     }
 
     setUploading(false)
-    const anyDone = updated.some(x => x.status === 'done')
-    if (anyDone) setTimeout(() => { onDone(); onClose() }, 800)
+  }
+
+  function handleClose() {
+    if (files.some(f => f.status === 'done')) onDone()
+    onClose()
   }
 
   const allDone    = files.length > 0 && files.every(x => x.status === 'done')
@@ -109,7 +112,7 @@ function UploadModal({ onClose, onDone }) {
             <CloudUpload className="w-4 h-4 text-violet-500" />
             <h2 className="text-sm font-semibold text-zinc-900">Upload Resumes to Talent Pool</h2>
           </div>
-          <button onClick={onClose} disabled={uploading}
+          <button onClick={handleClose} disabled={uploading}
             className="text-zinc-400 hover:text-zinc-700 disabled:opacity-40 transition-colors">
             <X className="w-4 h-4" />
           </button>
@@ -211,7 +214,7 @@ function UploadModal({ onClose, onDone }) {
             {uploading && pendingCnt > 0 && ` · ${pendingCnt} remaining`}
           </p>
           <div className="flex gap-2">
-            <button onClick={onClose} disabled={uploading}
+            <button onClick={handleClose} disabled={uploading}
               className="px-3 py-1.5 text-xs text-zinc-600 border border-zinc-200 rounded-lg hover:bg-zinc-100 disabled:opacity-40 transition-colors">
               Cancel
             </button>
@@ -237,15 +240,18 @@ function UploadModal({ onClose, onDone }) {
 const PAGE_SIZE = 25
 
 export default function CandidateDatabase() {
-  const [candidates, setCandidates] = useState([])
-  const [total, setTotal]           = useState(0)
-  const [loading, setLoading]       = useState(true)
-  const [search, setSearch]         = useState('')
-  const [statusFilter, setStatus]   = useState('')
-  const [page, setPage]             = useState(0)
-  const [deleting, setDeleting]     = useState(null)
-  const [showUpload, setShowUpload] = useState(false)
-  const searchTimer                 = useRef(null)
+  const [candidates, setCandidates]   = useState([])
+  const [total, setTotal]             = useState(0)
+  const [loading, setLoading]         = useState(true)
+  const [search, setSearch]           = useState('')
+  const [statusFilter, setStatus]     = useState('')
+  const [page, setPage]               = useState(0)
+  const [deleting, setDeleting]       = useState(null)
+  const [showUpload, setShowUpload]   = useState(false)
+  const [selected, setSelected]       = useState(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const searchTimer                   = useRef(null)
+  const selectAllRef                  = useRef(null)
 
   const load = useCallback((q = search, s = statusFilter, p = page) => {
     setLoading(true)
@@ -275,15 +281,57 @@ export default function CandidateDatabase() {
     load(search, statusFilter, newPage)
   }
 
+  // keep indeterminate checkbox in sync
+  useEffect(() => {
+    if (!selectAllRef.current) return
+    const allChecked  = candidates.length > 0 && candidates.every(c => selected.has(c.candidateId))
+    const someChecked = candidates.some(c => selected.has(c.candidateId))
+    selectAllRef.current.checked       = allChecked
+    selectAllRef.current.indeterminate = !allChecked && someChecked
+  }, [selected, candidates])
+
+  function toggleOne(id) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    const allChecked = candidates.every(c => selected.has(c.candidateId))
+    if (allChecked) {
+      setSelected(prev => { const next = new Set(prev); candidates.forEach(c => next.delete(c.candidateId)); return next })
+    } else {
+      setSelected(prev => { const next = new Set(prev); candidates.forEach(c => next.add(c.candidateId)); return next })
+    }
+  }
+
   async function handleDelete(c) {
     if (!window.confirm(`Permanently delete ${c.name} from the database? This cannot be undone.`)) return
     setDeleting(c.candidateId)
     try {
       await candidatesApi.remove(c.candidateId)
       setCandidates(prev => prev.filter(x => x.candidateId !== c.candidateId))
+      setSelected(prev => { const next = new Set(prev); next.delete(c.candidateId); return next })
       setTotal(t => t - 1)
     } catch {}
     setDeleting(null)
+  }
+
+  async function deleteSelected() {
+    if (!window.confirm(`Permanently delete ${selected.size} candidate${selected.size > 1 ? 's' : ''}? This cannot be undone.`)) return
+    setBulkDeleting(true)
+    const ids = [...selected]
+    for (const id of ids) {
+      try {
+        await candidatesApi.remove(id)
+        setCandidates(prev => prev.filter(x => x.candidateId !== id))
+        setTotal(t => t - 1)
+      } catch {}
+    }
+    setSelected(new Set())
+    setBulkDeleting(false)
   }
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
@@ -294,7 +342,14 @@ export default function CandidateDatabase() {
       {showUpload && (
         <UploadModal
           onClose={() => setShowUpload(false)}
-          onDone={() => { setPage(0); load(search, statusFilter, 0) }}
+          onDone={() => {
+            setPage(0)
+            setLoading(true)
+            candidatesApi.listAll({ search, status: statusFilter, skip: 0, limit: PAGE_SIZE })
+              .then(r => { setCandidates(r.data.candidates || []); setTotal(r.data.total || 0) })
+              .catch(() => {})
+              .finally(() => setLoading(false))
+          }}
         />
       )}
 
@@ -308,7 +363,16 @@ export default function CandidateDatabase() {
             {total > 0 ? `${total.toLocaleString()} candidates stored` : 'All candidates in your database'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {selected.size > 0 && (
+            <button onClick={deleteSelected} disabled={bulkDeleting}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-lg transition-colors">
+              {bulkDeleting
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Trash2 className="w-3.5 h-3.5" />}
+              Delete {selected.size} selected
+            </button>
+          )}
           <button onClick={() => load()}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-500 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
@@ -380,6 +444,10 @@ export default function CandidateDatabase() {
             <table className="w-full text-sm">
               <thead className="bg-zinc-50 border-b border-zinc-200">
                 <tr>
+                  <th className="px-4 py-3 w-8">
+                    <input type="checkbox" ref={selectAllRef} onChange={toggleAll}
+                      className="w-3 h-3 rounded accent-zinc-900 cursor-pointer" />
+                  </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 w-8">#</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500">Candidate</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500">Contact</th>
@@ -397,7 +465,14 @@ export default function CandidateDatabase() {
                   const src = inferSource(c.email)
                   const displayEmail = c.email?.includes('@portal.placeholder') || c.email?.includes('@placeholder') ? '' : c.email
                   return (
-                    <tr key={c.candidateId} className="hover:bg-zinc-50 transition-colors group">
+                    <tr key={c.candidateId}
+                      className={`transition-colors group ${selected.has(c.candidateId) ? 'bg-red-50/40' : 'hover:bg-zinc-50'}`}>
+                      <td className="px-4 py-3">
+                        <input type="checkbox"
+                          checked={selected.has(c.candidateId)}
+                          onChange={() => toggleOne(c.candidateId)}
+                          className="w-3 h-3 rounded accent-zinc-900 cursor-pointer" />
+                      </td>
                       <td className="px-4 py-3 text-xs text-zinc-400">{page * PAGE_SIZE + i + 1}</td>
 
                       <td className="px-4 py-3">
