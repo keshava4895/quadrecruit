@@ -160,28 +160,26 @@ function MailModal({ candidate, job, onClose }) {
   )
 }
 
-function BulkMailModal({ candidates, jobTitle, onClose }) {
-  const [drafts,   setDrafts]   = useState([])
-  const [loading,  setLoading]  = useState(true)
+function BulkMailModal({ candidates, job, onClose }) {
+  const { user }   = useAuth()
+  const [drafts,   setDrafts]   = useState(() =>
+    candidates.map(c => ({ ...buildTemplate(c, job, user), name: c.name, email: c.email || '' }))
+  )
   const [expanded, setExpanded] = useState(null)
   const [sent,     setSent]     = useState({})
+  const [sending,  setSending]  = useState({})
 
-  useEffect(() => {
-    emailApi.bulkDraft(
-      candidates.map(c => ({ name: c.name, email: c.email, phone: c.phone })),
-      jobTitle
-    )
-      .then(r => setDrafts(r.data.drafts))
-      .catch(() => setDrafts(candidates.map(c => ({
-        name: c.name, email: c.email, phone: c.phone,
-        subject: 'Exciting Opportunity', body: '',
-      }))))
-      .finally(() => setLoading(false))
-  }, [])
-
-  const handleSend = (draft, i) => {
-    window.open(`mailto:${draft.email}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`)
-    setSent(s => ({ ...s, [i]: true }))
+  const handleSend = async (draft, i) => {
+    if (!draft.email) return
+    setSending(s => ({ ...s, [i]: true }))
+    try {
+      await emailApi.send(draft.email, draft.subject, draft.body)
+      setSent(s => ({ ...s, [i]: true }))
+    } catch {
+      // noop — individual modal shows error detail if needed
+    } finally {
+      setSending(s => ({ ...s, [i]: false }))
+    }
   }
 
   const sendableCount = drafts.filter(d => d.email).length
@@ -193,9 +191,9 @@ function BulkMailModal({ candidates, jobTitle, onClose }) {
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
           <div>
-            <p className="text-sm font-semibold text-zinc-900">Bulk Outreach Email</p>
+            <p className="text-sm font-semibold text-zinc-900">Bulk Send Mail</p>
             <p className="text-xs text-zinc-400 mt-0.5">
-              {candidates.length} candidate{candidates.length !== 1 ? 's' : ''} · AI-drafted · replies auto-classified
+              {candidates.length} candidate{candidates.length !== 1 ? 's' : ''} · template pre-filled · sent via SMTP
             </p>
           </div>
           <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 transition-colors">
@@ -204,80 +202,75 @@ function BulkMailModal({ candidates, jobTitle, onClose }) {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-2 text-zinc-400">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span className="text-sm">Drafting emails for {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}…</span>
-            </div>
-          ) : (
-            <div className="divide-y divide-zinc-50">
-              {drafts.map((d, i) => (
-                <div key={i} className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-xs font-semibold text-zinc-600 flex-shrink-0">
-                      {d.name?.charAt(0) || '?'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-zinc-900">{d.name}</p>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        {d.email && <span className="text-xs text-zinc-400">{d.email}</span>}
-                        {d.phone && <span className="text-xs text-zinc-400">{d.phone}</span>}
-                        {!d.email && <span className="text-xs text-amber-500">No email found</span>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button onClick={() => setExpanded(expanded === i ? null : i)}
-                        className="text-xs text-zinc-500 hover:text-zinc-800 px-2 py-1 rounded border border-zinc-200 hover:border-zinc-400 transition-colors">
-                        {expanded === i ? 'Hide' : 'Preview'}
-                      </button>
-                      {d.email ? (
-                        <button onClick={() => handleSend(d, i)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                            sent[i]
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-zinc-900 text-white hover:bg-zinc-700'
-                          }`}>
-                          {sent[i] ? <CheckCircle className="w-3.5 h-3.5" /> : <Mail className="w-3.5 h-3.5" />}
-                          {sent[i] ? 'Opened' : 'Send'}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-zinc-300 px-3 py-1.5">No email</span>
-                      )}
+          <div className="divide-y divide-zinc-50">
+            {drafts.map((d, i) => (
+              <div key={i} className="px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-xs font-semibold text-zinc-600 flex-shrink-0">
+                    {d.name?.charAt(0) || '?'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-zinc-900">{d.name}</p>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      {d.email && <span className="text-xs text-zinc-400">{d.email}</span>}
+                      {!d.email && <span className="text-xs text-amber-500">No email found</span>}
                     </div>
                   </div>
-
-                  {expanded === i && (
-                    <div className="mt-3 ml-11 space-y-2">
-                      <div>
-                        <p className="text-[11px] font-medium text-zinc-400 mb-1">Subject</p>
-                        <p className="text-xs text-zinc-700 bg-zinc-50 rounded-lg px-3 py-2">{d.subject}</p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-medium text-zinc-400 mb-1">Body</p>
-                        <p className="text-xs text-zinc-700 bg-zinc-50 rounded-lg px-3 py-2 whitespace-pre-wrap leading-relaxed">{d.body}</p>
-                      </div>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button onClick={() => setExpanded(expanded === i ? null : i)}
+                      className="text-xs text-zinc-500 hover:text-zinc-800 px-2 py-1 rounded border border-zinc-200 hover:border-zinc-400 transition-colors">
+                      {expanded === i ? 'Hide' : 'Preview'}
+                    </button>
+                    {d.email ? (
+                      <button onClick={() => handleSend(d, i)}
+                        disabled={sending[i] || sent[i]}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-40 ${
+                          sent[i]
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-zinc-900 text-white hover:bg-zinc-700'
+                        }`}>
+                        {sent[i]
+                          ? <><CheckCircle className="w-3.5 h-3.5" /> Sent</>
+                          : sending[i]
+                            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+                            : <><Mail className="w-3.5 h-3.5" /> Send</>
+                        }
+                      </button>
+                    ) : (
+                      <span className="text-xs text-zinc-300 px-3 py-1.5">No email</span>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+
+                {expanded === i && (
+                  <div className="mt-3 ml-11 space-y-2">
+                    <div>
+                      <p className="text-[11px] font-medium text-zinc-400 mb-1">Subject</p>
+                      <p className="text-xs text-zinc-700 bg-zinc-50 rounded-lg px-3 py-2">{d.subject}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-zinc-400 mb-1">Body</p>
+                      <p className="text-xs text-zinc-700 bg-zinc-50 rounded-lg px-3 py-2 whitespace-pre-wrap leading-relaxed">{d.body}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
-        {!loading && (
-          <div className="px-6 py-4 border-t border-zinc-100 flex items-center justify-between">
-            <p className="text-xs text-zinc-400">
-              {sentCount} of {sendableCount} opened in mail client
-            </p>
-            <button
-              onClick={() => drafts.forEach((d, i) => { if (d.email && !sent[i]) handleSend(d, i) })}
-              disabled={sendableCount === 0 || sentCount === sendableCount}
-              className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-700 disabled:opacity-40 transition-colors">
-              <Mail className="w-3.5 h-3.5" />
-              Send All ({sendableCount})
-            </button>
-          </div>
-        )}
+        <div className="px-6 py-4 border-t border-zinc-100 flex items-center justify-between">
+          <p className="text-xs text-zinc-400">
+            {sentCount} of {sendableCount} sent
+          </p>
+          <button
+            onClick={() => drafts.forEach((d, i) => { if (d.email && !sent[i] && !sending[i]) handleSend(d, i) })}
+            disabled={sendableCount === 0 || sentCount === sendableCount}
+            className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-700 disabled:opacity-40 transition-colors">
+            <Mail className="w-3.5 h-3.5" />
+            Send All ({sendableCount})
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -505,7 +498,7 @@ export default function Candidates() {
       {showBulkMail && resumeResults && (
         <BulkMailModal
           candidates={resumeResults.filter(r => r.status === 'success')}
-          jobTitle={activeJob?.title || ''}
+          job={activeJob}
           onClose={() => setShowBulkMail(false)}
         />
       )}
@@ -532,7 +525,7 @@ export default function Candidates() {
               }`}
             >
               <Mail className="w-4 h-4" />
-              Send Mail{hasResults ? ` (${successCount})` : ''}
+              Bulk Send Mail{hasResults ? ` (${successCount})` : ''}
             </button>
           )
         })()}
@@ -767,6 +760,15 @@ export default function Candidates() {
                   }`}>
                     {Math.round((r.match_score || 0) * 100)}%
                   </span>
+                )}
+                {r.status === 'success' && (
+                  <button
+                    onClick={() => setMailTarget(r)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-600 border border-zinc-200 rounded-lg hover:border-zinc-400 hover:text-zinc-900 transition-colors flex-shrink-0"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    Mail
+                  </button>
                 )}
               </div>
             ))}
