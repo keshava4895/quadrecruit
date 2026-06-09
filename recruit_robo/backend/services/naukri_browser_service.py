@@ -7,7 +7,6 @@ that can then be used for Resdex API calls.
 """
 import re
 from datetime import datetime, timezone, timedelta
-from config import NAUKRI_EMAIL, NAUKRI_PASSWORD
 
 _session: dict = {
     "cookies":    {},
@@ -35,11 +34,14 @@ def _session_valid() -> bool:
     )
 
 
-async def browser_login() -> dict:
+async def browser_login(email: str, password: str) -> dict:
     """
     Launch headless Chromium, log into Naukri, return session cookies.
     Takes ~15-25 seconds on first run inside a container.
     """
+    if not email or not password:
+        raise RuntimeError("Naukri email/password not configured. Go to Account settings → Portals → Naukri.")
+
     from playwright.async_api import async_playwright
 
     print("[Naukri] Launching headless browser for login…")
@@ -118,6 +120,15 @@ async def browser_login() -> dict:
             except Exception:
                 continue
 
+        # Fill email
+        email_sel = 'input[placeholder*="Email"], input[name="username"], input[type="email"], #usernameField'
+        await page.wait_for_selector(email_sel, timeout=10000)
+        await page.fill(email_sel, email)
+        await page.wait_for_timeout(300)
+
+        # Fill password
+        pw_sel = 'input[placeholder*="Password"], input[name="password"], input[type="password"], #passwordField'
+        await page.fill(pw_sel, password)
         await page.wait_for_timeout(300)
 
         # Click login button
@@ -155,10 +166,10 @@ async def browser_login() -> dict:
     return cookies
 
 
-async def get_session() -> dict:
+async def get_session(email: str = "", password: str = "") -> dict:
     """Return valid cookies, performing browser login if needed."""
     if not _session_valid():
-        await browser_login()
+        await browser_login(email, password)
     return _session["cookies"]
 
 
@@ -168,11 +179,13 @@ async def search_candidates(
     experience_min: int = 0,
     experience_max: int = 20,
     limit: int = 10,
+    email: str = "",
+    password: str = "",
 ) -> list[dict]:
     """Search Naukri Resdex using browser-authenticated session."""
     from playwright.async_api import async_playwright
 
-    cookies = await get_session()
+    cookies = await get_session(email, password)
     print(f"[Naukri] Searching Resdex: query='{query}' location='{location}'")
 
     async with async_playwright() as p:
@@ -208,7 +221,7 @@ async def search_candidates(
         if "/nlogin/" in page.url or "naukri.com/login" in page.url:
             await browser.close()
             _session["cookies"] = {}
-            return await search_candidates(query, location, experience_min, experience_max, limit)
+            return await search_candidates(query, location, experience_min, experience_max, limit, email, password)
 
         candidates_raw = await page.evaluate("""
             () => {

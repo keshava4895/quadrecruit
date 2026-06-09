@@ -167,10 +167,10 @@ async def naukri_status():
 async def test_naukri_login():
     """Trigger browser-based Naukri login and verify credentials work."""
     creds = await get_naukri_creds()
-    if not creds.get("email"):
-        raise HTTPException(400, "Naukri email not configured. Go to Account settings → Portals → Naukri.")
+    if not creds.get("email") or not creds.get("password"):
+        raise HTTPException(400, "Naukri email/password not configured. Go to Account settings → Portals → Naukri.")
     try:
-        cookies = await browser_login()
+        cookies = await browser_login(email=creds["email"], password=creds["password"])
         return {
             "success":       True,
             "email":         creds["email"],
