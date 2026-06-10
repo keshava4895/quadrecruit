@@ -933,6 +933,13 @@ export default function Candidates() {
         </div>
       )}
 
+      {/* Loading state */}
+      {loading && (
+        <div className="flex items-center justify-center py-24">
+          <QlogoLoader size={56} label={isResumeMode ? 'Screening resumes…' : 'Searching candidates…'} />
+        </div>
+      )}
+
       {/* Empty state */}
       {!results && !resumeResults && !loading && (
         <div className="text-center py-24">
