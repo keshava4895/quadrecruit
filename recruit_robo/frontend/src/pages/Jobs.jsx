@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { jobsApi } from '../api'
-import { Plus, Trash2, MapPin, Briefcase, ChevronRight, X, CheckSquare, Square } from 'lucide-react'
+import { jobsApi, analyticsApi } from '../api'
+import { Plus, Trash2, MapPin, Briefcase, ChevronRight, X, CheckSquare, Square, Users, UserCheck, Layers } from 'lucide-react'
 
-const EMPTY_FORM = { title: '', description: '', skills: '', experience_years: 3, location: '' }
+const EMPTY_FORM = { title: '', description: '', skills: '', experience_years: 3, location: '', positions_open: 1 }
 
 const INPUT = 'w-full border border-zinc-200 rounded-lg px-3 py-2.5 text-sm bg-white text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition'
 
 export default function Jobs() {
   const [jobs,      setJobs]      = useState([])
+  const [overview,  setOverview]  = useState(null)
   const [form,      setForm]      = useState(EMPTY_FORM)
   const [showForm,  setShowForm]  = useState(false)
   const [loading,   setLoading]   = useState(false)
@@ -16,7 +17,14 @@ export default function Jobs() {
   const [selected,  setSelected]  = useState(new Set())
   const [deleting,  setDeleting]  = useState(false)
 
-  const load = () => jobsApi.list().then(r => setJobs(r.data))
+  const load = () => Promise.all([
+    jobsApi.list(),
+    analyticsApi.overview(),
+  ]).then(([jr, or]) => {
+    setJobs(jr.data || [])
+    setOverview(or.data)
+  }).catch(() => jobsApi.list().then(r => setJobs(r.data || [])))
+
   useEffect(() => { load() }, [])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -129,6 +137,12 @@ export default function Jobs() {
               <input type="number" min="0" className={INPUT}
                 value={form.experience_years} onChange={e => set('experience_years', +e.target.value)} />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 mb-1.5">Positions Open</label>
+              <input type="number" min="1" className={INPUT}
+                value={form.positions_open} onChange={e => set('positions_open', Math.max(1, +e.target.value))} />
+              <p className="text-xs text-zinc-400 mt-1">Number of vacancies for this role</p>
+            </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-zinc-500 mb-1.5">Job Description</label>
               <textarea rows={4} className={INPUT + ' resize-none'}
@@ -155,6 +169,37 @@ export default function Jobs() {
           </div>
         </div>
       )}
+
+      {/* KPI strip */}
+      {(() => {
+        const openPositions    = jobs.filter(j => j.status === 'active').length
+        const totalHired       = overview?.total_hired ?? '—'
+        const jobStats         = overview?.job_stats || []
+        const unfilledVacancies = jobs.filter(j =>
+          j.status === 'active' &&
+          (jobStats.find(s => s.jobId === j.jobId)?.hired ?? 0) === 0
+        ).length
+
+        return (
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            {[
+              { label: 'Open Positions',     value: openPositions,     icon: Layers,     color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-100' },
+              { label: 'Candidates Hired',   value: totalHired,        icon: UserCheck,  color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+              { label: 'Unfilled Vacancies', value: unfilledVacancies, icon: Users,      color: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-100' },
+            ].map(k => (
+              <div key={k.label} className="bg-white border border-zinc-200 rounded-xl px-5 py-4 flex items-center gap-4">
+                <div className={`w-10 h-10 rounded-xl ${k.bg} border ${k.border} flex items-center justify-center flex-shrink-0`}>
+                  <k.icon className={`w-5 h-5 ${k.color}`} />
+                </div>
+                <div>
+                  <p className="text-[11px] text-zinc-400 mb-0.5">{k.label}</p>
+                  <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* Recent Jobs summary box */}
       <div className="bg-white border border-zinc-200 rounded-xl mb-6">
@@ -264,6 +309,19 @@ export default function Jobs() {
                     <span className="flex items-center gap-1">
                       <Briefcase className="w-3 h-3" />{job.experience_years}+ yrs
                     </span>
+                    {(() => {
+                      const total    = job.positions_open   ?? 1
+                      const filled   = job.positions_filled ?? 0
+                      const remaining = Math.max(0, total - filled)
+                      const full     = remaining === 0
+                      return (
+                        <span className={`flex items-center gap-1 font-medium ${full ? 'text-emerald-600' : 'text-amber-600'}`}>
+                          <Users className="w-3 h-3" />
+                          {remaining === 0 ? 'All filled' : `${remaining} open`} · {filled}/{total}
+                          {full && <span className="ml-0.5 text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">Full</span>}
+                        </span>
+                      )
+                    })()}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {job.skills?.slice(0, 6).map(s => (

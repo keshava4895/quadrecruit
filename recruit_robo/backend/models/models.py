@@ -32,6 +32,11 @@ class JobCreate(BaseModel):
     experience_years: int
     location: Optional[str] = None
     recruiter_email: Optional[EmailStr] = None
+    positions_open: int = 1
+
+class JobPositionsUpdate(BaseModel):
+    positions_open: Optional[int] = None
+    positions_filled: Optional[int] = None
 
 class JobResponse(JobCreate):
     jobId: str

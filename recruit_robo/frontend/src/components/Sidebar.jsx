@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Briefcase, Users, Cpu, UserCheck, GitBranch, BarChart2, Database,
+  LayoutDashboard, Briefcase, Search, Cpu, UserCheck, GitBranch, BarChart2, Database,
   ChevronLeft, ChevronRight, LogOut,
   Link2, Link2Off, Settings, Mail, Eye, EyeOff, CheckCircle, ChevronUp,
 } from 'lucide-react'
@@ -12,7 +12,7 @@ import QlogoAnimated from './QlogoAnimated'
 const NAV = [
   { to: '/dashboard',  label: 'Dashboard',    icon: LayoutDashboard },
   { to: '/jobs',       label: 'Jobs',          icon: Briefcase },
-  { to: '/candidates', label: 'Candidates',    icon: Users },
+  { to: '/candidates', label: 'Talent Search',  icon: Search },
   { to: '/pipeline',   label: 'Pipeline',      icon: GitBranch },
   { to: '/analytics',           label: 'Analytics',   icon: BarChart2 },
   { to: '/candidate-database',  label: 'Talent Pool',  icon: Database  },

@@ -615,7 +615,7 @@ export default function Candidates() {
       {/* Page header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Find Candidates</h1>
+          <h1 className="text-xl font-semibold text-zinc-900">Talent Search</h1>
           <p className="text-sm text-zinc-400 mt-0.5">Search talent across job portals or screen local resumes</p>
         </div>
 

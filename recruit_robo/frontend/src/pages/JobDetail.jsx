@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { jobsApi, candidatesApi, pipelineApi, emailApi } from '../api'
 import { useAuth } from '../context/AuthContext'
-import { Mail, Calendar, RefreshCw, ChevronLeft, MapPin, Briefcase, X, Send, Loader2, Trash2 } from 'lucide-react'
+import { Mail, Calendar, RefreshCw, ChevronLeft, MapPin, Briefcase, X, Send, Loader2, Trash2, Pencil, Check } from 'lucide-react'
 
 const STATUS_STYLE = {
   sourced:     'bg-zinc-100 text-zinc-600',
@@ -78,6 +78,12 @@ export default function JobDetail() {
   const [selected,  setSelected]  = useState(new Set())
   const [deleting,  setDeleting]  = useState(false)
 
+  // Positions inline edit
+  const [editingPos,   setEditingPos]   = useState(false)
+  const [posOpen,      setPosOpen]      = useState(1)
+  const [posFilled,    setPosFilled]    = useState(0)
+  const [savingPos,    setSavingPos]    = useState(false)
+
   // Email compose modal
   const [emailModal,   setEmailModal]   = useState(null)
   const [emailSubject, setEmailSubject] = useState('')
@@ -118,7 +124,11 @@ export default function JobDetail() {
       candidatesApi.top(jobId, 50),
       pipelineApi.timeline(jobId),
     ])
-    if (j.status === 'fulfilled') setJob(j.value.data)
+    if (j.status === 'fulfilled') {
+      setJob(j.value.data)
+      setPosOpen(j.value.data?.positions_open   ?? 1)
+      setPosFilled(j.value.data?.positions_filled ?? 0)
+    }
     if (c.status === 'fulfilled') setCandidates(c.value.data)
     if (t.status === 'fulfilled') setTimeline(t.value.data?.timeline ?? [])
     setLoading(false); setRefreshing(false)
@@ -174,18 +184,30 @@ export default function JobDetail() {
     </div>
   )
 
+  const savePositions = async () => {
+    setSavingPos(true)
+    try {
+      await jobsApi.patch(jobId, { positions_open: posOpen, positions_filled: posFilled })
+      setJob(prev => ({ ...prev, positions_open: posOpen, positions_filled: posFilled }))
+      setEditingPos(false)
+    } catch (e) {
+      alert(e?.response?.data?.detail || 'Failed to save positions.')
+    } finally { setSavingPos(false) }
+  }
+
   const stats = [
     { label: 'Candidates',  value: candidates.length },
     { label: 'Interested',  value: candidates.filter(c => c.status === 'interested').length },
     { label: 'Scheduled',   value: candidates.filter(c => c.status === 'scheduled').length },
-    { label: 'Selected',    value: candidates.filter(c => c.status === 'selected').length },
+    { label: 'Hired',       value: candidates.filter(c => c.status === 'selected').length },
+    { label: 'Rejected',    value: candidates.filter(c => c.status === 'rejected').length },
   ]
 
   return (
     <div className="page">
 
       {/* Page header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-6">
         <div>
           <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 mb-2 transition-colors">
             <ChevronLeft className="w-3.5 h-3.5" /> Back
@@ -197,23 +219,87 @@ export default function JobDetail() {
             {job.experience_years && <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{job.experience_years}+ yrs</span>}
           </div>
         </div>
-        <button
-          onClick={() => load(true)}
-          className="flex items-center gap-2 px-3.5 py-2 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-sm font-medium rounded-lg transition-colors"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Edit Positions popover */}
+          <div className="relative">
+            <button
+              onClick={() => { setPosOpen(job.positions_open ?? 1); setPosFilled(job.positions_filled ?? 0); setEditingPos(v => !v) }}
+              className={`flex items-center gap-1.5 px-3.5 py-2 border text-sm font-medium rounded-lg transition-colors ${editingPos ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50'}`}
+            >
+              <Pencil className="w-3.5 h-3.5" /> Edit Positions
+            </button>
+            {editingPos && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-zinc-200 rounded-xl shadow-lg z-20 p-4">
+                <p className="text-xs font-semibold text-zinc-700 mb-3">Edit Positions</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[11px] text-zinc-400 block mb-1">Total Positions</label>
+                    <input
+                      type="number" min="0"
+                      value={posOpen}
+                      onChange={e => setPosOpen(Math.max(0, +e.target.value))}
+                      className="w-full border border-zinc-200 rounded-lg px-3 py-1.5 text-sm font-semibold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-zinc-400 block mb-1">Positions Filled</label>
+                    <input
+                      type="number" min="0" max={posOpen}
+                      value={posFilled}
+                      onChange={e => setPosFilled(Math.min(posOpen, Math.max(0, +e.target.value)))}
+                      className="w-full border border-zinc-200 rounded-lg px-3 py-1.5 text-sm font-semibold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={savePositions}
+                    disabled={savingPos}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors"
+                  >
+                    {savingPos ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditingPos(false)}
+                    className="flex-1 py-1.5 border border-zinc-200 text-zinc-500 hover:bg-zinc-50 text-xs font-medium rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => load(true)}
+            className="flex items-center gap-2 px-3.5 py-2 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-sm font-medium rounded-lg transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-4 gap-3 mb-8">
+      <div className="grid grid-cols-7 gap-3 mb-8">
         {stats.map(({ label, value }) => (
           <div key={label} className="bg-white border border-zinc-200 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-zinc-900">{value}</p>
             <p className="text-xs text-zinc-400 mt-0.5">{label}</p>
           </div>
         ))}
+        {/* Positions Open = total - filled */}
+        <div className="bg-white border border-zinc-200 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-zinc-900">
+            {Math.max(0, (job.positions_open ?? 1) - (job.positions_filled ?? 0))}
+          </p>
+          <p className="text-xs text-zinc-400 mt-0.5">Pos. Open</p>
+        </div>
+        {/* Positions Filled */}
+        <div className="bg-white border border-zinc-200 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-zinc-900">{job.positions_filled ?? 0}</p>
+          <p className="text-xs text-zinc-400 mt-0.5">Pos. Filled</p>
+        </div>
       </div>
 
       {/* Candidate table */}

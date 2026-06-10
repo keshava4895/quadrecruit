@@ -70,7 +70,7 @@ class JsonCollection:
                     for k, v in update["$push"].items():
                         docs[i].setdefault(k, []).append(v)
                 self._save(docs)
-                return
+                return type("R", (), {"matched_count": 1, "modified_count": 1})()
         if upsert:
             new_doc = dict(filter)
             if "$set" in update:
@@ -80,6 +80,7 @@ class JsonCollection:
                     new_doc.setdefault(k, []).append(v)
             docs.append(new_doc)
             self._save(docs)
+        return type("R", (), {"matched_count": 0, "modified_count": 0})()
 
     async def delete_one(self, filter: dict):
         docs = self._load()

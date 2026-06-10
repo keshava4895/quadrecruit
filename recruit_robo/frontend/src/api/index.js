@@ -26,11 +26,12 @@ export const authApi = {
 
 // ── Jobs ──────────────────────────────────────────────────────────────────────
 export const jobsApi = {
-  list:   ()       => api.get('/jobs/'),
-  get:    (id)     => api.get(`/jobs/${id}`),
-  create: (data)   => api.post('/jobs/', data),
-  parse:  (desc)   => api.post('/jobs/parse', { description: desc }),
-  delete: (id)     => api.delete(`/jobs/${id}`),
+  list:   ()         => api.get('/jobs/'),
+  get:    (id)       => api.get(`/jobs/${id}`),
+  create: (data)     => api.post('/jobs/', data),
+  parse:  (desc)     => api.post('/jobs/parse', { description: desc }),
+  patch:  (id, data) => api.patch(`/jobs/${id}`, data),
+  delete: (id)       => api.delete(`/jobs/${id}`),
 }
 
 // ── Candidates ────────────────────────────────────────────────────────────────

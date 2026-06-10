@@ -14,6 +14,7 @@ async def create_job(job_data: JobCreate) -> dict:
     doc.update({
         "jobId": job_id,
         "status": "active",
+        "positions_filled": 0,
         "created_at": datetime.now(timezone.utc),
     })
 
@@ -40,6 +41,17 @@ async def list_jobs() -> list:
 async def get_job(job_id: str) -> dict | None:
     db = get_db()
     return await db.job_info.find_one({"jobId": job_id}, {"_id": 0})
+
+
+async def update_job(job_id: str, fields: dict) -> bool:
+    db = get_db()
+    allowed = {"positions_open", "positions_filled", "title", "description",
+               "skills", "experience_years", "location", "status"}
+    update = {k: v for k, v in fields.items() if k in allowed}
+    if not update:
+        return True
+    result = await db.job_info.update_one({"jobId": job_id}, {"$set": update})
+    return result.matched_count > 0
 
 
 async def delete_job(job_id: str) -> bool:
