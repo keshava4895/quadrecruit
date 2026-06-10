@@ -70,15 +70,18 @@ async def upload_to_pool(
         candidate_id = result["candidateId"]
 
     # Upload original file to Azure Blob Storage (best-effort — won't fail the request)
-    blob_name, resume_url = await blob_upload_resume(candidate_id, file.filename or "resume", file_bytes)
-    if blob_name:
-        from database import get_db as _get_db
-        db = _get_db()
-        await db.candidate_info.update_one(
-            {"candidateId": candidate_id},
-            {"$set": {"resume_blob": blob_name, "resume_url": resume_url}},
-        )
-        result["resume_url"] = resume_url
+    try:
+        blob_name, resume_url = await blob_upload_resume(candidate_id, file.filename or "resume", file_bytes)
+        if blob_name:
+            from database import get_db as _get_db
+            db = _get_db()
+            await db.candidate_info.update_one(
+                {"candidateId": candidate_id},
+                {"$set": {"resume_blob": blob_name, "resume_url": resume_url}},
+            )
+            result["resume_url"] = resume_url
+    except Exception as e:
+        print(f"[Upload] Blob storage upload failed (non-fatal): {e}")
 
     result["name"]  = parsed.get("name")  or fallback_name or "Unknown"
     result["email"] = parsed.get("email") or ""
