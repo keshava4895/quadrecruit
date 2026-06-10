@@ -19,6 +19,7 @@ from routes.zoho_routes            import router as zoho_router
 from routes.portal_settings_routes import router as portal_settings_router
 from routes.interviewer_routes     import router as interviewers_router
 from routes.analytics_routes      import router as analytics_router
+from routes.offer_routes          import router as offer_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,6 +56,7 @@ app.include_router(zoho_router,            prefix="/zoho",            tags=["Zoh
 app.include_router(portal_settings_router, prefix="/portal-settings", tags=["Portal Settings"])
 app.include_router(interviewers_router,    prefix="/interviewers",    tags=["Interviewers"])
 app.include_router(analytics_router,      prefix="/analytics",       tags=["Analytics"])
+app.include_router(offer_router,          prefix="/offers",           tags=["Offers"])
 
 @app.get("/", tags=["Health"])
 async def root():

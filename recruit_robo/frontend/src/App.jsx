@@ -16,6 +16,7 @@ import Analytics         from './pages/Analytics'
 import CandidateDatabase from './pages/CandidateDatabase'
 import Profile           from './pages/Profile'
 import AdminUsers        from './pages/AdminUsers'
+import Offers            from './pages/Offers'
 
 function PrivateRoute({ children }) {
   const { user } = useAuth()
@@ -64,6 +65,7 @@ function AppShell() {
             <Route path="/analytics"              element={<PrivateRoute><Analytics /></PrivateRoute>} />
             <Route path="/candidate-database"     element={<PrivateRoute><CandidateDatabase /></PrivateRoute>} />
             <Route path="/profile"                element={<PrivateRoute><Profile /></PrivateRoute>} />
+            <Route path="/offers"                 element={<PrivateRoute><Offers /></PrivateRoute>} />
             <Route path="/admin/users"            element={<AdminRoute><AdminUsers /></AdminRoute>} />
           </Routes>
         </main>

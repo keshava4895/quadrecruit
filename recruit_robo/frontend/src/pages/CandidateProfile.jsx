@@ -1,11 +1,12 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import QlogoLoader from '../components/QlogoLoader'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { candidatesApi } from '../api'
+import { candidatesApi, notesApi, offersApi } from '../api'
 import {
   ChevronLeft, Mail, Phone, Briefcase, MapPin, Star,
   FileText, MessageSquare, Calendar, CheckCircle, XCircle,
-  Clock, ChevronDown, ChevronUp, Download,
+  Clock, ChevronDown, ChevronUp, Download, Trash2,
+  Activity, DollarSign, Plus,
 } from 'lucide-react'
 
 const STATUS_STYLE = {
@@ -18,10 +19,26 @@ const STATUS_STYLE = {
   no_response: 'bg-gray-100 text-gray-400',
 }
 
+const OFFER_STATUS_STYLE = {
+  draft:       'bg-gray-100 text-gray-600',
+  sent:        'bg-blue-50 text-blue-700',
+  negotiating: 'bg-amber-50 text-amber-700',
+  accepted:    'bg-emerald-50 text-emerald-700',
+  declined:    'bg-red-50 text-red-600',
+  withdrawn:   'bg-gray-100 text-gray-500',
+}
+
 const DECISION_ICON = {
-  Selected:   <CheckCircle className="w-4 h-4 text-emerald-500" />,
-  Rejected:   <XCircle className="w-4 h-4 text-red-400" />,
+  Selected:     <CheckCircle className="w-4 h-4 text-emerald-500" />,
+  Rejected:     <XCircle className="w-4 h-4 text-red-400" />,
   'Next Round': <ChevronUp className="w-4 h-4 text-blue-500" />,
+}
+
+const ACTIVITY_COLORS = {
+  note_added:    'bg-indigo-400',
+  offer_created: 'bg-emerald-400',
+  offer_updated: 'bg-amber-400',
+  status_changed:'bg-purple-400',
 }
 
 function ScoreRing({ score }) {
@@ -44,35 +61,57 @@ function ScoreRing({ score }) {
   )
 }
 
-function Section({ title, icon, children, defaultOpen = true }) {
+function Section({ title, icon, children, defaultOpen = true, action }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-      <button onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors">
-        <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-          {icon}
-          {title}
-        </div>
-        {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-      </button>
+      <div className="flex items-center justify-between">
+        <button onClick={() => setOpen(v => !v)}
+          className="flex-1 flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors text-left">
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+            {icon}
+            {title}
+          </div>
+          {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        </button>
+        {action && <div className="pr-4">{action}</div>}
+      </div>
       {open && <div className="px-5 pb-5">{children}</div>}
     </div>
   )
 }
 
+function fmtDate(val, opts = { day: 'numeric', month: 'short', year: 'numeric' }) {
+  if (!val) return ''
+  try { return new Date(val).toLocaleDateString('en-IN', opts) }
+  catch { return '' }
+}
+
 export default function CandidateProfile() {
   const { candidateId } = useParams()
-  const navigate                       = useNavigate()
-  const [profile, setProfile]         = useState(null)
-  const [loading, setLoading]         = useState(true)
-  const [dlLoading, setDlLoading]     = useState(false)
+  const navigate = useNavigate()
+
+  const [profile,    setProfile]    = useState(null)
+  const [loading,    setLoading]    = useState(true)
+  const [dlLoading,  setDlLoading]  = useState(false)
+
+  const [notes,      setNotes]      = useState([])
+  const [noteText,   setNoteText]   = useState('')
+  const [addingNote, setAddingNote] = useState(false)
+
+  const [activity,   setActivity]   = useState([])
+
+  const [offers,     setOffers]     = useState([])
 
   useEffect(() => {
     candidatesApi.fullProfile(candidateId)
       .then(r => setProfile(r.data))
       .catch(() => {})
       .finally(() => setLoading(false))
+
+    notesApi.list(candidateId).then(r => setNotes(r.data || [])).catch(() => {})
+    notesApi.activity(candidateId).then(r => setActivity(r.data || [])).catch(() => {})
+    offersApi.list({ candidate_id: candidateId }).then(r => setOffers(r.data || [])).catch(() => {})
   }, [candidateId])
 
   async function downloadResume() {
@@ -80,11 +119,28 @@ export default function CandidateProfile() {
     try {
       const r = await candidatesApi.resumeUrl(candidateId)
       window.open(r.data.url, '_blank')
-    } catch {
-      alert('Resume file not available.')
-    } finally {
-      setDlLoading(false)
-    }
+    } catch { alert('Resume file not available.') }
+    finally { setDlLoading(false) }
+  }
+
+  async function handleAddNote(e) {
+    e.preventDefault()
+    if (!noteText.trim()) return
+    setAddingNote(true)
+    try {
+      const r = await notesApi.add(candidateId, noteText.trim())
+      setNotes(prev => [r.data, ...prev])
+      setNoteText('')
+      notesApi.activity(candidateId).then(r => setActivity(r.data || [])).catch(() => {})
+    } catch { }
+    finally { setAddingNote(false) }
+  }
+
+  async function handleDeleteNote(noteId) {
+    try {
+      await notesApi.delete(candidateId, noteId)
+      setNotes(prev => prev.filter(n => n.noteId !== noteId))
+    } catch { }
   }
 
   if (loading) return (
@@ -124,12 +180,14 @@ export default function CandidateProfile() {
                   <button onClick={downloadResume} disabled={dlLoading}
                     className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-white rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50"
                     style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
-                    {dlLoading
-                      ? <QlogoLoader size={14} />
-                      : <Download className="w-3.5 h-3.5" />}
+                    {dlLoading ? <QlogoLoader size={14} /> : <Download className="w-3.5 h-3.5" />}
                     Download Resume
                   </button>
                 )}
+                <Link to="/offers"
+                  className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-100 rounded-xl hover:bg-purple-100 transition-colors">
+                  <Plus className="w-3 h-3" />Create Offer
+                </Link>
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-sm text-gray-400">
                 {profile.email && (
@@ -183,7 +241,94 @@ export default function CandidateProfile() {
           </Section>
         )}
 
-        {/* Jobs & Scores */}
+        {/* Notes */}
+        <Section title={`Notes (${notes.length})`} icon={<MessageSquare className="w-4 h-4 text-indigo-500" />}>
+          <form onSubmit={handleAddNote} className="mb-4">
+            <textarea
+              value={noteText} onChange={e => setNoteText(e.target.value)}
+              rows={2} placeholder="Add a note about this candidate…"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-50 resize-none"
+            />
+            <div className="flex justify-end mt-2">
+              <button type="submit" disabled={addingNote || !noteText.trim()}
+                className="px-4 py-1.5 text-xs font-medium text-white rounded-xl disabled:opacity-40 transition-all"
+                style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
+                {addingNote ? 'Adding…' : 'Add Note'}
+              </button>
+            </div>
+          </form>
+          {notes.length === 0 ? (
+            <p className="text-sm text-gray-400">No notes yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {notes.map(note => (
+                <div key={note.noteId} className="bg-gray-50 rounded-xl p-3 group">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm text-gray-700 leading-relaxed flex-1">{note.text}</p>
+                    <button onClick={() => handleDeleteNote(note.noteId)}
+                      className="w-5 h-5 flex items-center justify-center rounded text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1.5">
+                    {note.userName} · {fmtDate(note.created_at, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* Offers */}
+        <Section
+          title={`Offers (${offers.length})`}
+          icon={<DollarSign className="w-4 h-4 text-emerald-500" />}
+          action={
+            <Link to="/offers"
+              className="flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors">
+              <Plus className="w-3 h-3" /> New
+            </Link>
+          }>
+          {offers.length === 0 ? (
+            <p className="text-sm text-gray-400">No offers yet. <Link to="/offers" className="text-purple-600 hover:underline">Create one →</Link></p>
+          ) : (
+            <div className="space-y-2">
+              {offers.map(offer => (
+                <div key={offer.offerId} className="flex items-center gap-4 py-2.5 border-b border-gray-50 last:border-0">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{offer.jobTitle}</p>
+                    <p className="text-xs text-gray-400">
+                      {offer.ctc != null ? `₹${offer.ctc} LPA` : 'CTC not set'}
+                      {offer.joining_date ? ` · Joining ${fmtDate(offer.joining_date)}` : ''}
+                    </p>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${OFFER_STATUS_STYLE[offer.status] || 'bg-gray-100 text-gray-600'}`}>
+                    {offer.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* Activity */}
+        {activity.length > 0 && (
+          <Section title="Activity" icon={<Activity className="w-4 h-4 text-blue-500" />} defaultOpen={false}>
+            <div className="space-y-3">
+              {activity.map((a, i) => (
+                <div key={a.activityId || i} className="flex items-start gap-3">
+                  <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${ACTIVITY_COLORS[a.type] || 'bg-gray-300'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-700">{a.text}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{fmtDate(a.ts, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Job Applications */}
         {profile.jobs?.length > 0 && (
           <Section title="Job Applications" icon={<Briefcase className="w-4 h-4 text-blue-500" />}>
             <div className="space-y-2">
@@ -260,7 +405,7 @@ export default function CandidateProfile() {
                     {a.scheduledDate && (
                       <span className="text-xs text-gray-500 flex-shrink-0 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {new Date(a.scheduledDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        {fmtDate(a.scheduledDate, { day: 'numeric', month: 'short' })}
                       </span>
                     )}
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${isPast ? 'bg-gray-100 text-gray-400' : 'bg-amber-50 text-amber-700'}`}>
@@ -286,5 +431,3 @@ export default function CandidateProfile() {
     </div>
   )
 }
-
-

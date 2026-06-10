@@ -147,4 +147,21 @@ export const analyticsApi = {
   funnel:   (jobId) => api.get(`/analytics/funnel/${jobId}`),
 }
 
+// ── Candidate Notes ───────────────────────────────────────────────────────────
+export const notesApi = {
+  list:   (candidateId)           => api.get(`/candidates/${candidateId}/notes`),
+  add:    (candidateId, text)     => api.post(`/candidates/${candidateId}/notes`, { text }),
+  delete: (candidateId, noteId)   => api.delete(`/candidates/${candidateId}/notes/${noteId}`),
+  activity: (candidateId)         => api.get(`/candidates/${candidateId}/activity`),
+}
+
+// ── Offers ────────────────────────────────────────────────────────────────────
+export const offersApi = {
+  list:   (params)       => api.get('/offers/', { params }),
+  get:    (id)           => api.get(`/offers/${id}`),
+  create: (data)         => api.post('/offers/', data),
+  update: (id, data)     => api.patch(`/offers/${id}`, data),
+  delete: (id)           => api.delete(`/offers/${id}`),
+}
+
 export default api

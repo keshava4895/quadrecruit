@@ -1,5 +1,8 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from models.models import CandidateCreate
+import uuid
+from datetime import datetime, timezone
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
+from models.models import CandidateCreate, NoteCreate
+from services.auth_service import get_current_user
 from services.candidate_manager import (
     add_candidate, get_top_candidates, get_candidate, update_status,
     delete_candidate, list_all_candidates, add_standalone_candidate,
@@ -268,3 +271,64 @@ async def update_candidate_status(candidate_id: str, payload: dict):
 async def delete_candidate_route(candidate_id: str, job_id: str = None):
     await delete_candidate(candidate_id, job_id)
     return {"deleted": True}
+
+
+# ── Notes ─────────────────────────────────────────────────────────────────────
+
+@router.get("/{candidate_id}/notes")
+async def get_notes(candidate_id: str, current_user=Depends(get_current_user)):
+    db = get_db()
+    notes = await db["candidate_notes"].find(
+        {"candidateId": candidate_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    return notes
+
+
+@router.post("/{candidate_id}/notes", status_code=201)
+async def add_note(candidate_id: str, body: NoteCreate, current_user=Depends(get_current_user)):
+    db = get_db()
+    note_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    doc = {
+        "noteId":      note_id,
+        "candidateId": candidate_id,
+        "userId":      current_user["userId"],
+        "userName":    current_user["name"],
+        "text":        body.text.strip(),
+        "created_at":  now,
+    }
+    await db["candidate_notes"].insert_one(doc)
+    await db["candidate_activity"].insert_one({
+        "activityId":  str(uuid.uuid4()),
+        "candidateId": candidate_id,
+        "type":        "note_added",
+        "text":        f"Note added by {current_user['name']}",
+        "userId":      current_user["userId"],
+        "userName":    current_user["name"],
+        "ts":          now,
+    })
+    doc.pop("_id", None)
+    return doc
+
+
+@router.delete("/{candidate_id}/notes/{note_id}")
+async def delete_note(candidate_id: str, note_id: str, current_user=Depends(get_current_user)):
+    db = get_db()
+    note = await db["candidate_notes"].find_one({"noteId": note_id, "candidateId": candidate_id})
+    if not note:
+        raise HTTPException(404, "Note not found")
+    if note["userId"] != current_user["userId"] and current_user.get("role") != "admin":
+        raise HTTPException(403, "Cannot delete another user's note")
+    await db["candidate_notes"].delete_one({"noteId": note_id})
+    return {"deleted": True}
+
+
+# ── Activity log ──────────────────────────────────────────────────────────────
+
+@router.get("/{candidate_id}/activity")
+async def get_activity(candidate_id: str, current_user=Depends(get_current_user)):
+    db = get_db()
+    activities = await db["candidate_activity"].find(
+        {"candidateId": candidate_id}, {"_id": 0}
+    ).sort("ts", -1).to_list(200)
+    return activities

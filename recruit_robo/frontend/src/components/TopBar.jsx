@@ -13,6 +13,7 @@ const PAGE_LABELS = {
   '/candidate-database': 'Talent Pool',
   '/upload':             'Resume Scorer',
   '/interviewers':       'Interviewers',
+  '/offers':             'Offers',
   '/profile':            'My Profile',
   '/admin/users':        'Access Management',
 }

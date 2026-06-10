@@ -123,6 +123,24 @@ class CandidateFeedback(BaseModel):
     experience_rating: int = Field(..., ge=1, le=5)
     comment: Optional[str] = None
 
+# ── Notes models ─────────────────────────────────────────────────────────────
+class NoteCreate(BaseModel):
+    text: str = Field(..., min_length=1, max_length=2000)
+
+# ── Offer models ──────────────────────────────────────────────────────────────
+class OfferCreate(BaseModel):
+    candidateId: str
+    jobId: str
+    ctc: Optional[float] = None
+    joining_date: Optional[str] = None
+    notes: Optional[str] = None
+
+class OfferUpdate(BaseModel):
+    status: Optional[str] = None
+    ctc: Optional[float] = None
+    joining_date: Optional[str] = None
+    notes: Optional[str] = None
+
 # ── Job Portal Search models ───────────────────────────────────────────────────
 class CandidateSearchRequest(BaseModel):
     query: str                          # free-text requirements
