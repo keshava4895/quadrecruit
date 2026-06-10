@@ -24,9 +24,9 @@ def _infer_source(email: str) -> str:
     if not email:
         return "Direct"
     if "@portal.placeholder" in email:
-        return "Portal Search"
+        return "Portal"
     if "@placeholder" in email:
-        return "Resume Upload"
+        return "Upload"
     return "Direct"
 
 
@@ -69,7 +69,7 @@ async def analytics_overview():
         jid  = job["jobId"]
         cands = await db.job_candidates.find(
             {"jobId": jid}, {"status": 1, "match_score": 1, "_id": 0}
-        ).to_list(500)
+        ).to_list(2000)
         total  = len(cands)
         hired  = sum(1 for c in cands if c.get("status") == "selected")
         scores = [c["match_score"] for c in cands if c.get("match_score")]
@@ -99,7 +99,7 @@ async def funnel_stats(job_id: str):
     db = get_db()
     cands = await db.job_candidates.find(
         {"jobId": job_id}, {"status": 1, "match_score": 1, "created_at": 1, "updated_at": 1, "_id": 0}
-    ).to_list(500)
+    ).to_list(2000)
     total = len(cands)
 
     # Count current status distribution
