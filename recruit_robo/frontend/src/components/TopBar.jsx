@@ -13,6 +13,8 @@ const PAGE_LABELS = {
   '/candidate-database': 'Talent Pool',
   '/upload':             'Resume Scorer',
   '/interviewers':       'Interviewers',
+  '/profile':            'My Profile',
+  '/admin/users':        'Access Management',
 }
 
 function useDebounce(value, delay) {
