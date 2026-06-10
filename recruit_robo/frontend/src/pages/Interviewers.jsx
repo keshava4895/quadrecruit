@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { interviewersApi, jobsApi, candidatesApi } from '../api'
 import {
   Users, UserPlus, Calendar, ChevronDown, ChevronUp,
@@ -9,7 +9,7 @@ import {
 
 function StatChip({ value, color }) {
   const cls = {
-    zinc:    'bg-zinc-100 text-zinc-700',
+    zinc:    'bg-gray-100 text-gray-700',
     emerald: 'bg-emerald-50 text-emerald-700',
     red:     'bg-red-50 text-red-600',
     blue:    'bg-blue-50 text-blue-700',
@@ -49,38 +49,38 @@ function AddModal({ onClose, onAdded }) {
     } finally { setSaving(false) }
   }
 
-  const INPUT = 'w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition'
+  const INPUT = 'w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-sm font-semibold text-zinc-900">Add Interviewer</h2>
-            <p className="text-xs text-zinc-400 mt-0.5">Add a team member to conduct interviews</p>
+            <h2 className="text-sm font-semibold text-gray-900">Add Interviewer</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Add a team member to conduct interviews</p>
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
         </div>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-500 mb-1">Full Name *</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Full Name *</label>
             <input value={form.name} onChange={e => set('name', e.target.value)}
               placeholder="e.g. Arjun Sharma" className={INPUT} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500 mb-1">Email Address *</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Email Address *</label>
             <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
               placeholder="e.g. arjun@company.com" className={INPUT} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">Phone</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Phone</label>
               <input value={form.phone} onChange={e => set('phone', e.target.value)}
                 placeholder="+91 98765 43210" className={INPUT} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">Department</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Department</label>
               <input value={form.department} onChange={e => set('department', e.target.value)}
                 placeholder="Engineering" className={INPUT} />
             </div>
@@ -90,11 +90,12 @@ function AddModal({ onClose, onAdded }) {
 
           <div className="flex gap-2 pt-1">
             <button onClick={handleSubmit} disabled={saving}
-              className="flex-1 py-2 bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
+              className="flex-1 py-2 text-white disabled:opacity-40 text-sm font-medium rounded-xl transition-all shadow-sm hover:shadow-md"
+              style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
               {saving ? 'Adding…' : 'Add Interviewer'}
             </button>
             <button onClick={onClose}
-              className="flex-1 py-2 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-sm font-medium rounded-lg transition-colors">
+              className="flex-1 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition-colors">
               Cancel
             </button>
           </div>
@@ -148,19 +149,19 @@ function AssignModal({ interviewer, onClose, onAssigned }) {
   const pct = s => Math.round((s || 0) * 100)
   const scoreColor = s => pct(s) >= 80 ? 'text-emerald-600' : pct(s) >= 60 ? 'text-amber-600' : 'text-red-500'
 
-  const SELECT = 'w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900 transition'
+  const SELECT = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 flex flex-col max-h-[88vh]" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
-            <h2 className="text-sm font-semibold text-zinc-900">Assign Candidate</h2>
-            <p className="text-xs text-zinc-400 mt-0.5">to <span className="font-medium text-zinc-600">{interviewer.name}</span></p>
+            <h2 className="text-sm font-semibold text-gray-900">Assign Candidate</h2>
+            <p className="text-xs text-gray-400 mt-0.5">to <span className="font-medium text-gray-600">{interviewer.name}</span></p>
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
         </div>
 
         {/* Body */}
@@ -168,7 +169,7 @@ function AssignModal({ interviewer, onClose, onAssigned }) {
 
           {/* Job selector */}
           <div>
-            <label className="block text-xs font-medium text-zinc-500 mb-1.5">Select Job *</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Select Job *</label>
             <select value={selectedJob} onChange={e => setSelectedJob(e.target.value)} className={SELECT}>
               <option value="">— Choose a job —</option>
               {jobs.map(j => <option key={j.jobId} value={j.jobId}>{j.title}</option>)}
@@ -178,30 +179,31 @@ function AssignModal({ interviewer, onClose, onAssigned }) {
           {/* Candidate list */}
           {selectedJob && (
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1.5">
-                Select Candidate * <span className="font-normal text-zinc-400">(sorted by match score)</span>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                Select Candidate * <span className="font-normal text-gray-400">(sorted by match score)</span>
               </label>
               {loadingCandidates ? (
-                <div className="flex items-center gap-2 py-4 text-zinc-400 text-sm">
+                <div className="flex items-center gap-2 py-4 text-gray-400 text-sm">
                   <Loader2 className="w-4 h-4 animate-spin" /> Loading candidates…
                 </div>
               ) : candidates.length === 0 ? (
-                <p className="text-xs text-zinc-400 py-4">No candidates for this job yet.</p>
+                <p className="text-xs text-gray-400 py-4">No candidates for this job yet.</p>
               ) : (
-                <div className="border border-zinc-200 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
+                <div className="border border-gray-200 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
                   {candidates.map(c => {
                     const active = selectedCandidate?.candidateId === c.candidateId
                     return (
                       <button key={c.candidateId} onClick={() => setSelectedCandidate(c)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors border-b border-zinc-50 last:border-0
-                          ${active ? 'bg-zinc-900 text-white' : 'hover:bg-zinc-50'}`}>
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors border-b border-gray-50 last:border-0
+                          ${active ? 'text-white' : 'hover:bg-gray-50'}`}
+                        style={active ? { background: 'linear-gradient(135deg, #49029F, #7c3aed)' } : {}}>
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
-                          ${active ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-600'}`}>
+                          ${active ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}>
                           {c.name?.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{c.name}</p>
-                          <p className={`text-xs truncate ${active ? 'text-zinc-300' : 'text-zinc-400'}`}>
+                          <p className={`text-xs truncate ${active ? 'text-gray-300' : 'text-gray-400'}`}>
                             {c.email} · {c.status?.replace('_', ' ')}
                           </p>
                         </div>
@@ -219,15 +221,15 @@ function AssignModal({ interviewer, onClose, onAssigned }) {
           {/* Round + Date */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1.5">Interview Round</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Interview Round</label>
               <select value={round} onChange={e => setRound(Number(e.target.value))} className={SELECT}>
                 {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>Round {n}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1.5">Scheduled Date / Time</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Scheduled Date / Time</label>
               <input type="datetime-local" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)}
-                className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 transition" />
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
             </div>
           </div>
 
@@ -235,13 +237,14 @@ function AssignModal({ interviewer, onClose, onAssigned }) {
         </div>
 
         {/* Footer */}
-        <div className="flex gap-2 px-5 py-4 border-t border-zinc-100">
+        <div className="flex gap-2 px-5 py-4 border-t border-gray-100">
           <button onClick={handleAssign} disabled={assigning || !selectedCandidate || !selectedJob}
-            className="flex-1 py-2 bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
+            className="flex-1 py-2 text-white disabled:opacity-40 text-sm font-medium rounded-xl transition-all shadow-sm hover:shadow-md"
+            style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
             {assigning ? 'Assigning…' : 'Assign Candidate'}
           </button>
           <button onClick={onClose}
-            className="flex-1 py-2 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-sm font-medium rounded-lg transition-colors">
+            className="flex-1 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition-colors">
             Cancel
           </button>
         </div>
@@ -257,34 +260,34 @@ function InterviewerRow({ iv, onDelete, onAssign }) {
 
   return (
     <>
-      <tr className="hover:bg-zinc-50/80 transition-colors">
-        <td className="px-3 py-1.5 border-b border-zinc-100">
+      <tr className="hover:bg-gray-50/80 transition-colors">
+        <td className="px-3 py-1.5 border-b border-gray-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-bold text-zinc-600 flex-shrink-0">
+            <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-600 flex-shrink-0">
               {iv.name?.charAt(0)?.toUpperCase() || '?'}
             </div>
             <div>
-              <p className="text-xs font-medium text-zinc-900 leading-tight">{iv.name}</p>
-              <p className="text-[10px] text-zinc-400 leading-tight">{iv.email}</p>
-              {iv.phone && <p className="text-[10px] text-zinc-400 leading-tight">{iv.phone}</p>}
+              <p className="text-xs font-medium text-gray-900 leading-tight">{iv.name}</p>
+              <p className="text-[10px] text-gray-400 leading-tight">{iv.email}</p>
+              {iv.phone && <p className="text-[10px] text-gray-400 leading-tight">{iv.phone}</p>}
             </div>
           </div>
         </td>
-        <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100">
-          <span className="px-2 py-0.5 bg-zinc-100 text-zinc-600 text-[10px] rounded-full">
+        <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100">
+          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-full">
             {iv.department || '—'}
           </span>
         </td>
-        <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 text-center">
+        <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100 text-center">
           <StatChip value={iv.total_assigned} color="zinc" />
         </td>
-        <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 text-center">
+        <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100 text-center">
           <StatChip value={iv.selected} color="emerald" />
         </td>
-        <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 text-center">
+        <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100 text-center">
           <StatChip value={iv.rejected} color="red" />
         </td>
-        <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 text-center">
+        <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100 text-center">
           {iv.upcoming_count > 0 ? (
             <button onClick={() => setExpanded(v => !v)}
               className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-semibold rounded-full hover:bg-blue-100 transition-colors">
@@ -292,17 +295,18 @@ function InterviewerRow({ iv, onDelete, onAssign }) {
               {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
           ) : (
-            <span className="text-[11px] text-zinc-300">—</span>
+            <span className="text-[11px] text-gray-300">—</span>
           )}
         </td>
-        <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100">
+        <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100">
           <div className="flex items-center gap-1">
             <button onClick={() => onAssign(iv)}
-              className="flex items-center gap-1 px-2 py-1 bg-zinc-900 hover:bg-zinc-700 text-white text-[10px] font-medium rounded transition-colors whitespace-nowrap">
+              className="flex items-center gap-1 px-2 py-1 text-white text-[10px] font-medium rounded-lg transition-all shadow-sm hover:shadow-md whitespace-nowrap"
+              style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
               <UserCheck className="w-3 h-3" /> Assign
             </button>
             <button onClick={() => onDelete(iv.interviewerId)}
-              className="p-1 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Remove interviewer">
+              className="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Remove interviewer">
               <Trash2 className="w-3 h-3" />
             </button>
           </div>
@@ -312,15 +316,15 @@ function InterviewerRow({ iv, onDelete, onAssign }) {
       {expanded && iv.upcoming?.length > 0 && (
         <tr className="bg-blue-50/40">
           <td colSpan={7} className="px-5 py-3">
-            <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-2">Upcoming Interviews</p>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Upcoming Interviews</p>
             <div className="space-y-1">
               {iv.upcoming.map((item, i) => (
                 <div key={i} className="flex items-center gap-3 py-1.5 px-3 rounded-lg hover:bg-white text-xs">
-                  <Calendar className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  <span className="font-medium text-zinc-700 flex-1 truncate">{item.candidateName}</span>
-                  <span className="text-zinc-400 truncate max-w-[160px]">{item.jobTitle}</span>
-                  <span className="text-zinc-400 whitespace-nowrap">Round {item.round ?? 1}</span>
-                  <span className="text-zinc-500 whitespace-nowrap">{formatDate(item.start)}</span>
+                  <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                  <span className="font-medium text-gray-700 flex-1 truncate">{item.candidateName}</span>
+                  <span className="text-gray-400 truncate max-w-[160px]">{item.jobTitle}</span>
+                  <span className="text-gray-400 whitespace-nowrap">Round {item.round ?? 1}</span>
+                  <span className="text-gray-500 whitespace-nowrap">{formatDate(item.start)}</span>
                 </div>
               ))}
             </div>
@@ -365,7 +369,7 @@ export default function Interviewers() {
   const totalUpcoming  = data.reduce((s, iv) => s + iv.upcoming_count, 0)
 
   return (
-    <div className="page">
+    <div className="px-6 py-5 w-full">
 
       {showAdd && (
         <AddModal
@@ -385,17 +389,18 @@ export default function Interviewers() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Interviewers</h1>
-          <p className="text-sm text-zinc-400 mt-0.5">Manage interviewers and assign shortlisted candidates</p>
+          <h1 className="text-xl font-semibold text-gray-900">Interviewers</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Manage interviewers and assign shortlisted candidates</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => load(true)} disabled={refreshing}
-            className="flex items-center gap-1.5 px-3 py-2 border border-zinc-200 text-zinc-500 hover:bg-zinc-50 text-sm font-medium rounded-lg transition-colors">
+            className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-500 hover:bg-gray-50 text-sm font-medium rounded-lg transition-colors">
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </button>
           <button onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-700 text-white text-sm font-medium rounded-lg transition-colors">
+            className="flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-xl transition-all shadow-sm hover:shadow-md"
+            style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
             <UserPlus className="w-4 h-4" /> Add Interviewer
           </button>
         </div>
@@ -404,23 +409,23 @@ export default function Interviewers() {
       {/* KPI strip */}
       <div className="grid grid-cols-4 gap-3 mb-6">
         {[
-          { label: 'Total Interviewers',   value: data.length,    color: 'text-zinc-900'    },
-          { label: 'Candidates Assigned',  value: totalAssigned,  color: 'text-zinc-900'    },
+          { label: 'Total Interviewers',   value: data.length,    color: 'text-gray-900'    },
+          { label: 'Candidates Assigned',  value: totalAssigned,  color: 'text-gray-900'    },
           { label: 'Candidates Selected',  value: totalSelected,  color: 'text-emerald-600' },
           { label: 'Candidates Rejected',  value: totalRejected,  color: 'text-red-500'     },
         ].map(({ label, value, color }) => (
-          <div key={label} className="bg-white border border-zinc-200 rounded-xl p-4 text-center">
+          <div key={label} className="bg-white border border-gray-100 rounded-2xl p-4 text-center shadow-sm">
             <p className={`text-2xl font-bold ${color}`}>{loading ? '—' : value}</p>
-            <p className="text-xs text-zinc-400 mt-0.5">{label}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{label}</p>
           </div>
         ))}
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 bg-zinc-50/60">
-          <span className="text-xs font-semibold text-zinc-700">Interviewer Overview</span>
-          <span className="text-[11px] text-zinc-400">
+      <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-gray-50/60">
+          <span className="text-xs font-semibold text-gray-700">Interviewer Overview</span>
+          <span className="text-[11px] text-gray-400">
             {totalUpcoming > 0
               ? `${totalUpcoming} upcoming · click count to expand`
               : `${data.length} interviewer${data.length !== 1 ? 's' : ''}`}
@@ -428,17 +433,18 @@ export default function Interviewers() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16 gap-2 text-zinc-400">
+          <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span className="text-sm">Loading interviewers…</span>
           </div>
         ) : data.length === 0 ? (
           <div className="text-center py-16">
-            <Users className="w-8 h-8 text-zinc-200 mx-auto mb-3" />
-            <p className="text-sm text-zinc-500 font-medium">No interviewers added yet</p>
-            <p className="text-xs text-zinc-400 mt-1 mb-4">Add team members to start assigning candidates</p>
+            <Users className="w-8 h-8 text-gray-200 mx-auto mb-3" />
+            <p className="text-sm text-gray-500 font-medium">No interviewers added yet</p>
+            <p className="text-xs text-gray-400 mt-1 mb-4">Add team members to start assigning candidates</p>
             <button onClick={() => setShowAdd(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-700 text-white text-sm font-medium rounded-lg transition-colors">
+              className="inline-flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-xl transition-all shadow-sm hover:shadow-md"
+              style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
               <UserPlus className="w-4 h-4" /> Add First Interviewer
             </button>
           </div>
@@ -448,7 +454,7 @@ export default function Interviewers() {
               <thead>
                 <tr>
                   {['Interviewer', 'Department', 'Total Assigned', 'Selected', 'Rejected', 'Upcoming', ''].map((h, i) => (
-                    <th key={h} className={`px-3 py-2 text-left text-[11px] font-medium text-zinc-500 bg-zinc-50 border-b border-zinc-200 whitespace-nowrap${i > 0 ? ' border-l border-zinc-100' : ''}`}>
+                    <th key={h} className={`px-3 py-2 text-left text-[11px] font-medium text-gray-500 bg-gray-50 border-b border-gray-100 whitespace-nowrap${i > 0 ? ' border-l border-gray-100' : ''}`}>
                       {h}
                     </th>
                   ))}
@@ -471,3 +477,4 @@ export default function Interviewers() {
     </div>
   )
 }
+

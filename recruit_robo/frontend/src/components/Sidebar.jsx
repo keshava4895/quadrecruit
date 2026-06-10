@@ -34,7 +34,7 @@ export default function Sidebar() {
   const { pathname }              = useLocation()
   const navigate                  = useNavigate()
   const { user, logout }          = useAuth()
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
   const [panelOpen, setPanelOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('portals')
   const panelRef                  = useRef(null)
@@ -108,51 +108,64 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`relative flex flex-col flex-shrink-0 bg-zinc-900 transition-all duration-300 ease-in-out ${
-        collapsed ? 'w-[60px]' : 'w-[240px]'
+      className={`relative flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out bg-white border-r border-gray-100 shadow-sm ${
+        collapsed ? 'w-[68px]' : 'w-[220px]'
       }`}
     >
       {/* Logo row */}
-      <div className="flex items-center h-16 px-4 border-b border-white/5 flex-shrink-0 gap-3">
-        <Link to="/dashboard" className="flex items-center gap-3 flex-1 min-w-0">
-          <QlogoAnimated className="w-12 h-12 flex-shrink-0" />
+      <div className={`flex items-center h-16 border-b border-gray-100 flex-shrink-0 ${collapsed ? 'justify-center px-0' : 'px-4 gap-3'}`}>
+        <Link to="/dashboard" className={`flex items-center gap-3 ${collapsed ? '' : 'flex-1 min-w-0'}`}>
+          <QlogoAnimated className="w-10 h-10 flex-shrink-0" />
           {!collapsed && (
             <div className="min-w-0">
-              <p className="text-white text-sm font-semibold leading-tight">Quad Recruit</p>
-              <p className="text-zinc-500 text-xs leading-tight truncate">AI Recruitment</p>
+              <p className="text-gray-900 text-sm font-bold leading-tight">Quad Recruit</p>
+              <p className="text-gray-400 text-xs leading-tight truncate">AI Recruitment</p>
             </div>
           )}
         </Link>
-        <button onClick={() => setCollapsed(v => !v)}
-          title={collapsed ? 'Expand' : 'Collapse'}
-          className="flex-shrink-0 text-zinc-600 hover:text-zinc-300 transition-colors">
-          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
+        {!collapsed && (
+          <button onClick={() => setCollapsed(v => !v)}
+            title="Collapse"
+            className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-gray-300 hover:text-gray-500 hover:bg-gray-50 transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+        {/* Expand button when collapsed */}
+        {collapsed && (
+          <button onClick={() => setCollapsed(false)}
+            title="Expand"
+            className="w-full flex justify-center py-2 mb-2 text-gray-300 hover:text-gray-500 transition-colors">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        )}
+
         {NAV.map(({ to, label, icon: Icon, children }) => {
           const active = to === '/dashboard'
             ? pathname === '/dashboard' || pathname === '/'
             : pathname === to
           return (
             <div key={to}>
-              <Link to={to} title={collapsed ? label : undefined}
-                className={`flex items-center gap-3 rounded-lg text-sm font-medium transition-all select-none
-                  ${collapsed ? 'justify-center px-0 py-2.5 mx-1' : 'px-3 py-2.5'}
-                  ${active ? 'bg-white/10 text-white' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'}`}>
+              <Link to={to} title={label}
+                className={`flex items-center gap-3 rounded-xl text-sm font-medium transition-all select-none
+                  ${collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'}
+                  ${active ? 'text-white shadow-sm' : 'text-gray-400 hover:bg-purple-50 hover:text-purple-600'}`}
+                style={active ? { background: 'linear-gradient(135deg, #49029F, #7c3aed)' } : {}}>
                 <Icon className="w-[18px] h-[18px] flex-shrink-0" />
                 {!collapsed && <span className="truncate">{label}</span>}
               </Link>
 
-              {/* Sub-items — same size as parent, indented by 12px */}
+              {/* Sub-items */}
               {!collapsed && children?.map(({ to: childTo, label: childLabel, icon: ChildIcon }) => {
                 const childActive = pathname === childTo
                 return (
                   <Link key={childTo} to={childTo}
-                    className={`flex items-center gap-3 rounded-lg text-sm font-medium transition-all select-none px-3 py-2.5
-                      ${childActive ? 'bg-white/10 text-white' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'}`}>
+                    className={`flex items-center gap-3 rounded-xl text-sm font-medium transition-all select-none px-3 py-2.5 ml-2
+                      ${childActive ? 'text-white shadow-sm' : 'text-gray-400 hover:bg-purple-50 hover:text-purple-600'}`}
+                    style={childActive ? { background: 'linear-gradient(135deg, #49029F, #7c3aed)' } : {}}>
                     <ChildIcon className="w-[18px] h-[18px] flex-shrink-0" />
                     <span className="truncate">{childLabel}</span>
                   </Link>
@@ -164,8 +177,9 @@ export default function Sidebar() {
                 const childActive = pathname === childTo
                 return (
                   <Link key={childTo} to={childTo} title={childLabel}
-                    className={`flex justify-center px-0 py-2.5 mx-1 rounded-lg transition-all
-                      ${childActive ? 'text-white bg-white/10' : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5'}`}>
+                    className={`flex justify-center py-2.5 rounded-xl transition-all
+                      ${childActive ? 'text-white shadow-sm' : 'text-gray-400 hover:bg-purple-50 hover:text-purple-600'}`}
+                    style={childActive ? { background: 'linear-gradient(135deg, #49029F, #7c3aed)' } : {}}>
                     <ChildIcon className="w-[18px] h-[18px]" />
                   </Link>
                 )
@@ -176,21 +190,21 @@ export default function Sidebar() {
       </nav>
 
       {/* User section + panel */}
-      <div className="flex-shrink-0 border-t border-white/5" ref={panelRef}>
+      <div className="flex-shrink-0 border-t border-gray-100" ref={panelRef}>
 
         {/* Settings panel — pops up above the user row */}
-        {panelOpen && !collapsed && (
-          <div className="absolute bottom-[60px] left-0 w-[240px] bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden mx-0">
+        {panelOpen && (
+          <div className={`absolute bottom-[60px] left-0 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden ${collapsed ? 'w-[260px] left-[68px] bottom-0' : 'w-[220px]'}`}>
 
             {/* User info header */}
-            <div className="px-4 py-3 bg-gradient-to-r from-zinc-800 to-zinc-900">
+            <div className="px-4 py-3" style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
                   {avatar}
                 </div>
                 <div className="min-w-0">
                   <p className="text-white text-sm font-semibold truncate">{user?.name}</p>
-                  {user?.email && <p className="text-zinc-400 text-xs truncate">{user.email}</p>}
+                  {user?.email && <p className="text-purple-200/70 text-xs truncate">{user.email}</p>}
                 </div>
               </div>
             </div>
@@ -200,7 +214,7 @@ export default function Sidebar() {
               {['portals', 'account'].map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)}
                   className={`flex-1 py-2 text-xs font-medium capitalize transition-colors ${
-                    activeTab === tab ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'
+                    activeTab === tab ? 'text-purple-700 border-b-2 border-purple-600' : 'text-gray-400 hover:text-gray-600'
                   }`}>
                   {tab === 'portals' ? 'Portals' : 'Account'}
                 </button>
@@ -352,21 +366,23 @@ export default function Sidebar() {
         {/* User row — clickable to open panel */}
         {!collapsed ? (
           <button onClick={() => setPanelOpen(v => !v)}
-            className="w-full flex items-center gap-2.5 px-3 py-3 hover:bg-white/5 transition-colors group">
-            <div className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+            className="w-full flex items-center gap-2.5 px-3 py-3 hover:bg-gray-50 transition-colors">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
               {avatar}
             </div>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-zinc-200 text-xs font-medium truncate">{user?.name}</p>
-              {user?.email && <p className="text-zinc-500 text-[11px] truncate">{user.email}</p>}
+              <p className="text-gray-800 text-xs font-medium truncate">{user?.name}</p>
+              {user?.email && <p className="text-gray-400 text-[11px] truncate">{user.email}</p>}
             </div>
-            <ChevronUp className={`w-3.5 h-3.5 text-zinc-500 transition-transform ${panelOpen ? '' : 'rotate-180'}`} />
+            <ChevronUp className={`w-3.5 h-3.5 text-gray-300 transition-transform ${panelOpen ? '' : 'rotate-180'}`} />
           </button>
         ) : (
           <button onClick={() => setPanelOpen(v => !v)}
             title="Account settings"
-            className="w-full flex justify-center py-3 text-zinc-500 hover:text-zinc-200 transition-colors">
-            <div className="w-6 h-6 rounded-full bg-white/15 flex items-center justify-center text-white text-xs font-bold">
+            className="w-full flex justify-center py-3 hover:bg-gray-50 transition-colors">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+              style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
               {avatar}
             </div>
           </button>

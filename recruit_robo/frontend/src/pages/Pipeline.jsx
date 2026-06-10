@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react'
+﻿import { useState, useEffect, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { jobsApi, candidatesApi, pipelineApi, analyticsApi } from '../api'
 import {
@@ -110,7 +110,7 @@ function phaseMatchesStep(phase, type, roundNum) {
 
 function RoundStepper({ steps, candidates }) {
   if (!steps.length) return (
-    <p className="text-[11px] text-zinc-400 italic">No interview rounds configured for this job.</p>
+    <p className="text-[11px] text-gray-400 italic">No interview rounds configured for this job.</p>
   )
   return (
     <div className="flex items-start gap-0 flex-wrap">
@@ -119,16 +119,16 @@ function RoundStepper({ steps, candidates }) {
         const active = count > 0
         return (
           <div key={`${step.type}_${step.roundNum}`} className="flex items-center">
-            {i > 0 && <div className="w-6 h-px bg-zinc-300 flex-shrink-0 mb-4" />}
+            {i > 0 && <div className="w-6 h-px bg-gray-300 flex-shrink-0 mb-4" />}
             <div className="flex flex-col items-center gap-1 flex-shrink-0">
               <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-colors ${
                 active
-                  ? 'border-violet-500 bg-violet-500 text-white shadow-sm'
-                  : 'border-zinc-300 bg-white text-zinc-400'
+                  ? 'border-purple-500 bg-purple-500 text-white shadow-sm'
+                  : 'border-gray-300 bg-white text-gray-400'
               }`}>
-                {active ? count : <div className="w-2 h-2 rounded-full bg-zinc-300" />}
+                {active ? count : <div className="w-2 h-2 rounded-full bg-gray-300" />}
               </div>
-              <span className="text-[9px] text-zinc-400 text-center leading-tight max-w-[56px]">{step.label}</span>
+              <span className="text-[9px] text-gray-400 text-center leading-tight max-w-[56px]">{step.label}</span>
             </div>
           </div>
         )
@@ -159,14 +159,14 @@ function PipelineTable({ rows, loading, onRefresh }) {
   }
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 bg-zinc-50/60">
+    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-gray-50/60">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-zinc-700">Pipeline View</span>
-          <Maximize2 className="w-3 h-3 text-zinc-400" />
+          <span className="text-xs font-semibold text-gray-700">Pipeline View</span>
+          <Maximize2 className="w-3 h-3 text-gray-400" />
         </div>
         <button onClick={onRefresh}
-          className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-600 transition-colors">
+          className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors">
           <RefreshCw className="w-3 h-3" /> Refresh
         </button>
       </div>
@@ -174,24 +174,24 @@ function PipelineTable({ rows, loading, onRefresh }) {
       <div className="h-[3px]" style={{ background: `linear-gradient(to right, ${gradientBar})` }} />
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-zinc-400">
+        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Loading pipeline…</span>
         </div>
       ) : rows.length === 0 ? (
-        <div className="text-center py-16 text-zinc-400 text-sm">No jobs found.</div>
+        <div className="text-center py-16 text-gray-400 text-sm">No jobs found.</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="border-collapse" style={{ minWidth: 900, width: '100%' }}>
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 px-3 py-2 text-left text-[11px] font-medium text-zinc-500 bg-zinc-50 border-b border-zinc-200 whitespace-nowrap"
+                <th className="sticky left-0 z-10 px-3 py-2 text-left text-[11px] font-medium text-gray-500 bg-gray-50 border-b border-gray-100 whitespace-nowrap"
                   style={{ minWidth: 240, width: 240 }}>
                   Posting Title / Department
-                  <span className="ml-1 text-zinc-300">⇅</span>
+                  <span className="ml-1 text-gray-300">⇅</span>
                 </th>
                 {STAGES.map(s => (
                   <th key={s.key}
-                    className="px-3 py-2 text-[11px] font-medium text-zinc-500 bg-zinc-50 border-b border-zinc-200 border-l border-zinc-100 whitespace-nowrap text-center"
+                    className="px-3 py-2 text-[11px] font-medium text-gray-500 bg-gray-50 border-b border-gray-100 border-l border-gray-100 whitespace-nowrap text-center"
                     style={{ minWidth: 100 }}>
                     {s.label}
                   </th>
@@ -205,21 +205,21 @@ function PipelineTable({ rows, loading, onRefresh }) {
                 return (
                   <Fragment key={row.jobId}>
                     {/* ── Main row ── */}
-                    <tr className={`transition-colors group cursor-pointer ${isExpanded ? 'bg-blue-50/25' : 'hover:bg-zinc-50/80'}`}
+                    <tr className={`transition-colors group cursor-pointer ${isExpanded ? 'bg-purple-50/20' : 'hover:bg-gray-50/80'}`}
                       onClick={() => toggle(row.jobId)}>
                       <td
-                        className={`sticky left-0 z-10 px-3 py-2 border-b border-zinc-100 transition-colors
-                          ${isExpanded ? 'bg-blue-50/25' : 'bg-white group-hover:bg-zinc-50/80'}`}
+                        className={`sticky left-0 z-10 px-3 py-2 border-b border-gray-100 transition-colors
+                          ${isExpanded ? 'bg-purple-50/20' : 'bg-white group-hover:bg-gray-50/80'}`}
                         style={{ minWidth: 240, width: 240 }}>
                         <div className="flex items-start gap-2">
                           <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 transition-transform duration-200
-                            ${isExpanded ? 'rotate-180 text-blue-500' : 'text-zinc-300 group-hover:text-zinc-400'}`} />
+                            ${isExpanded ? 'rotate-180 text-purple-500' : 'text-gray-300 group-hover:text-gray-400'}`} />
                           <div className="min-w-0">
-                            <span className="text-xs font-medium text-blue-600 leading-tight truncate block max-w-[180px]">
+                            <span className="text-xs font-medium text-purple-700 leading-tight truncate block max-w-[180px]">
                               {row.title}
-                              <span className="text-zinc-400 font-normal ml-1">({row.total})</span>
+                              <span className="text-gray-400 font-normal ml-1">({row.total})</span>
                             </span>
-                            <p className="text-[10px] text-zinc-400 leading-tight mt-0.5">
+                            <p className="text-[10px] text-gray-400 leading-tight mt-0.5">
                               {row.department || 'General'} · {row.jobId}
                             </p>
                           </div>
@@ -227,7 +227,7 @@ function PipelineTable({ rows, loading, onRefresh }) {
                       </td>
                       {STAGES.map(s => (
                         <td key={s.key}
-                          className="px-1 py-2 border-b border-zinc-100 border-l border-zinc-100"
+                          className="px-1 py-2 border-b border-gray-100 border-l border-gray-100"
                           style={{ minWidth: 100 }}>
                           <Chevron count={row.counts[s.key] || 0} bg={s.bg} fg={s.fg} />
                         </td>
@@ -238,37 +238,37 @@ function PipelineTable({ rows, loading, onRefresh }) {
                     {isExpanded && (
                       <tr>
                         <td colSpan={colCount}
-                          className="px-5 py-4 bg-blue-50/20 border-b border-blue-100">
+                          className="px-5 py-4 bg-purple-50/10 border-b border-purple-100/40">
                           <div className="flex items-start justify-between gap-6">
                             <div className="flex-1 min-w-0">
 
                               {/* Title + status badge */}
                               <div className="flex items-center gap-2.5 mb-3">
-                                <h3 className="text-sm font-semibold text-zinc-900">{row.title}</h3>
+                                <h3 className="text-sm font-semibold text-gray-900">{row.title}</h3>
                                 {row.status && (
                                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
                                     row.status === 'active'
                                       ? 'bg-emerald-100 text-emerald-700'
-                                      : 'bg-zinc-100 text-zinc-500'
+                                      : 'bg-gray-100 text-gray-500'
                                   }`}>
                                     {row.status}
                                   </span>
                                 )}
-                                <span className="text-[10px] text-zinc-400 font-mono">{row.jobId}</span>
+                                <span className="text-[10px] text-gray-400 font-mono">{row.jobId}</span>
                               </div>
 
                               {/* Key metrics strip */}
                               <div className="flex items-center gap-6 mb-3">
                                 {[
-                                  { label: 'Total',      val: row.total,                                                             cls: 'text-zinc-900'    },
-                                  { label: 'Active',     val: activeCount,                                                           cls: 'text-blue-600'    },
+                                  { label: 'Total',      val: row.total,                                                             cls: 'text-gray-900'    },
+                                  { label: 'Active',     val: activeCount,                                                           cls: 'text-purple-600'  },
                                   { label: 'Hired',      val: row.counts.selected || 0,                                              cls: 'text-emerald-600' },
                                   { label: 'Rejected',   val: row.counts.rejected || 0,                                              cls: 'text-red-500'     },
-                                  { label: 'Conversion', val: row.total ? `${((row.counts.selected||0)/row.total*100).toFixed(1)}%` : '—', cls: 'text-zinc-700' },
-                                  { label: 'Department', val: row.department || 'General',                                           cls: 'text-zinc-700'    },
+                                  { label: 'Conversion', val: row.total ? `${((row.counts.selected||0)/row.total*100).toFixed(1)}%` : '—', cls: 'text-gray-700' },
+                                  { label: 'Department', val: row.department || 'General',                                           cls: 'text-gray-700'    },
                                 ].map(m => (
                                   <div key={m.label}>
-                                    <p className="text-[10px] text-zinc-400 mb-0.5">{m.label}</p>
+                                    <p className="text-[10px] text-gray-400 mb-0.5">{m.label}</p>
                                     <p className={`text-sm font-bold ${m.cls}`}>{m.val}</p>
                                   </div>
                                 ))}
@@ -281,11 +281,11 @@ function PipelineTable({ rows, loading, onRefresh }) {
                                   const pct   = row.total ? Math.round(count / row.total * 100) : 0
                                   return (
                                     <div key={s.key}
-                                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg border border-zinc-200 shadow-sm">
+                                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg border border-gray-100 shadow-sm">
                                       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: s.bg }} />
-                                      <span className="text-[10px] text-zinc-500">{s.label}</span>
-                                      <span className="text-xs font-bold text-zinc-900">{count}</span>
-                                      <span className="text-[10px] text-zinc-400">{pct}%</span>
+                                      <span className="text-[10px] text-gray-500">{s.label}</span>
+                                      <span className="text-xs font-bold text-gray-900">{count}</span>
+                                      <span className="text-[10px] text-gray-400">{pct}%</span>
                                     </div>
                                   )
                                 })}
@@ -298,13 +298,13 @@ function PipelineTable({ rows, loading, onRefresh }) {
                                 const isLoading = loadingCands[row.jobId]
                                 if (!steps.length && !isLoading) return null
                                 return (
-                                  <div className="mt-3 pt-3 border-t border-blue-100/60">
-                                    <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-2.5">
+                                  <div className="mt-3 pt-3 border-t border-purple-100/40">
+                                    <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2.5">
                                       Interview Rounds
                                     </p>
                                     {isLoading ? (
-                                      <div className="flex items-center gap-2 text-[11px] text-zinc-400">
-                                        <div className="w-3.5 h-3.5 border-2 border-zinc-300 border-t-violet-500 rounded-full animate-spin" />
+                                      <div className="flex items-center gap-2 text-[11px] text-gray-400">
+                                        <div className="w-3.5 h-3.5 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin" />
                                         Loading candidates…
                                       </div>
                                     ) : (
@@ -319,12 +319,13 @@ function PipelineTable({ rows, loading, onRefresh }) {
                             <div className="flex items-start gap-2 flex-shrink-0">
                               <Link to={`/jobs/${row.jobId}`}
                                 onClick={e => e.stopPropagation()}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-700 text-white text-[11px] font-medium rounded-lg transition-colors whitespace-nowrap">
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-white text-[11px] font-medium rounded-xl transition-all shadow-sm hover:shadow-md whitespace-nowrap"
+                                style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
                                 View full job <ArrowRight className="w-3 h-3" />
                               </Link>
                               <button
                                 onClick={e => { e.stopPropagation(); setExpandedJobId(null) }}
-                                className="p-1.5 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/60 rounded-lg transition-colors">
+                                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-colors">
                                 <X className="w-4 h-4" />
                               </button>
                             </div>
@@ -350,42 +351,43 @@ function AutoAdvanceModal({ suggestions, onClose, onConfirm, applying }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 flex flex-col max-h-[85vh]"
         onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
-          <h2 className="text-sm font-semibold text-zinc-900 flex items-center gap-2">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
             <Zap className="w-4 h-4 text-amber-500" /> Auto-advance Candidates
           </h2>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
         </div>
-        <div className="flex-1 overflow-y-auto divide-y divide-zinc-50">
+        <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
           {actionable.length === 0 ? (
-            <p className="text-sm text-zinc-400 text-center py-8">No candidates ready for automatic advancement.</p>
+            <p className="text-sm text-gray-400 text-center py-8">No candidates ready for automatic advancement.</p>
           ) : actionable.map(c => (
             <div key={c.candidateId} className="flex items-center gap-3 px-5 py-3">
-              <div className="w-7 h-7 rounded-full bg-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-600 flex-shrink-0">
+              <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0">
                 {c.name?.charAt(0)?.toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-zinc-900 truncate">{c.name}</p>
-                <p className="text-xs text-zinc-400">{c.suggestion.reason}</p>
+                <p className="text-sm font-medium text-gray-900 truncate">{c.name}</p>
+                <p className="text-xs text-gray-400">{c.suggestion.reason}</p>
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                <span className="text-xs text-zinc-400">{STAGE_LABELS[c.status]}</span>
-                <ArrowRight className="w-3 h-3 text-zinc-400" />
-                <span className="text-xs font-medium text-zinc-900">{STAGE_LABELS[c.suggestion.next_status]}</span>
+                <span className="text-xs text-gray-400">{STAGE_LABELS[c.status]}</span>
+                <ArrowRight className="w-3 h-3 text-gray-400" />
+                <span className="text-xs font-medium text-gray-900">{STAGE_LABELS[c.suggestion.next_status]}</span>
               </div>
             </div>
           ))}
         </div>
         {actionable.length > 0 && (
-          <div className="flex gap-2 px-5 py-4 border-t border-zinc-100">
+          <div className="flex gap-2 px-5 py-4 border-t border-gray-100">
             <button onClick={onConfirm} disabled={applying}
-              className="flex-1 py-2 bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
+              className="flex-1 py-2 disabled:opacity-40 text-white text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2"
+              style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
               {applying
                 ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Advancing…</>
                 : <><Zap className="w-3.5 h-3.5" /> Advance {actionable.length}</>}
             </button>
             <button onClick={onClose}
-              className="flex-1 py-2 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-sm font-medium rounded-lg transition-colors">
+              className="flex-1 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition-colors">
               Cancel
             </button>
           </div>
@@ -504,7 +506,7 @@ export default function Pipeline() {
   const displayRows     = filterStages.flatMap(s => (columns[s] || []))
 
   return (
-    <div className="page flex flex-col h-full">
+    <div className="px-6 py-5 w-full flex flex-col h-full">
 
       {showAutoModal && (
         <AutoAdvanceModal suggestions={allCards} onClose={() => setShowAutoModal(false)}
@@ -514,19 +516,19 @@ export default function Pipeline() {
       {/* Page header */}
       <div className="flex items-center justify-between mb-5 flex-shrink-0 flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-bold text-zinc-900">Pipeline</h1>
-          <span className="text-xs text-zinc-400">Recruitment stages</span>
+          <h1 className="text-lg font-bold text-gray-900">Pipeline</h1>
+          <span className="text-xs text-gray-400">Recruitment stages</span>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="inline-flex bg-zinc-100 rounded-full p-0.5 gap-0.5">
+          <div className="inline-flex bg-gray-100 rounded-full p-0.5 gap-0.5">
             {[
               { id: 'pipeline', icon: LayoutList, label: 'Pipeline View' },
               { id: 'board',    icon: Columns,    label: 'Board' },
             ].map(({ id, icon: Icon, label }) => (
               <button key={id} onClick={() => setView(id)}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium transition-all ${
-                  view === id ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'
+                  view === id ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
                 }`}>
                 <Icon className="w-3 h-3" />{label}
               </button>
@@ -546,21 +548,21 @@ export default function Pipeline() {
 
       {/* ── Board View ──────────────────────────────────────────────────── */}
       {view === 'board' && (
-        <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden flex-1 flex flex-col min-h-0">
+        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden flex-1 flex flex-col min-h-0 shadow-sm">
 
           {/* Panel header — job selector + actions */}
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 bg-zinc-50/60 flex-shrink-0">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-gray-50/60 flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <select value={selectedJobId} onChange={e => setSelectedJobId(e.target.value)}
-                  className="appearance-none pl-3 pr-7 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs font-medium text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 transition min-w-[200px]">
+                  className="appearance-none pl-3 pr-7 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-purple-500 transition min-w-[200px]">
                   <option value="">— Select a job —</option>
                   {jobs.map(j => <option key={j.jobId} value={j.jobId}>{j.title}</option>)}
                 </select>
-                <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-zinc-400 pointer-events-none" />
+                <ChevronDown className="absolute right-2 top-2 w-3 h-3 text-gray-400 pointer-events-none" />
               </div>
               {selectedJobId && !boardLoading && (
-                <span className="text-[11px] text-zinc-400">{allCards.length} candidates</span>
+                <span className="text-[11px] text-gray-400">{allCards.length} candidates</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -571,55 +573,57 @@ export default function Pipeline() {
                 </button>
               )}
               <button onClick={() => loadBoard(true)} disabled={refreshing || !selectedJobId}
-                className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-600 disabled:opacity-40 transition-colors">
+                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 disabled:opacity-40 transition-colors">
                 <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
               </button>
             </div>
           </div>
 
           {!selectedJobId ? (
-            <div className="flex-1 flex items-center justify-center text-zinc-400">
+            <div className="flex-1 flex items-center justify-center text-gray-400">
               <p className="text-sm">Select a job to view applications</p>
             </div>
           ) : boardLoading ? (
-            <div className="flex-1 flex items-center justify-center gap-2 text-zinc-400">
+            <div className="flex-1 flex items-center justify-center gap-2 text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Loading…</span>
             </div>
           ) : (
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
 
               {/* Stage group tabs */}
-              <div className="flex border-b border-zinc-200 flex-shrink-0 overflow-x-auto">
+              <div className="flex border-b border-gray-100 flex-shrink-0 overflow-x-auto">
                 {groupCounts.map(g => (
                   <button key={g.key}
                     onClick={() => { setActiveGroup(g.key); setActiveSubStage(null) }}
                     className={`flex items-center gap-2 px-5 py-3 text-[13px] border-b-2 transition-colors -mb-px whitespace-nowrap flex-shrink-0
                       ${activeGroup === g.key
-                        ? 'border-zinc-900 text-zinc-900 font-semibold'
-                        : 'border-transparent text-zinc-400 hover:text-zinc-600'}`}>
+                        ? 'border-purple-600 text-purple-700 font-semibold'
+                        : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
                     <div className={`w-2.5 h-2.5 rounded-full border-2 flex-shrink-0 transition-colors
-                      ${activeGroup === g.key ? 'bg-zinc-900 border-zinc-900' : 'border-zinc-300'}`} />
+                      ${activeGroup === g.key ? 'bg-purple-600 border-purple-600' : 'border-gray-300'}`} />
                     {g.label}
-                    <span className="text-xs text-zinc-400 font-normal ml-0.5">{g.count}</span>
+                    <span className="text-xs text-gray-400 font-normal ml-0.5">{g.count}</span>
                   </button>
                 ))}
               </div>
 
               {/* Sub-stage pill tabs (only for multi-stage groups) */}
               {subStageTabs.length > 1 && (
-                <div className="flex items-center gap-1.5 px-4 py-2 border-b border-zinc-100 bg-zinc-50/30 flex-shrink-0 overflow-x-auto">
+                <div className="flex items-center gap-1.5 px-4 py-2 border-b border-gray-100 bg-gray-50/30 flex-shrink-0 overflow-x-auto">
                   <button onClick={() => setActiveSubStage(null)}
                     className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors
-                      ${!activeSubStage ? 'bg-zinc-900 text-white' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100'}`}>
+                      ${!activeSubStage ? 'text-white' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+                    style={!activeSubStage ? { background: 'linear-gradient(135deg, #49029F, #7c3aed)' } : {}}>
                     All&nbsp;
-                    <span className={!activeSubStage ? 'text-zinc-400' : 'text-zinc-400'}>
+                    <span className="opacity-70">
                       {subStageTabs.reduce((s, x) => s + x.count, 0)}
                     </span>
                   </button>
                   {subStageTabs.map(ss => (
                     <button key={ss.key} onClick={() => setActiveSubStage(ss.key)}
                       className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors
-                        ${activeSubStage === ss.key ? 'bg-zinc-900 text-white' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100'}`}>
+                        ${activeSubStage === ss.key ? 'text-white' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+                      style={activeSubStage === ss.key ? { background: 'linear-gradient(135deg, #49029F, #7c3aed)' } : {}}>
                       {ss.label}&nbsp;<span className="opacity-60">{ss.count}</span>
                     </button>
                   ))}
@@ -627,13 +631,13 @@ export default function Pipeline() {
               )}
 
               {/* Result count */}
-              <div className="px-4 py-2 text-[11px] text-zinc-400 border-b border-zinc-100 bg-white flex-shrink-0">
+              <div className="px-4 py-2 text-[11px] text-gray-400 border-b border-gray-100 bg-white flex-shrink-0">
                 Showing {displayRows.length} application{displayRows.length !== 1 ? 's' : ''}
               </div>
 
               {/* Candidates table */}
               {displayRows.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center text-zinc-400 text-sm">
+                <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
                   No candidates in this stage.
                 </div>
               ) : (
@@ -641,85 +645,85 @@ export default function Pipeline() {
                   <table className="border-collapse w-full">
                     <thead className="sticky top-0 z-10">
                       <tr>
-                        <th className="px-4 py-2.5 text-left text-[11px] font-medium text-zinc-500 bg-zinc-50 border-b border-zinc-200 whitespace-nowrap"
+                        <th className="px-4 py-2.5 text-left text-[11px] font-medium text-gray-500 bg-gray-50 border-b border-gray-100 whitespace-nowrap"
                           style={{ minWidth: 260 }}>
                           APPLICANT
                         </th>
-                        <th className="px-4 py-2.5 text-left text-[11px] font-medium text-zinc-500 bg-zinc-50 border-b border-zinc-200 border-l border-zinc-100 whitespace-nowrap">
+                        <th className="px-4 py-2.5 text-left text-[11px] font-medium text-gray-500 bg-gray-50 border-b border-gray-100 border-l border-gray-100 whitespace-nowrap">
                           STAGE
                         </th>
-                        <th className="px-4 py-2.5 text-left text-[11px] font-medium text-zinc-500 bg-zinc-50 border-b border-zinc-200 border-l border-zinc-100 whitespace-nowrap">
+                        <th className="px-4 py-2.5 text-left text-[11px] font-medium text-gray-500 bg-gray-50 border-b border-gray-100 border-l border-gray-100 whitespace-nowrap">
                           SKILLS
                         </th>
-                        <th className="px-4 py-2.5 text-right text-[11px] font-medium text-zinc-500 bg-zinc-50 border-b border-zinc-200 border-l border-zinc-100 whitespace-nowrap">
+                        <th className="px-4 py-2.5 text-right text-[11px] font-medium text-gray-500 bg-gray-50 border-b border-gray-100 border-l border-gray-100 whitespace-nowrap">
                           DAYS
                         </th>
-                        <th className="px-4 py-2.5 text-left text-[11px] font-medium text-zinc-500 bg-zinc-50 border-b border-zinc-200 border-l border-zinc-100 whitespace-nowrap">
+                        <th className="px-4 py-2.5 text-left text-[11px] font-medium text-gray-500 bg-gray-50 border-b border-gray-100 border-l border-gray-100 whitespace-nowrap">
                           STATUS
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {displayRows.map(c => (
-                        <tr key={c.candidateId} className="hover:bg-zinc-50/60 transition-colors group">
+                        <tr key={c.candidateId} className="hover:bg-gray-50/60 transition-colors group">
 
                           {/* Applicant */}
-                          <td className="px-4 py-2.5 border-b border-zinc-100" style={{ minWidth: 260 }}>
+                          <td className="px-4 py-2.5 border-b border-gray-100" style={{ minWidth: 260 }}>
                             <div className="flex items-center gap-3">
                               <ScoreBadge score={c.match_score} />
                               <div className="min-w-0">
                                 <Link to={`/candidates/${c.candidateId}`}
-                                  className="text-xs font-semibold text-blue-600 hover:underline truncate block leading-tight">
+                                  className="text-xs font-semibold text-purple-700 hover:underline truncate block leading-tight">
                                   {c.name}
                                 </Link>
                                 {c.email && (
-                                  <p className="text-[11px] text-zinc-400 truncate leading-tight mt-0.5">{c.email}</p>
+                                  <p className="text-[11px] text-gray-400 truncate leading-tight mt-0.5">{c.email}</p>
                                 )}
                               </div>
                             </div>
                           </td>
 
                           {/* Stage badge */}
-                          <td className="px-4 py-2.5 border-b border-zinc-100 border-l border-zinc-100 whitespace-nowrap">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${STAGE_BADGE[c.status] || 'bg-zinc-100 text-zinc-600'}`}>
+                          <td className="px-4 py-2.5 border-b border-gray-100 border-l border-gray-100 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${STAGE_BADGE[c.status] || 'bg-gray-100 text-gray-600'}`}>
                               {STAGE_LABELS[c.status] || c.status}
                             </span>
                           </td>
 
                           {/* Skills */}
-                          <td className="px-4 py-2.5 border-b border-zinc-100 border-l border-zinc-100">
+                          <td className="px-4 py-2.5 border-b border-gray-100 border-l border-gray-100">
                             <div className="flex items-center gap-1">
                               {c.skills?.slice(0, 2).map(s => (
-                                <span key={s} className="px-1.5 py-0.5 bg-zinc-100 text-zinc-500 rounded text-[10px] truncate max-w-[72px]">{s}</span>
+                                <span key={s} className="px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px] truncate max-w-[72px]">{s}</span>
                               ))}
                               {(c.skills?.length || 0) > 2 && (
-                                <span className="text-[10px] text-zinc-400">+{c.skills.length - 2}</span>
+                                <span className="text-[10px] text-gray-400">+{c.skills.length - 2}</span>
                               )}
                               {(!c.skills || c.skills.length === 0) && (
-                                <span className="text-[10px] text-zinc-300">—</span>
+                                <span className="text-[10px] text-gray-300">—</span>
                               )}
                             </div>
                           </td>
 
                           {/* Days in stage */}
-                          <td className="px-4 py-2.5 border-b border-zinc-100 border-l border-zinc-100 text-right whitespace-nowrap">
-                            <span className="text-xs text-zinc-500">
+                          <td className="px-4 py-2.5 border-b border-gray-100 border-l border-gray-100 text-right whitespace-nowrap">
+                            <span className="text-xs text-gray-500">
                               {c.days_in_stage === 0 ? 'today' : `${c.days_in_stage}d`}
                             </span>
                           </td>
 
                           {/* Inline status dropdown */}
-                          <td className="px-4 py-2.5 border-b border-zinc-100 border-l border-zinc-100">
+                          <td className="px-4 py-2.5 border-b border-gray-100 border-l border-gray-100">
                             <div className="relative inline-block">
                               <select
                                 value={c.status}
                                 onChange={e => handleStatusChange(c.candidateId, c.status, e.target.value)}
-                                className="appearance-none pl-2.5 pr-6 py-1 border border-zinc-200 rounded-md text-[11px] text-zinc-700 bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 cursor-pointer hover:border-zinc-300 transition-colors">
+                                className="appearance-none pl-2.5 pr-6 py-1 border border-gray-200 rounded-md text-[11px] text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-purple-500 cursor-pointer hover:border-gray-300 transition-colors">
                                 {ALL_STATUSES.map(s => (
                                   <option key={s} value={s}>{STAGE_LABELS[s]}</option>
                                 ))}
                               </select>
-                              <ChevronDown className="absolute right-1.5 top-1.5 w-3 h-3 text-zinc-400 pointer-events-none" />
+                              <ChevronDown className="absolute right-1.5 top-1.5 w-3 h-3 text-gray-400 pointer-events-none" />
                             </div>
                           </td>
 
@@ -736,3 +740,4 @@ export default function Pipeline() {
     </div>
   )
 }
+

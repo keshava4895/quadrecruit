@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { jobsApi, candidatesApi, pipelineApi, emailApi } from '../api'
 import { useAuth } from '../context/AuthContext'
@@ -174,12 +174,12 @@ export default function JobDetail() {
   }
 
   if (loading) return (
-    <div className="page">
-      <div className="h-64 flex items-center justify-center text-zinc-400 text-sm">Loading…</div>
+    <div className="px-6 py-5 w-full">
+      <div className="h-64 flex items-center justify-center text-gray-400 text-sm">Loading…</div>
     </div>
   )
   if (!job) return (
-    <div className="page">
+    <div className="px-6 py-5 w-full">
       <div className="text-red-500 text-sm">Job not found.</div>
     </div>
   )
@@ -204,16 +204,16 @@ export default function JobDetail() {
   ]
 
   return (
-    <div className="page">
+    <div className="px-6 py-5 w-full">
 
       {/* Page header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 mb-2 transition-colors">
+          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 mb-2 transition-colors rounded-xl">
             <ChevronLeft className="w-3.5 h-3.5" /> Back
           </button>
-          <h1 className="text-xl font-semibold text-zinc-900">{job.title}</h1>
-          <div className="flex items-center gap-3 mt-1.5 text-xs text-zinc-400">
+          <h1 className="text-xl font-semibold text-gray-900">{job.title}</h1>
+          <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
             <span className="font-mono">{jobId}</span>
             {job.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{job.location}</span>}
             {job.experience_years && <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{job.experience_years}+ yrs</span>}
@@ -224,30 +224,31 @@ export default function JobDetail() {
           <div className="relative">
             <button
               onClick={() => { setPosOpen(job.positions_open ?? 1); setPosFilled(job.positions_filled ?? 0); setEditingPos(v => !v) }}
-              className={`flex items-center gap-1.5 px-3.5 py-2 border text-sm font-medium rounded-lg transition-colors ${editingPos ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50'}`}
+              className={`flex items-center gap-1.5 px-3.5 py-2 border text-sm font-medium rounded-xl transition-all ${editingPos ? 'border-transparent text-white shadow-sm hover:shadow-md' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              style={editingPos ? { background: 'linear-gradient(135deg, #49029F, #7c3aed)' } : {}}
             >
               <Pencil className="w-3.5 h-3.5" /> Edit Positions
             </button>
             {editingPos && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-zinc-200 rounded-xl shadow-lg z-20 p-4">
-                <p className="text-xs font-semibold text-zinc-700 mb-3">Edit Positions</p>
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-gray-100 rounded-2xl shadow-lg z-20 p-4">
+                <p className="text-xs font-semibold text-gray-700 mb-3">Edit Positions</p>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-[11px] text-zinc-400 block mb-1">Total Positions</label>
+                    <label className="text-[11px] text-gray-400 block mb-1">Total Positions</label>
                     <input
                       type="number" min="0"
                       value={posOpen}
                       onChange={e => setPosOpen(Math.max(0, +e.target.value))}
-                      className="w-full border border-zinc-200 rounded-lg px-3 py-1.5 text-sm font-semibold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-1.5 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] text-zinc-400 block mb-1">Positions Filled</label>
+                    <label className="text-[11px] text-gray-400 block mb-1">Positions Filled</label>
                     <input
                       type="number" min="0" max={posOpen}
                       value={posFilled}
                       onChange={e => setPosFilled(Math.min(posOpen, Math.max(0, +e.target.value)))}
-                      className="w-full border border-zinc-200 rounded-lg px-3 py-1.5 text-sm font-semibold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-1.5 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                 </div>
@@ -255,14 +256,15 @@ export default function JobDetail() {
                   <button
                     onClick={savePositions}
                     disabled={savingPos}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 disabled:opacity-40 text-white text-xs font-medium rounded-xl transition-all shadow-sm hover:shadow-md"
+                    style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}
                   >
                     {savingPos ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                     Save
                   </button>
                   <button
                     onClick={() => setEditingPos(false)}
-                    className="flex-1 py-1.5 border border-zinc-200 text-zinc-500 hover:bg-zinc-50 text-xs font-medium rounded-lg transition-colors"
+                    className="flex-1 py-1.5 border border-gray-200 text-gray-500 hover:bg-gray-50 text-xs font-medium rounded-xl transition-colors"
                   >
                     Cancel
                   </button>
@@ -272,7 +274,7 @@ export default function JobDetail() {
           </div>
           <button
             onClick={() => load(true)}
-            className="flex items-center gap-2 px-3.5 py-2 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-sm font-medium rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3.5 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition-colors"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -283,30 +285,30 @@ export default function JobDetail() {
       {/* KPI strip */}
       <div className="grid grid-cols-7 gap-3 mb-8">
         {stats.map(({ label, value }) => (
-          <div key={label} className="bg-white border border-zinc-200 rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-zinc-900">{value}</p>
-            <p className="text-xs text-zinc-400 mt-0.5">{label}</p>
+          <div key={label} className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 text-center">
+            <p className="text-2xl font-bold text-gray-900">{value}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{label}</p>
           </div>
         ))}
         {/* Positions Open = total - filled */}
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-zinc-900">
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 text-center">
+          <p className="text-2xl font-bold text-gray-900">
             {Math.max(0, (job.positions_open ?? 1) - (job.positions_filled ?? 0))}
           </p>
-          <p className="text-xs text-zinc-400 mt-0.5">Pos. Open</p>
+          <p className="text-xs text-gray-400 mt-0.5">Pos. Open</p>
         </div>
         {/* Positions Filled */}
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-zinc-900">{job.positions_filled ?? 0}</p>
-          <p className="text-xs text-zinc-400 mt-0.5">Pos. Filled</p>
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 text-center">
+          <p className="text-2xl font-bold text-gray-900">{job.positions_filled ?? 0}</p>
+          <p className="text-xs text-gray-400 mt-0.5">Pos. Filled</p>
         </div>
       </div>
 
       {/* Candidate table */}
-      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden mb-6">
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 bg-zinc-50/60">
-          <span className="text-xs font-semibold text-zinc-700">Top Candidates
-            <span className="ml-2 text-zinc-400 font-normal">Ranked by AI match score</span>
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden mb-6">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-gray-50/60">
+          <span className="text-xs font-semibold text-gray-700">Top Candidates
+            <span className="ml-2 text-gray-400 font-normal">Ranked by AI match score</span>
           </span>
           <div className="flex items-center gap-2">
             {selected.size > 0 && (
@@ -323,33 +325,34 @@ export default function JobDetail() {
             )}
             <button
               onClick={() => candidates.forEach(c => c.email && openEmail(c))}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-zinc-900 hover:bg-zinc-700 text-white text-xs font-medium rounded-lg transition-colors">
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-white text-xs font-medium rounded-xl transition-all shadow-sm hover:shadow-md"
+              style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
               <Mail className="w-3.5 h-3.5" /> Email All
             </button>
           </div>
         </div>
 
         {candidates.length === 0 ? (
-          <div className="text-center py-16 text-zinc-400">
+          <div className="text-center py-16 text-gray-400">
             <p className="text-sm">No candidates yet.</p>
-            <p className="text-xs mt-1 text-zinc-300">Shortlist candidates from the Candidates tab or upload resumes in Resume Scorer.</p>
+            <p className="text-xs mt-1 text-gray-300">Shortlist candidates from the Candidates tab or upload resumes in Resume Scorer.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th className="px-3 py-2 bg-zinc-50 border-b border-zinc-200 w-10">
+                  <th className="px-3 py-2 bg-gray-50 border-b border-gray-100 w-10">
                     <input
                       type="checkbox"
                       checked={allChecked}
                       ref={el => { if (el) el.indeterminate = someChecked && !allChecked }}
                       onChange={toggleAll}
-                      className="w-3 h-3 rounded border-zinc-300 cursor-pointer accent-zinc-900"
+                      className="w-3 h-3 rounded border-gray-300 cursor-pointer accent-purple-600"
                     />
                   </th>
                   {['#', 'Name', 'Skills', 'Exp', 'Email', 'Score', 'Status', 'Phase', ''].map(h => (
-                    <th key={h} className="px-3 py-2 text-left text-[11px] font-medium text-zinc-500 bg-zinc-50 border-b border-zinc-200 border-l border-zinc-100 whitespace-nowrap">
+                    <th key={h} className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 bg-gray-50 border-b border-gray-100 border-l border-gray-100 whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -360,51 +363,51 @@ export default function JobDetail() {
                   const isSelected = selected.has(c.candidateId)
                   return (
                     <tr key={c.candidateId}
-                      className={`transition-colors ${isSelected ? 'bg-zinc-50' : 'hover:bg-zinc-50/80'}`}>
-                      <td className="px-3 py-1.5 border-b border-zinc-100">
+                      className={`transition-colors ${isSelected ? 'bg-gray-50' : 'hover:bg-gray-50/80'}`}>
+                      <td className="px-3 py-1.5 border-b border-gray-100">
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleOne(c.candidateId)}
-                          className="w-3 h-3 rounded border-zinc-300 cursor-pointer accent-zinc-900"
+                          className="w-3 h-3 rounded border-gray-300 cursor-pointer accent-purple-600"
                         />
                       </td>
-                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 text-[11px] text-zinc-400">{i + 1}</td>
-                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 whitespace-nowrap">
+                      <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100 text-[11px] text-gray-400">{i + 1}</td>
+                      <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100 whitespace-nowrap">
                         <Link to={`/candidates/${c.candidateId}`} className="text-xs font-medium text-blue-600 hover:underline transition-colors">
                           {c.name}
                         </Link>
                       </td>
-                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100">
+                      <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100">
                         <div className="flex flex-wrap gap-1">
                           {c.skills?.slice(0, 3).map(s => (
-                            <span key={s} className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 text-[10px] rounded">{s}</span>
+                            <span key={s} className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded">{s}</span>
                           ))}
-                          {c.skills?.length > 3 && <span className="text-[10px] text-zinc-400">+{c.skills.length - 3}</span>}
+                          {c.skills?.length > 3 && <span className="text-[10px] text-gray-400">+{c.skills.length - 3}</span>}
                         </div>
                       </td>
-                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 text-xs text-zinc-500 whitespace-nowrap">{c.experience}y</td>
-                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 text-xs text-zinc-400 whitespace-nowrap max-w-[160px] truncate">{c.email}</td>
-                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100"><ScoreBadge score={c.match_score} /></td>
-                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100">
+                      <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100 text-xs text-gray-500 whitespace-nowrap">{c.experience}y</td>
+                      <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100 text-xs text-gray-400 whitespace-nowrap max-w-[160px] truncate">{c.email}</td>
+                      <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100"><ScoreBadge score={c.match_score} /></td>
+                      <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_STYLE[c.status] || STATUS_STYLE.sourced}`}>
                           {c.status?.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100 text-xs text-zinc-400 whitespace-nowrap">
+                      <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100 text-xs text-gray-400 whitespace-nowrap">
                         {c.interview_phase?.replace(/_/g, ' ')}
                       </td>
-                      <td className="px-3 py-1.5 border-b border-zinc-100 border-l border-zinc-100">
+                      <td className="px-3 py-1.5 border-b border-gray-100 border-l border-gray-100">
                         <div className="flex gap-0.5">
                           <button onClick={() => openEmail(c)}
-                            className="p-1 rounded text-zinc-300 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Send email">
+                            className="p-1 rounded text-gray-300 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Send email">
                             <Mail className="w-3.5 h-3.5" />
                           </button>
-                          <button className="p-1 rounded text-zinc-300 hover:text-zinc-700 hover:bg-zinc-100 transition-colors" title="Schedule interview">
+                          <button className="p-1 rounded text-gray-300 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Schedule interview">
                             <Calendar className="w-3.5 h-3.5" />
                           </button>
                           <button onClick={() => deleteSingle(c)}
-                            className="p-1 rounded text-zinc-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="Remove candidate">
+                            className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="Remove candidate">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -419,17 +422,17 @@ export default function JobDetail() {
       </div>
 
       {/* Pipeline timeline */}
-      <div className="bg-white border border-zinc-200 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-zinc-900 mb-4">Pipeline Timeline</h2>
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Pipeline Timeline</h2>
         {timeline.length === 0 ? (
-          <p className="text-sm text-zinc-400">No pipeline events yet.</p>
+          <p className="text-sm text-gray-400">No pipeline events yet.</p>
         ) : (
-          <ol className="relative border-l border-zinc-100 pl-6 space-y-4">
+          <ol className="relative border-l border-gray-100 pl-6 space-y-4">
             {timeline.map((e, i) => (
               <li key={i} className="relative">
-                <div className="absolute -left-[25px] w-2.5 h-2.5 rounded-full bg-zinc-300 border-2 border-white mt-1" />
-                <p className="text-sm font-medium text-zinc-800">{e.stage}</p>
-                <p className="text-xs text-zinc-400 mt-0.5">{new Date(e.ts).toLocaleString()}</p>
+                <div className="absolute -left-[25px] w-2.5 h-2.5 rounded-full bg-gray-300 border-2 border-white mt-1" />
+                <p className="text-sm font-medium text-gray-800">{e.stage}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{new Date(e.ts).toLocaleString()}</p>
               </li>
             ))}
           </ol>
@@ -441,33 +444,33 @@ export default function JobDetail() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
 
-            <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <div>
-                <h2 className="text-sm font-semibold text-zinc-900">Compose Email</h2>
-                <p className="text-xs text-zinc-400 mt-0.5">To: <span className="text-zinc-600">{emailModal.name}</span>{emailModal.email ? ` · ${emailModal.email}` : ' · no email on file'}</p>
+                <h2 className="text-sm font-semibold text-gray-900">Compose Email</h2>
+                <p className="text-xs text-gray-400 mt-0.5">To: <span className="text-gray-600">{emailModal.name}</span>{emailModal.email ? ` · ${emailModal.email}` : ' · no email on file'}</p>
               </div>
-              <button onClick={() => setEmailModal(null)} className="text-zinc-400 hover:text-zinc-700">
+              <button onClick={() => setEmailModal(null)} className="text-gray-400 hover:text-gray-700">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               <div>
-                <label className="text-xs font-medium text-zinc-500 block mb-1">Subject</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">Subject</label>
                 <input
                   type="text"
                   value={emailSubject}
                   onChange={e => setEmailSubject(e.target.value)}
-                  className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-zinc-500 block mb-1">Message</label>
+                <label className="text-xs font-medium text-gray-500 block mb-1">Message</label>
                 <textarea
                   rows={16}
                   value={emailBody}
                   onChange={e => setEmailBody(e.target.value)}
-                  className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-800 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none"
                 />
               </div>
 
@@ -484,10 +487,10 @@ export default function JobDetail() {
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-zinc-100">
+            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
               <button
                 onClick={() => setEmailModal(null)}
-                className="px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 border border-zinc-200 rounded-lg">
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 border border-gray-200 rounded-xl">
                 Cancel
               </button>
               <button
@@ -507,3 +510,4 @@ export default function JobDetail() {
     </div>
   )
 }
+

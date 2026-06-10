@@ -4,30 +4,52 @@
 
 @layer base {
   body {
-    @apply text-zinc-800 antialiased bg-zinc-50;
+    @apply text-gray-800 antialiased;
+    background-color: #f1f0f7;
     font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   }
-  h1 { @apply text-xl font-semibold text-zinc-900; }
-  h2 { @apply text-base font-semibold text-zinc-800; }
+  h1 { @apply text-xl font-semibold text-gray-900; }
+  h2 { @apply text-base font-semibold text-gray-800; }
 }
 
 @layer components {
+  /* Primary brand button — purple gradient */
   .btn-primary {
-    @apply bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium
-           hover:bg-zinc-700 transition-colors disabled:opacity-40;
+    @apply text-white px-4 py-2 rounded-xl text-sm font-medium transition-all
+           disabled:opacity-40 shadow-sm;
+    background: linear-gradient(135deg, #49029F, #7c3aed);
   }
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #3a027a, #6d28d9);
+    @apply shadow-md;
+  }
+
+  /* Secondary / outline button */
   .btn-secondary {
-    @apply border border-zinc-200 text-zinc-700 px-4 py-2 rounded-lg text-sm
-           font-medium hover:bg-zinc-100 transition-colors;
+    @apply border border-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm
+           font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors bg-white;
   }
+
+  /* Card — consistent elevated white card */
   .card {
-    @apply bg-white rounded-xl border border-zinc-200/80 shadow-sm;
+    @apply bg-white rounded-2xl border border-gray-100 shadow-sm;
   }
+
+  /* Badge */
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
-  /* Page wrapper — every page gets consistent padding */
+
+  /* Page wrapper */
   .page {
     @apply max-w-7xl mx-auto px-8 py-6;
+  }
+
+  /* Section header */
+  .section-header {
+    @apply flex items-center justify-between mb-4;
+  }
+  .section-title {
+    @apply text-sm font-semibold text-gray-900;
   }
 }
