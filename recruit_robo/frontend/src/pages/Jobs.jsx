@@ -172,20 +172,19 @@ export default function Jobs() {
 
       {/* KPI strip */}
       {(() => {
-        const openPositions    = jobs.filter(j => j.status === 'active').length
-        const totalHired       = overview?.total_hired ?? '—'
-        const jobStats         = overview?.job_stats || []
-        const unfilledVacancies = jobs.filter(j =>
-          j.status === 'active' &&
-          (jobStats.find(s => s.jobId === j.jobId)?.hired ?? 0) === 0
-        ).length
+        const activeJobs         = jobs.filter(j => j.status === 'active')
+        const totalOpenPositions = activeJobs.length
+        const totalHired         = jobs.reduce((sum, j) => sum + (j.positions_filled ?? 0), 0)
+        const totalUnfilled      = activeJobs.reduce((sum, j) =>
+          sum + Math.max(0, (j.positions_open ?? 1) - (j.positions_filled ?? 0)), 0
+        )
 
         return (
           <div className="grid grid-cols-3 gap-3 mb-6">
             {[
-              { label: 'Open Positions',     value: openPositions,     icon: Layers,     color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-100' },
-              { label: 'Candidates Hired',   value: totalHired,        icon: UserCheck,  color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-              { label: 'Unfilled Vacancies', value: unfilledVacancies, icon: Users,      color: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-100' },
+              { label: 'Total Open Positions',    value: totalOpenPositions, icon: Layers,    color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-100' },
+              { label: 'Total Candidates Hired',  value: totalHired,         icon: UserCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+              { label: 'Total Unfilled Vacancies',value: totalUnfilled,      icon: Users,     color: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-100' },
             ].map(k => (
               <div key={k.label} className="bg-white border border-zinc-200 rounded-xl px-5 py-4 flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-xl ${k.bg} border ${k.border} flex items-center justify-center flex-shrink-0`}>
