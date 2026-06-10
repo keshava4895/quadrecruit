@@ -34,7 +34,7 @@ async def list_jobs() -> list:
     db = get_db()
     cursor = db.job_info.find({}, {"_id": 0})
     jobs = await cursor.to_list(length=100)
-    jobs.sort(key=lambda j: j.get("created_at") or "", reverse=True)
+    jobs.sort(key=lambda j: j.get("created_at") or "", reverse=False)
     return jobs
 
 
@@ -46,7 +46,9 @@ async def get_job(job_id: str) -> dict | None:
 async def update_job(job_id: str, fields: dict) -> bool:
     db = get_db()
     allowed = {"positions_open", "positions_filled", "title", "description",
-               "skills", "experience_years", "location", "status"}
+               "skills", "experience_years", "location", "status",
+               "rounds_technical", "rounds_tech_managerial", "rounds_managerial", "rounds_hr",
+               "project", "team"}
     update = {k: v for k, v in fields.items() if k in allowed}
     if not update:
         return True

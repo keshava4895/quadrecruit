@@ -33,10 +33,20 @@ class JobCreate(BaseModel):
     location: Optional[str] = None
     recruiter_email: Optional[EmailStr] = None
     positions_open: int = 1
+    rounds_technical: int = 0
+    rounds_tech_managerial: int = 0
+    rounds_managerial: int = 0
+    rounds_hr: int = 0
+    project: Optional[str] = None
+    team: Optional[str] = None
 
 class JobPositionsUpdate(BaseModel):
     positions_open: Optional[int] = None
     positions_filled: Optional[int] = None
+    status: Optional[str] = None
+    project: Optional[str] = None
+    team: Optional[str] = None
+    description: Optional[str] = None
 
 class JobResponse(JobCreate):
     jobId: str

@@ -79,13 +79,84 @@ function Chevron({ count, bg, fg }) {
   )
 }
 
+// ── Interview round stepper ───────────────────────────────────────────────────
+function buildRoundSteps(row) {
+  const steps = []
+  const add = (type, label, total) => {
+    for (let i = 1; i <= total; i++)
+      steps.push({ type, roundNum: i, label: total === 1 ? label : `${label} R${i}` })
+  }
+  if (row.rounds_technical       > 0) add('technical',       'Technical',  row.rounds_technical)
+  if (row.rounds_tech_managerial > 0) add('tech_managerial', 'Tech Mgr',   row.rounds_tech_managerial)
+  if (row.rounds_managerial      > 0) add('managerial',      'Managerial', row.rounds_managerial)
+  if (row.rounds_hr              > 0) add('hr',              'HR',         row.rounds_hr)
+  return steps
+}
+
+function phaseMatchesStep(phase, type, roundNum) {
+  if (!phase || phase === 'not_started') return false
+  const p = phase.toLowerCase().replace(/[\s-]/g, '_')
+  const typeMap = {
+    technical:       ['technical'],
+    tech_managerial: ['tech_managerial', 'technical_managerial', 'tech_mgr'],
+    managerial:      ['managerial', 'manager'],
+    hr:              ['hr', 'human_resource'],
+  }
+  const keys = typeMap[type] || []
+  if (!keys.some(k => p.includes(k))) return false
+  const numMatch = p.match(/(\d+)$/)
+  return numMatch ? parseInt(numMatch[1]) === roundNum : roundNum === 1
+}
+
+function RoundStepper({ steps, candidates }) {
+  if (!steps.length) return (
+    <p className="text-[11px] text-zinc-400 italic">No interview rounds configured for this job.</p>
+  )
+  return (
+    <div className="flex items-start gap-0 flex-wrap">
+      {steps.map((step, i) => {
+        const count = candidates.filter(c => phaseMatchesStep(c.interview_phase, step.type, step.roundNum)).length
+        const active = count > 0
+        return (
+          <div key={`${step.type}_${step.roundNum}`} className="flex items-center">
+            {i > 0 && <div className="w-6 h-px bg-zinc-300 flex-shrink-0 mb-4" />}
+            <div className="flex flex-col items-center gap-1 flex-shrink-0">
+              <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-colors ${
+                active
+                  ? 'border-violet-500 bg-violet-500 text-white shadow-sm'
+                  : 'border-zinc-300 bg-white text-zinc-400'
+              }`}>
+                {active ? count : <div className="w-2 h-2 rounded-full bg-zinc-300" />}
+              </div>
+              <span className="text-[9px] text-zinc-400 text-center leading-tight max-w-[56px]">{step.label}</span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Pipeline Table View ───────────────────────────────────────────────────────
 function PipelineTable({ rows, loading, onRefresh }) {
   const [expandedJobId, setExpandedJobId] = useState(null)
+  const [jobCandidates, setJobCandidates] = useState({})
+  const [loadingCands,  setLoadingCands]  = useState({})
   const gradientBar = STAGES.map(s => s.grad).join(', ')
   const colCount    = STAGES.length + 1
 
-  const toggle = (jobId) => setExpandedJobId(prev => prev === jobId ? null : jobId)
+  const toggle = async (jobId) => {
+    const next = expandedJobId === jobId ? null : jobId
+    setExpandedJobId(next)
+    if (next && !jobCandidates[next]) {
+      setLoadingCands(p => ({ ...p, [next]: true }))
+      try {
+        const r = await candidatesApi.top(next, 200)
+        setJobCandidates(p => ({ ...p, [next]: r.data || [] }))
+      } catch { setJobCandidates(p => ({ ...p, [next]: [] })) }
+      finally { setLoadingCands(p => ({ ...p, [next]: false })) }
+    }
+  }
 
   return (
     <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
@@ -219,6 +290,29 @@ function PipelineTable({ rows, loading, onRefresh }) {
                                   )
                                 })}
                               </div>
+
+                              {/* Interview round stepper */}
+                              {(() => {
+                                const steps = buildRoundSteps(row)
+                                const cands = jobCandidates[row.jobId] || []
+                                const isLoading = loadingCands[row.jobId]
+                                if (!steps.length && !isLoading) return null
+                                return (
+                                  <div className="mt-3 pt-3 border-t border-blue-100/60">
+                                    <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-2.5">
+                                      Interview Rounds
+                                    </p>
+                                    {isLoading ? (
+                                      <div className="flex items-center gap-2 text-[11px] text-zinc-400">
+                                        <div className="w-3.5 h-3.5 border-2 border-zinc-300 border-t-violet-500 rounded-full animate-spin" />
+                                        Loading candidates…
+                                      </div>
+                                    ) : (
+                                      <RoundStepper steps={steps} candidates={cands} />
+                                    )}
+                                  </div>
+                                )
+                              })()}
                             </div>
 
                             {/* Actions */}
