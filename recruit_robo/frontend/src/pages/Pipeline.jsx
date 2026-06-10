@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { jobsApi, candidatesApi, pipelineApi, analyticsApi } from '../api'
 import {
@@ -81,7 +81,11 @@ function Chevron({ count, bg, fg }) {
 
 // ── Pipeline Table View ───────────────────────────────────────────────────────
 function PipelineTable({ rows, loading, onRefresh }) {
+  const [expandedJobId, setExpandedJobId] = useState(null)
   const gradientBar = STAGES.map(s => s.grad).join(', ')
+  const colCount    = STAGES.length + 1
+
+  const toggle = (jobId) => setExpandedJobId(prev => prev === jobId ? null : jobId)
 
   return (
     <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
@@ -124,33 +128,119 @@ function PipelineTable({ rows, loading, onRefresh }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map(row => (
-                <tr key={row.jobId} className="hover:bg-zinc-50/80 transition-colors group">
-                  <td className="sticky left-0 z-10 px-3 py-2 border-b border-zinc-100 bg-white group-hover:bg-zinc-50/80 transition-colors"
-                    style={{ minWidth: 240, width: 240 }}>
-                    <div className="flex items-start gap-2">
-                      <Eye className="w-3.5 h-3.5 text-zinc-300 flex-shrink-0 mt-0.5" />
-                      <div className="min-w-0">
-                        <Link to={`/jobs/${row.jobId}`}
-                          className="text-xs font-medium text-blue-600 hover:underline leading-tight truncate block max-w-[180px]">
-                          {row.title}
-                          <span className="text-zinc-400 font-normal ml-1">({row.total})</span>
-                        </Link>
-                        <p className="text-[10px] text-zinc-400 leading-tight mt-0.5">
-                          {row.department || 'General'} · {row.jobId}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  {STAGES.map(s => (
-                    <td key={s.key}
-                      className="px-1 py-2 border-b border-zinc-100 border-l border-zinc-100"
-                      style={{ minWidth: 100 }}>
-                      <Chevron count={row.counts[s.key] || 0} bg={s.bg} fg={s.fg} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {rows.map(row => {
+                const isExpanded = expandedJobId === row.jobId
+                const activeCount = (row.counts.emailed || 0) + (row.counts.interested || 0) + (row.counts.scheduled || 0)
+                return (
+                  <Fragment key={row.jobId}>
+                    {/* ── Main row ── */}
+                    <tr className={`transition-colors group cursor-pointer ${isExpanded ? 'bg-blue-50/25' : 'hover:bg-zinc-50/80'}`}
+                      onClick={() => toggle(row.jobId)}>
+                      <td
+                        className={`sticky left-0 z-10 px-3 py-2 border-b border-zinc-100 transition-colors
+                          ${isExpanded ? 'bg-blue-50/25' : 'bg-white group-hover:bg-zinc-50/80'}`}
+                        style={{ minWidth: 240, width: 240 }}>
+                        <div className="flex items-start gap-2">
+                          <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 transition-transform duration-200
+                            ${isExpanded ? 'rotate-180 text-blue-500' : 'text-zinc-300 group-hover:text-zinc-400'}`} />
+                          <div className="min-w-0">
+                            <span className="text-xs font-medium text-blue-600 leading-tight truncate block max-w-[180px]">
+                              {row.title}
+                              <span className="text-zinc-400 font-normal ml-1">({row.total})</span>
+                            </span>
+                            <p className="text-[10px] text-zinc-400 leading-tight mt-0.5">
+                              {row.department || 'General'} · {row.jobId}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      {STAGES.map(s => (
+                        <td key={s.key}
+                          className="px-1 py-2 border-b border-zinc-100 border-l border-zinc-100"
+                          style={{ minWidth: 100 }}>
+                          <Chevron count={row.counts[s.key] || 0} bg={s.bg} fg={s.fg} />
+                        </td>
+                      ))}
+                    </tr>
+
+                    {/* ── Expanded details row ── */}
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={colCount}
+                          className="px-5 py-4 bg-blue-50/20 border-b border-blue-100">
+                          <div className="flex items-start justify-between gap-6">
+                            <div className="flex-1 min-w-0">
+
+                              {/* Title + status badge */}
+                              <div className="flex items-center gap-2.5 mb-3">
+                                <h3 className="text-sm font-semibold text-zinc-900">{row.title}</h3>
+                                {row.status && (
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                    row.status === 'active'
+                                      ? 'bg-emerald-100 text-emerald-700'
+                                      : 'bg-zinc-100 text-zinc-500'
+                                  }`}>
+                                    {row.status}
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-zinc-400 font-mono">{row.jobId}</span>
+                              </div>
+
+                              {/* Key metrics strip */}
+                              <div className="flex items-center gap-6 mb-3">
+                                {[
+                                  { label: 'Total',      val: row.total,                                                             cls: 'text-zinc-900'    },
+                                  { label: 'Active',     val: activeCount,                                                           cls: 'text-blue-600'    },
+                                  { label: 'Hired',      val: row.counts.selected || 0,                                              cls: 'text-emerald-600' },
+                                  { label: 'Rejected',   val: row.counts.rejected || 0,                                              cls: 'text-red-500'     },
+                                  { label: 'Conversion', val: row.total ? `${((row.counts.selected||0)/row.total*100).toFixed(1)}%` : '—', cls: 'text-zinc-700' },
+                                  { label: 'Department', val: row.department || 'General',                                           cls: 'text-zinc-700'    },
+                                ].map(m => (
+                                  <div key={m.label}>
+                                    <p className="text-[10px] text-zinc-400 mb-0.5">{m.label}</p>
+                                    <p className={`text-sm font-bold ${m.cls}`}>{m.val}</p>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Stage breakdown cards */}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {STAGES.map(s => {
+                                  const count = row.counts[s.key] || 0
+                                  const pct   = row.total ? Math.round(count / row.total * 100) : 0
+                                  return (
+                                    <div key={s.key}
+                                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg border border-zinc-200 shadow-sm">
+                                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: s.bg }} />
+                                      <span className="text-[10px] text-zinc-500">{s.label}</span>
+                                      <span className="text-xs font-bold text-zinc-900">{count}</span>
+                                      <span className="text-[10px] text-zinc-400">{pct}%</span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-start gap-2 flex-shrink-0">
+                              <Link to={`/jobs/${row.jobId}`}
+                                onClick={e => e.stopPropagation()}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-700 text-white text-[11px] font-medium rounded-lg transition-colors whitespace-nowrap">
+                                View full job <ArrowRight className="w-3 h-3" />
+                              </Link>
+                              <button
+                                onClick={e => { e.stopPropagation(); setExpandedJobId(null) }}
+                                className="p-1.5 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/60 rounded-lg transition-colors">
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>

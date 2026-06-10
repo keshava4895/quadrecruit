@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { jobsApi, candidatesApi, pipelineApi, emailApi } from '../api'
 import { useAuth } from '../context/AuthContext'
 import { Mail, Calendar, RefreshCw, ChevronLeft, MapPin, Briefcase, X, Send, Loader2, Trash2 } from 'lucide-react'
@@ -65,8 +65,9 @@ ${userEmail}`
 }
 
 export default function JobDetail() {
-  const { jobId } = useParams()
-  const { user }  = useAuth()
+  const { jobId }  = useParams()
+  const navigate   = useNavigate()
+  const { user }   = useAuth()
   const [job,        setJob]        = useState(null)
   const [candidates, setCandidates] = useState([])
   const [timeline,   setTimeline]   = useState([])
@@ -186,9 +187,9 @@ export default function JobDetail() {
       {/* Page header */}
       <div className="flex items-start justify-between mb-8">
         <div>
-          <Link to="/jobs" className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 mb-2 transition-colors">
-            <ChevronLeft className="w-3.5 h-3.5" /> All Jobs
-          </Link>
+          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 mb-2 transition-colors">
+            <ChevronLeft className="w-3.5 h-3.5" /> Back
+          </button>
           <h1 className="text-xl font-semibold text-zinc-900">{job.title}</h1>
           <div className="flex items-center gap-3 mt-1.5 text-xs text-zinc-400">
             <span className="font-mono">{jobId}</span>
