@@ -69,6 +69,9 @@ class JsonCollection:
                 if "$push" in update:
                     for k, v in update["$push"].items():
                         docs[i].setdefault(k, []).append(v)
+                if "$unset" in update:
+                    for k in update["$unset"]:
+                        docs[i].pop(k, None)
                 self._save(docs)
                 return type("R", (), {"matched_count": 1, "modified_count": 1})()
         if upsert:
@@ -90,6 +93,14 @@ class JsonCollection:
                 self._save(docs)
                 return type("R", (), {"deleted_count": 1})()
         return type("R", (), {"deleted_count": 0})()
+
+    async def delete_many(self, filter: dict):
+        docs = self._load()
+        kept = [d for d in docs if not self._matches(d, filter)]
+        removed = len(docs) - len(kept)
+        if removed:
+            self._save(kept)
+        return type("R", (), {"deleted_count": removed})()
 
     # ── read ops ─────────────────────────────────────────────────────────────
 

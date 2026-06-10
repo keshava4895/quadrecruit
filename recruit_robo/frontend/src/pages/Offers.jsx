@@ -30,9 +30,8 @@ export default function Offers() {
 
   // Create form
   const [jobs, setJobs]                   = useState([])
+  const [allCandidates, setAllCandidates] = useState([])
   const [candSearch, setCandSearch]       = useState('')
-  const [candidates, setCandidates]       = useState([])
-  const [candSearching, setCandSearching] = useState(false)
   const [selectedCand, setSelectedCand]   = useState(null)
   const [createForm, setCreateForm]       = useState({ jobId: '', ctc: '', joining_date: '', notes: '' })
   const [creating, setCreating]           = useState(false)
@@ -50,29 +49,25 @@ export default function Offers() {
   useEffect(() => {
     loadOffers()
     jobsApi.list().then(r => setJobs(r.data || [])).catch(() => {})
+    candidatesApi.listAll({ limit: 500 }).then(r => setAllCandidates(r.data?.candidates || [])).catch(() => {})
   }, [])
 
   // Close candidate dropdown on outside click
   useEffect(() => {
     function onOut(e) {
-      if (candDropRef.current && !candDropRef.current.contains(e.target)) setCandidates([])
+      if (candDropRef.current && !candDropRef.current.contains(e.target)) setCandSearch('')
     }
     document.addEventListener('mousedown', onOut)
     return () => document.removeEventListener('mousedown', onOut)
   }, [])
 
-  // Debounced candidate search
-  useEffect(() => {
-    if (!candSearch.trim()) { setCandidates([]); return }
-    setCandSearching(true)
-    const t = setTimeout(async () => {
-      try {
-        const r = await candidatesApi.listAll({ search: candSearch, limit: 10 })
-        setCandidates(r.data?.candidates || [])
-      } catch { } finally { setCandSearching(false) }
-    }, 280)
-    return () => clearTimeout(t)
-  }, [candSearch])
+  // Client-side candidate filtering
+  const candResults = candSearch.trim()
+    ? allCandidates.filter(c => {
+        const q = candSearch.toLowerCase()
+        return c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q)
+      }).slice(0, 8)
+    : []
 
   async function loadOffers() {
     setLoading(true)
@@ -205,15 +200,14 @@ export default function Offers() {
                     <input type="text" value={candSearch} onChange={e => setCandSearch(e.target.value)}
                       placeholder="Search by name or email…"
                       className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-50" />
-                    {candSearch && (
+                    {candSearch.trim() && (
                       <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-100 rounded-xl shadow-lg z-20 overflow-hidden">
-                        {candSearching && <p className="px-3 py-2 text-xs text-gray-400">Searching…</p>}
-                        {!candSearching && candidates.length === 0 && (
+                        {candResults.length === 0 && (
                           <p className="px-3 py-2 text-xs text-gray-400">No candidates found</p>
                         )}
-                        {candidates.map(c => (
+                        {candResults.map(c => (
                           <button key={c.candidateId} type="button"
-                            onClick={() => { setSelectedCand(c); setCandSearch(''); setCandidates([]) }}
+                            onClick={() => { setSelectedCand(c); setCandSearch('') }}
                             className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-purple-50 text-left transition-colors">
                             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                               style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
@@ -268,12 +262,19 @@ export default function Offers() {
               </div>
             </div>
 
-            <div className="mt-4 flex justify-end">
-              <button type="submit" disabled={creating || !selectedCand || !createForm.jobId}
-                className="px-5 py-2 text-sm font-medium text-white rounded-xl disabled:opacity-40 transition-all shadow-sm"
-                style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
-                {creating ? 'Creating…' : 'Create Offer'}
-              </button>
+            <div className="mt-4 flex items-center justify-between">
+              {(!selectedCand || !createForm.jobId) && (
+                <p className="text-xs text-amber-600">
+                  {!selectedCand ? 'Search and select a candidate above' : 'Select a job'}
+                </p>
+              )}
+              <div className="ml-auto">
+                <button type="submit" disabled={creating || !selectedCand || !createForm.jobId}
+                  className="px-5 py-2 text-sm font-medium text-white rounded-xl disabled:opacity-40 transition-all shadow-sm"
+                  style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
+                  {creating ? 'Creating…' : 'Create Offer'}
+                </button>
+              </div>
             </div>
           </form>
         </div>

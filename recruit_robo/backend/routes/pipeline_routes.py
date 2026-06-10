@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from datetime import datetime, timezone
+import asyncio
 from services.lifecycle_engine import transition_candidate, push_timeline
 from database import get_db
 
@@ -123,57 +124,48 @@ async def get_timeline(job_id: str):
 @router.get("/stats/dashboard")
 async def dashboard_stats():
     db = get_db()
-    total_candidates  = await db.candidate_info.count_documents({})
-    active_jobs       = await db.job_info.count_documents({"status": "active"})
-    interviews_sched  = await db.interview_schedules.count_documents({})
-    hired             = await db.candidate_info.count_documents({"status": "selected"})
+    total_candidates, active_jobs, interviews_sched, hired = await asyncio.gather(
+        db.candidate_info.count_documents({}),
+        db.job_info.count_documents({"status": "active"}),
+        db.interview_schedules.count_documents({}),
+        db.candidate_info.count_documents({"status": "selected"}),
+    )
     return {
-        "totalCandidates": total_candidates,
-        "activeJobs":       active_jobs,
+        "totalCandidates":     total_candidates,
+        "activeJobs":          active_jobs,
         "interviewsScheduled": interviews_sched,
-        "hiredThisMonth":   hired,
-        "aiMatchRate":      94,
+        "hiredThisMonth":      hired,
+        "aiMatchRate":         94,
     }
 
 @router.get("/activity/recent")
 async def recent_activity(limit: int = 8):
     db = get_db()
-    activities = []
 
     def _iso(val):
         if isinstance(val, datetime):
             return val.isoformat()
         return str(val) if val else None
 
-    # New candidates added
-    async for doc in db.candidate_info.find(
-        {}, {"name": 1, "created_at": 1, "_id": 0}
-    ).limit(20):
-        t = _iso(doc.get("created_at"))
-        if t:
-            activities.append({"type": "candidate_added",
-                                "text": f"New candidate added: {doc['name']}",
-                                "time": t, "icon": "user"})
+    candidates_docs, jobs_docs, hires_docs = await asyncio.gather(
+        db.candidate_info.find({}, {"name": 1, "created_at": 1, "_id": 0}).limit(20).to_list(20),
+        db.job_info.find({}, {"title": 1, "created_at": 1, "_id": 0}).limit(20).to_list(20),
+        db.candidate_info.find({"status": "selected"}, {"name": 1, "created_at": 1, "_id": 0}).limit(20).to_list(20),
+    )
 
-    # Jobs posted
-    async for doc in db.job_info.find(
-        {}, {"title": 1, "created_at": 1, "_id": 0}
-    ).limit(20):
+    activities = []
+    for doc in candidates_docs:
         t = _iso(doc.get("created_at"))
         if t:
-            activities.append({"type": "job_posted",
-                                "text": f"Job posted: {doc['title']}",
-                                "time": t, "icon": "briefcase"})
-
-    # Hires
-    async for doc in db.candidate_info.find(
-        {"status": "selected"}, {"name": 1, "created_at": 1, "_id": 0}
-    ).limit(20):
+            activities.append({"type": "candidate_added", "text": f"New candidate added: {doc['name']}", "time": t, "icon": "user"})
+    for doc in jobs_docs:
         t = _iso(doc.get("created_at"))
         if t:
-            activities.append({"type": "candidate_hired",
-                                "text": f"Candidate hired: {doc['name']}",
-                                "time": t, "icon": "check"})
+            activities.append({"type": "job_posted", "text": f"Job posted: {doc['title']}", "time": t, "icon": "briefcase"})
+    for doc in hires_docs:
+        t = _iso(doc.get("created_at"))
+        if t:
+            activities.append({"type": "candidate_hired", "text": f"Candidate hired: {doc['name']}", "time": t, "icon": "check"})
 
     activities.sort(key=lambda x: x.get("time", ""), reverse=True)
     return activities[:limit]

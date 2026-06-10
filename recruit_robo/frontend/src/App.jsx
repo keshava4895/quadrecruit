@@ -17,6 +17,8 @@ import CandidateDatabase from './pages/CandidateDatabase'
 import Profile           from './pages/Profile'
 import AdminUsers        from './pages/AdminUsers'
 import Offers            from './pages/Offers'
+import Interviews        from './pages/Interviews'
+import CandidateRespond  from './pages/CandidateRespond'
 
 function PrivateRoute({ children }) {
   const { user } = useAuth()
@@ -36,6 +38,7 @@ function AppShell() {
   if (!user) {
     return (
       <Routes>
+        <Route path="/respond/:token" element={<CandidateRespond />} />
         <Route path="/login"    element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="*"         element={<Navigate to="/login" replace />} />
@@ -66,6 +69,8 @@ function AppShell() {
             <Route path="/candidate-database"     element={<PrivateRoute><CandidateDatabase /></PrivateRoute>} />
             <Route path="/profile"                element={<PrivateRoute><Profile /></PrivateRoute>} />
             <Route path="/offers"                 element={<PrivateRoute><Offers /></PrivateRoute>} />
+            <Route path="/interviews"             element={<PrivateRoute><Interviews /></PrivateRoute>} />
+            <Route path="/respond/:token"         element={<CandidateRespond />} />
             <Route path="/admin/users"            element={<AdminRoute><AdminUsers /></AdminRoute>} />
           </Routes>
         </main>

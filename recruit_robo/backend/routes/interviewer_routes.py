@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import uuid
 from services.auth_service import get_current_user
 from database import get_db
+from models.models import AvailabilitySlotCreate
 
 router = APIRouter()
 
@@ -144,3 +145,67 @@ async def assign_candidate(
     )
 
     return assignment
+
+
+# ── Availability endpoints ────────────────────────────────────────────────────
+
+@router.get("/{interviewer_id}/availability")
+async def list_availability(interviewer_id: str, current_user=Depends(get_current_user)):
+    db = get_db()
+    iv = await db["interviewers"].find_one({"interviewerId": interviewer_id})
+    if not iv:
+        raise HTTPException(404, "Interviewer not found")
+    all_slots = await db["interviewer_availability"].find(
+        {"interviewerId": interviewer_id}, {"_id": 0}
+    ).to_list(200)
+    today = datetime.now(timezone.utc).date().isoformat()
+    slots = sorted(
+        [s for s in all_slots if s.get("slot_date", "") >= today],
+        key=lambda x: (x.get("slot_date", ""), x.get("start_time", ""))
+    )
+    return slots
+
+
+@router.post("/{interviewer_id}/availability")
+async def add_availability_slot(
+    interviewer_id: str,
+    body: AvailabilitySlotCreate,
+    current_user=Depends(get_current_user),
+):
+    db = get_db()
+    iv = await db["interviewers"].find_one({"interviewerId": interviewer_id})
+    if not iv:
+        raise HTTPException(404, "Interviewer not found")
+    slot = {
+        "slotId":          str(uuid.uuid4()),
+        "interviewerId":   interviewer_id,
+        "interviewerName": iv["name"],
+        "slot_date":       body.slot_date,
+        "start_time":      body.start_time,
+        "end_time":        body.end_time,
+        "duration_mins":   body.duration_mins,
+        "is_booked":       False,
+        "booked_for":      None,
+        "interview_id":    None,
+        "created_at":      datetime.now(timezone.utc).isoformat(),
+    }
+    await db["interviewer_availability"].insert_one(slot)
+    slot.pop("_id", None)
+    return slot
+
+
+@router.delete("/{interviewer_id}/availability/{slot_id}")
+async def delete_availability_slot(
+    interviewer_id: str,
+    slot_id: str,
+    current_user=Depends(get_current_user),
+):
+    db = get_db()
+    r = await db["interviewer_availability"].delete_one({
+        "slotId": slot_id,
+        "interviewerId": interviewer_id,
+        "is_booked": False,
+    })
+    if r.deleted_count == 0:
+        raise HTTPException(404, "Slot not found or already booked")
+    return {"deleted": True}

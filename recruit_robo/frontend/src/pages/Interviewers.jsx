@@ -1,8 +1,9 @@
 ﻿import { useState, useEffect } from 'react'
 import QlogoLoader from '../components/QlogoLoader'
-import { interviewersApi, jobsApi, candidatesApi } from '../api'
+import { interviewersApi, jobsApi, candidatesApi, availabilityApi } from '../api'
 import {
   Users, UserPlus, Calendar, ChevronDown, ChevronUp, RefreshCw, X, Trash2, UserCheck,
+  Clock, Plus, CalendarCheck,
 } from 'lucide-react'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -99,6 +100,185 @@ function AddModal({ onClose, onAdded }) {
               Cancel
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Availability Modal ────────────────────────────────────────────────────────
+
+function AvailabilityModal({ interviewer, onClose }) {
+  const [slots,   setSlots]   = useState([])
+  const [loading, setLoading] = useState(true)
+  const [adding,  setAdding]  = useState(false)
+  const [form,    setForm]    = useState({ slot_date: '', start_time: '', end_time: '' })
+  const [saving,  setSaving]  = useState(false)
+  const [err,     setErr]     = useState('')
+
+  useEffect(() => {
+    availabilityApi.list(interviewer.interviewerId)
+      .then(r => setSlots(r.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [interviewer.interviewerId])
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  function calcDuration(start, end) {
+    try {
+      const [sh, sm] = start.split(':').map(Number)
+      const [eh, em] = end.split(':').map(Number)
+      return (eh * 60 + em) - (sh * 60 + sm)
+    } catch { return 60 }
+  }
+
+  async function handleAdd() {
+    if (!form.slot_date || !form.start_time || !form.end_time) {
+      setErr('Date, start and end time are required')
+      return
+    }
+    const dur = calcDuration(form.start_time, form.end_time)
+    if (dur <= 0) { setErr('End time must be after start time'); return }
+    setSaving(true); setErr('')
+    try {
+      const r = await availabilityApi.add(interviewer.interviewerId, {
+        slot_date: form.slot_date, start_time: form.start_time,
+        end_time: form.end_time, duration_mins: dur,
+      })
+      setSlots(prev => [...prev, r.data])
+      setForm({ slot_date: '', start_time: '', end_time: '' })
+      setAdding(false)
+    } catch (e) { setErr(e?.response?.data?.detail || 'Failed to add slot') }
+    finally { setSaving(false) }
+  }
+
+  async function handleDelete(slotId) {
+    try {
+      await availabilityApi.remove(interviewer.interviewerId, slotId)
+      setSlots(prev => prev.filter(s => s.slotId !== slotId))
+    } catch { /* silent */ }
+  }
+
+  function fmtSlotLabel(slot) {
+    try {
+      const d = new Date(`${slot.slot_date}T00:00`)
+      const dateStr = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+      const fmt = t => {
+        const [h, m] = t.split(':').map(Number)
+        return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
+      }
+      return `${dateStr} · ${fmt(slot.start_time)} – ${fmt(slot.end_time)}`
+    } catch { return `${slot.slot_date} ${slot.start_time}` }
+  }
+
+  const INPUT = 'border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 flex flex-col max-h-[85vh]"
+        onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Set Availability</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              <span className="font-medium text-gray-600">{interviewer.name}</span> — upcoming interview slots
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+        </div>
+
+        {/* Slot list */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {loading ? (
+            <div className="flex items-center gap-2 py-6 text-gray-400 text-sm justify-center">
+              <QlogoLoader size={16} />Loading slots…
+            </div>
+          ) : slots.length === 0 ? (
+            <div className="text-center py-8">
+              <CalendarCheck className="w-7 h-7 text-gray-200 mx-auto mb-2" />
+              <p className="text-xs text-gray-400">No availability slots yet.</p>
+              <p className="text-xs text-gray-400">Add slots below so candidates can self-schedule.</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5 mb-4">
+              {slots.map(s => (
+                <div key={s.slotId} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${
+                  s.is_booked ? 'border-gray-100 bg-gray-50 opacity-60' : 'border-purple-100 bg-purple-50/40'
+                }`}>
+                  <Clock className={`w-3.5 h-3.5 flex-shrink-0 ${s.is_booked ? 'text-gray-300' : 'text-purple-400'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-gray-800 truncate">{fmtSlotLabel(s)}</p>
+                    <p className="text-[10px] text-gray-400">{s.duration_mins} min
+                      {s.is_booked && <span className="ml-1.5 text-amber-600 font-medium">· Booked</span>}
+                    </p>
+                  </div>
+                  {!s.is_booked && (
+                    <button onClick={() => handleDelete(s.slotId)}
+                      className="p-1 text-gray-300 hover:text-red-400 transition-colors rounded">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add slot toggle */}
+          {!adding ? (
+            <button onClick={() => setAdding(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-purple-300 rounded-xl text-xs font-medium text-purple-600 hover:bg-purple-50 transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Add Slot
+            </button>
+          ) : (
+            <div className="border border-gray-200 rounded-xl p-3.5 space-y-3 bg-gray-50">
+              <p className="text-xs font-medium text-gray-700">New Slot</p>
+              <div>
+                <label className="block text-[11px] text-gray-500 mb-1">Date</label>
+                <input type="date" value={form.slot_date} onChange={e => set('slot_date', e.target.value)}
+                  className={`w-full ${INPUT}`} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] text-gray-500 mb-1">Start Time</label>
+                  <input type="time" value={form.start_time} onChange={e => set('start_time', e.target.value)}
+                    className={`w-full ${INPUT}`} />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-gray-500 mb-1">End Time</label>
+                  <input type="time" value={form.end_time} onChange={e => set('end_time', e.target.value)}
+                    className={`w-full ${INPUT}`} />
+                </div>
+              </div>
+              {form.start_time && form.end_time && calcDuration(form.start_time, form.end_time) > 0 && (
+                <p className="text-[10px] text-gray-400">
+                  Duration: {calcDuration(form.start_time, form.end_time)} minutes
+                </p>
+              )}
+              {err && <p className="text-[11px] text-red-500">{err}</p>}
+              <div className="flex gap-2">
+                <button onClick={handleAdd} disabled={saving}
+                  className="flex-1 py-1.5 text-white text-xs font-medium rounded-lg disabled:opacity-40 transition-all"
+                  style={{ background: 'linear-gradient(135deg,#49029F,#7c3aed)' }}>
+                  {saving ? 'Adding…' : 'Add Slot'}
+                </button>
+                <button onClick={() => { setAdding(false); setErr('') }}
+                  className="flex-1 py-1.5 border border-gray-200 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-100 transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3 border-t border-gray-100">
+          <button onClick={onClose}
+            className="w-full py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors">
+            Done
+          </button>
         </div>
       </div>
     </div>
@@ -255,7 +435,7 @@ function AssignModal({ interviewer, onClose, onAssigned }) {
 
 // ── Interviewer Row ───────────────────────────────────────────────────────────
 
-function InterviewerRow({ iv, onDelete, onAssign }) {
+function InterviewerRow({ iv, onDelete, onAssign, onAvailability }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -305,6 +485,11 @@ function InterviewerRow({ iv, onDelete, onAssign }) {
               style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
               <UserCheck className="w-3 h-3" /> Assign
             </button>
+            <button onClick={() => onAvailability(iv)}
+              title="Set availability slots"
+              className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-medium rounded-lg hover:bg-blue-100 transition-colors whitespace-nowrap">
+              <CalendarCheck className="w-3 h-3" /> Availability
+            </button>
             <button onClick={() => onDelete(iv.interviewerId)}
               className="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Remove interviewer">
               <Trash2 className="w-3 h-3" />
@@ -338,11 +523,12 @@ function InterviewerRow({ iv, onDelete, onAssign }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Interviewers() {
-  const [data,       setData]       = useState([])
-  const [loading,    setLoading]    = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [showAdd,    setShowAdd]    = useState(false)
-  const [assignTarget, setAssignTarget] = useState(null)
+  const [data,            setData]            = useState([])
+  const [loading,         setLoading]         = useState(true)
+  const [refreshing,      setRefreshing]      = useState(false)
+  const [showAdd,         setShowAdd]         = useState(false)
+  const [assignTarget,    setAssignTarget]    = useState(null)
+  const [availTarget,     setAvailTarget]     = useState(null)
 
   const load = async (quiet = false) => {
     quiet ? setRefreshing(true) : setLoading(true)
@@ -383,6 +569,13 @@ export default function Interviewers() {
           interviewer={assignTarget}
           onClose={() => setAssignTarget(null)}
           onAssigned={() => load(true)}
+        />
+      )}
+
+      {availTarget && (
+        <AvailabilityModal
+          interviewer={availTarget}
+          onClose={() => setAvailTarget(null)}
         />
       )}
 
@@ -466,6 +659,7 @@ export default function Interviewers() {
                     iv={iv}
                     onDelete={handleDelete}
                     onAssign={setAssignTarget}
+                    onAvailability={setAvailTarget}
                   />
                 ))}
               </tbody>

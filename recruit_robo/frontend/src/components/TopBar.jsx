@@ -14,6 +14,7 @@ const PAGE_LABELS = {
   '/upload':             'Resume Scorer',
   '/interviewers':       'Interviewers',
   '/offers':             'Offers',
+  '/interviews':         'Interviews',
   '/profile':            'My Profile',
   '/admin/users':        'Access Management',
 }

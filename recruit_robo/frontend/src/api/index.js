@@ -164,4 +164,33 @@ export const offersApi = {
   delete: (id)           => api.delete(`/offers/${id}`),
 }
 
+// ── Interviews ────────────────────────────────────────────────────────────────
+export const interviewsApi = {
+  list:   (params)       => api.get('/interviews/', { params }),
+  get:    (id)           => api.get(`/interviews/${id}`),
+  create: (data)         => api.post('/interviews/', data),
+  update: (id, data)     => api.patch(`/interviews/${id}`, data),
+  delete: (id)           => api.delete(`/interviews/${id}`),
+}
+
+// ── Interviewer Availability ──────────────────────────────────────────────────
+export const availabilityApi = {
+  list:   (interviewerId)         => api.get(`/interviewers/${interviewerId}/availability`),
+  add:    (interviewerId, data)   => api.post(`/interviewers/${interviewerId}/availability`, data),
+  remove: (interviewerId, slotId) => api.delete(`/interviewers/${interviewerId}/availability/${slotId}`),
+}
+
+// ── Outreach (public + auth) ──────────────────────────────────────────────────
+const publicApi = axios.create({ baseURL: '/api' })
+
+export const outreachApi = {
+  // HR-authenticated
+  send:    (data)        => api.post('/outreach/send', data),
+  list:    ()            => api.get('/outreach/'),
+  // Public (candidate-facing, no auth required)
+  get:     (token)       => publicApi.get(`/outreach/respond/${token}`),
+  respond: (token, resp) => publicApi.post(`/outreach/respond/${token}`, { response: resp }),
+  book:    (token, slotId) => publicApi.post(`/outreach/book/${token}`, { slot_id: slotId }),
+}
+
 export default api

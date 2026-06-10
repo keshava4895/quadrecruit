@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Briefcase, Search, Cpu, UserCheck, GitBranch, BarChart2, Database,
-  ChevronLeft, ChevronRight, LogOut, Users, UserCircle, FileText,
+  ChevronLeft, ChevronRight, LogOut, Users, UserCircle, FileText, Calendar,
   Link2, Link2Off, Settings, Mail, Eye, EyeOff, CheckCircle, ChevronUp,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -17,6 +17,7 @@ const NAV = [
   { to: '/analytics',           label: 'Analytics',   icon: BarChart2 },
   { to: '/candidate-database',  label: 'Talent Pool',  icon: Database  },
   { to: '/offers',              label: 'Offers',        icon: FileText  },
+  { to: '/interviews',          label: 'Interviews',    icon: Calendar  },
   {
     to: '/upload', label: 'Resume Scorer', icon: Cpu,
     children: [

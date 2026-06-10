@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import QlogoLoader from '../components/QlogoLoader'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { candidatesApi, notesApi, offersApi } from '../api'
+import { candidatesApi, notesApi, offersApi, interviewsApi } from '../api'
 import {
   ChevronLeft, Mail, Phone, Briefcase, MapPin, Star,
   FileText, MessageSquare, Calendar, CheckCircle, XCircle,
   Clock, ChevronDown, ChevronUp, Download, Trash2,
-  Activity, DollarSign, Plus,
+  Activity, DollarSign, Plus, Video, ExternalLink,
 } from 'lucide-react'
 
 const STATUS_STYLE = {
@@ -35,11 +35,23 @@ const DECISION_ICON = {
 }
 
 const ACTIVITY_COLORS = {
-  note_added:    'bg-indigo-400',
-  offer_created: 'bg-emerald-400',
-  offer_updated: 'bg-amber-400',
-  status_changed:'bg-purple-400',
+  note_added:           'bg-indigo-400',
+  offer_created:        'bg-emerald-400',
+  offer_updated:        'bg-amber-400',
+  status_changed:       'bg-purple-400',
+  interview_scheduled:  'bg-blue-400',
+  interview_updated:    'bg-sky-400',
 }
+
+const IV_STATUS_STYLE = {
+  scheduled:   'bg-blue-50 text-blue-700',
+  completed:   'bg-emerald-50 text-emerald-700',
+  cancelled:   'bg-red-50 text-red-500',
+  no_show:     'bg-orange-50 text-orange-700',
+  rescheduled: 'bg-amber-50 text-amber-700',
+}
+
+const IV_TYPE_ICON = { video: Video, phone: Phone, in_person: MapPin }
 
 function ScoreRing({ score }) {
   const pct   = Math.round((score || 0) * 100)
@@ -101,7 +113,8 @@ export default function CandidateProfile() {
 
   const [activity,   setActivity]   = useState([])
 
-  const [offers,     setOffers]     = useState([])
+  const [offers,      setOffers]      = useState([])
+  const [interviews2, setInterviews2] = useState([])
 
   useEffect(() => {
     candidatesApi.fullProfile(candidateId)
@@ -112,6 +125,7 @@ export default function CandidateProfile() {
     notesApi.list(candidateId).then(r => setNotes(r.data || [])).catch(() => {})
     notesApi.activity(candidateId).then(r => setActivity(r.data || [])).catch(() => {})
     offersApi.list({ candidate_id: candidateId }).then(r => setOffers(r.data || [])).catch(() => {})
+    interviewsApi.list({ candidate_id: candidateId }).then(r => setInterviews2(r.data || [])).catch(() => {})
   }, [candidateId])
 
   async function downloadResume() {
@@ -389,34 +403,57 @@ export default function CandidateProfile() {
           </Section>
         )}
 
-        {/* Upcoming / Past Interviews */}
-        {profile.assignments?.length > 0 && (
-          <Section title="Interview Schedule" icon={<Calendar className="w-4 h-4 text-amber-500" />}>
+        {/* Scheduled Interviews */}
+        <Section
+          title={`Interviews (${interviews2.length})`}
+          icon={<Calendar className="w-4 h-4 text-blue-500" />}
+          action={
+            <Link to="/interviews"
+              className="flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors">
+              <Plus className="w-3 h-3" /> Schedule
+            </Link>
+          }>
+          {interviews2.length === 0 ? (
+            <p className="text-sm text-gray-400">
+              No interviews scheduled.{' '}
+              <Link to="/interviews" className="text-purple-600 hover:underline">Schedule one →</Link>
+            </p>
+          ) : (
             <div className="space-y-2">
-              {profile.assignments.map((a, i) => {
-                const isPast = a.scheduledDate && a.scheduledDate < new Date().toISOString()
+              {[...interviews2].sort((a, b) => (a.scheduled_at || '') < (b.scheduled_at || '') ? -1 : 1).map(iv => {
+                const TypeIcon = IV_TYPE_ICON[iv.type] || Video
                 return (
-                  <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isPast ? 'bg-gray-300' : 'bg-amber-400'}`} />
+                  <div key={iv.interviewId} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{a.jobTitle}</p>
-                      <p className="text-xs text-gray-400">Round {a.round} · with {a.interviewer_name || a.interviewer_email}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-gray-900 truncate">{iv.jobTitle}</p>
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded-md text-[11px]">
+                          <TypeIcon className="w-3 h-3" /> Round {iv.round}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        with {iv.interviewerName}
+                        {iv.scheduled_at && ` · ${fmtDate(iv.scheduled_at, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                        {iv.duration_mins && ` · ${iv.duration_mins} min`}
+                      </p>
                     </div>
-                    {a.scheduledDate && (
-                      <span className="text-xs text-gray-500 flex-shrink-0 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {fmtDate(a.scheduledDate, { day: 'numeric', month: 'short' })}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {iv.meeting_link && (
+                        <a href={iv.meeting_link} target="_blank" rel="noopener noreferrer"
+                          className="p-1 rounded text-blue-400 hover:text-blue-600 transition-colors" title="Join">
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${IV_STATUS_STYLE[iv.status] || 'bg-gray-100 text-gray-600'}`}>
+                        {iv.status?.replace('_', ' ')}
                       </span>
-                    )}
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${isPast ? 'bg-gray-100 text-gray-400' : 'bg-amber-50 text-amber-700'}`}>
-                      {isPast ? 'Past' : 'Upcoming'}
-                    </span>
+                    </div>
                   </div>
                 )
               })}
             </div>
-          </Section>
-        )}
+          )}
+        </Section>
 
         {/* Resume */}
         {profile.resume_text && (

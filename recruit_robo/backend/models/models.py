@@ -141,6 +141,43 @@ class OfferUpdate(BaseModel):
     joining_date: Optional[str] = None
     notes: Optional[str] = None
 
+# ── Interview Scheduling models ───────────────────────────────────────────────
+class InterviewCreate(BaseModel):
+    candidateId: str
+    jobId: str
+    interviewerId: str
+    round: int = Field(default=1, ge=1, le=10)
+    type: str = "video"          # video | phone | in_person
+    scheduled_at: str            # ISO datetime string
+    duration_mins: int = 60
+    meeting_link: Optional[str] = None
+    location: Optional[str] = None
+    notes: Optional[str] = None
+
+class InterviewUpdate(BaseModel):
+    status: Optional[str] = None
+    scheduled_at: Optional[str] = None
+    duration_mins: Optional[int] = None
+    meeting_link: Optional[str] = None
+    location: Optional[str] = None
+    notes: Optional[str] = None
+    feedback: Optional[str] = None
+    rating: Optional[int] = None
+
+# ── Outreach / Self-scheduling models ────────────────────────────────────────
+class AvailabilitySlotCreate(BaseModel):
+    slot_date:     str       # YYYY-MM-DD
+    start_time:    str       # HH:MM
+    end_time:      str       # HH:MM
+    duration_mins: int = 60
+
+class OutreachCreate(BaseModel):
+    candidateId:      str
+    jobId:            str
+    interviewerId:    str
+    offered_slot_ids: List[str]
+    personal_note:    Optional[str] = None
+
 # ── Job Portal Search models ───────────────────────────────────────────────────
 class CandidateSearchRequest(BaseModel):
     query: str                          # free-text requirements
