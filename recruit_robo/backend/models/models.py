@@ -17,12 +17,28 @@ class UserResponse(BaseModel):
     name: str
     email: str
     role: str = "recruiter"
+    is_active: bool = True
     created_at: datetime
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+class InviteUser(BaseModel):
+    name: str
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+    role: str = "viewer"
+
+class ProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    current_password: Optional[str] = None
+    new_password: Optional[str] = None
+
+class UserRoleUpdate(BaseModel):
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
 
 # ── Job models ────────────────────────────────────────────────────────────────
 class JobCreate(BaseModel):

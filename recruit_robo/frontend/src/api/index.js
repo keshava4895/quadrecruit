@@ -14,14 +14,19 @@ api.interceptors.request.use(config => {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const authApi = {
-  register:          (data)     => api.post('/auth/register', data),
-  login:             (data)     => api.post('/auth/login', data),
-  me:                ()         => api.get('/auth/me'),
-  users:             ()         => api.get('/auth/users'),
-  deleteUser:        (id)       => api.delete(`/auth/users/${id}`),
+  register:          (data)             => api.post('/auth/register', data),
+  login:             (data)             => api.post('/auth/login', data),
+  me:                ()                 => api.get('/auth/me'),
+  updateMe:          (data)             => api.patch('/auth/me', data),
+  // admin-only
+  users:             ()                 => api.get('/auth/users'),
+  inviteUser:        (data)             => api.post('/auth/invite', data),
+  updateUser:        (id, data)         => api.patch(`/auth/users/${id}`, data),
+  deleteUser:        (id)               => api.delete(`/auth/users/${id}`),
+  // email settings
   saveEmailSettings: (smtpPass, smtpEmail = '') => api.post('/auth/email-settings', { smtp_pass: smtpPass, smtp_email: smtpEmail }),
-  getEmailSettings:  ()         => api.get('/auth/email-settings'),
-  clearEmailSettings:()         => api.delete('/auth/email-settings'),
+  getEmailSettings:  ()                 => api.get('/auth/email-settings'),
+  clearEmailSettings:()                 => api.delete('/auth/email-settings'),
 }
 
 // ── Jobs ──────────────────────────────────────────────────────────────────────

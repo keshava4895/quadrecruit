@@ -14,10 +14,19 @@ import Pipeline         from './pages/Pipeline'
 import CandidateProfile  from './pages/CandidateProfile'
 import Analytics         from './pages/Analytics'
 import CandidateDatabase from './pages/CandidateDatabase'
+import Profile           from './pages/Profile'
+import AdminUsers        from './pages/AdminUsers'
 
 function PrivateRoute({ children }) {
   const { user } = useAuth()
   return user ? children : <Navigate to="/login" replace />
+}
+
+function AdminRoute({ children }) {
+  const { user } = useAuth()
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role !== 'admin') return <Navigate to="/dashboard" replace />
+  return children
 }
 
 function AppShell() {
@@ -40,19 +49,22 @@ function AppShell() {
         <TopBar />
         <main className="flex-1 overflow-auto" style={{ background: '#f1f0f7' }}>
           <Routes>
-          <Route path="/login"       element={<Navigate to="/dashboard" replace />} />
-          <Route path="/register"    element={<Navigate to="/dashboard" replace />} />
-          <Route path="/"            element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard"   element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/jobs"        element={<PrivateRoute><Jobs /></PrivateRoute>} />
-          <Route path="/jobs/:jobId" element={<PrivateRoute><JobDetail /></PrivateRoute>} />
-          <Route path="/candidates"  element={<PrivateRoute><Candidates /></PrivateRoute>} />
-          <Route path="/upload"        element={<PrivateRoute><UploadResume /></PrivateRoute>} />
-          <Route path="/interviewers" element={<PrivateRoute><Interviewers /></PrivateRoute>} />
-          <Route path="/pipeline"                  element={<PrivateRoute><Pipeline /></PrivateRoute>} />
-          <Route path="/candidates/:candidateId"   element={<PrivateRoute><CandidateProfile /></PrivateRoute>} />
-          <Route path="/analytics"                 element={<PrivateRoute><Analytics /></PrivateRoute>} />
-          <Route path="/candidate-database"        element={<PrivateRoute><CandidateDatabase /></PrivateRoute>} />
+            <Route path="/login"    element={<Navigate to="/dashboard" replace />} />
+            <Route path="/register" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/"         element={<Navigate to="/dashboard" replace />} />
+
+            <Route path="/dashboard"              element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/jobs"                   element={<PrivateRoute><Jobs /></PrivateRoute>} />
+            <Route path="/jobs/:jobId"            element={<PrivateRoute><JobDetail /></PrivateRoute>} />
+            <Route path="/candidates"             element={<PrivateRoute><Candidates /></PrivateRoute>} />
+            <Route path="/upload"                 element={<PrivateRoute><UploadResume /></PrivateRoute>} />
+            <Route path="/interviewers"           element={<PrivateRoute><Interviewers /></PrivateRoute>} />
+            <Route path="/pipeline"               element={<PrivateRoute><Pipeline /></PrivateRoute>} />
+            <Route path="/candidates/:candidateId" element={<PrivateRoute><CandidateProfile /></PrivateRoute>} />
+            <Route path="/analytics"              element={<PrivateRoute><Analytics /></PrivateRoute>} />
+            <Route path="/candidate-database"     element={<PrivateRoute><CandidateDatabase /></PrivateRoute>} />
+            <Route path="/profile"                element={<PrivateRoute><Profile /></PrivateRoute>} />
+            <Route path="/admin/users"            element={<AdminRoute><AdminUsers /></AdminRoute>} />
           </Routes>
         </main>
       </div>
