@@ -1,8 +1,8 @@
 ﻿import { useState, useEffect } from 'react'
+import QlogoLoader from '../components/QlogoLoader'
 import { interviewersApi, jobsApi, candidatesApi } from '../api'
 import {
-  Users, UserPlus, Calendar, ChevronDown, ChevronUp,
-  Loader2, RefreshCw, X, Trash2, UserCheck,
+  Users, UserPlus, Calendar, ChevronDown, ChevronUp, RefreshCw, X, Trash2, UserCheck,
 } from 'lucide-react'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -184,7 +184,7 @@ function AssignModal({ interviewer, onClose, onAssigned }) {
               </label>
               {loadingCandidates ? (
                 <div className="flex items-center gap-2 py-4 text-gray-400 text-sm">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Loading candidates…
+                  <QlogoLoader size={14} /> Loading candidates…
                 </div>
               ) : candidates.length === 0 ? (
                 <p className="text-xs text-gray-400 py-4">No candidates for this job yet.</p>
@@ -433,9 +433,8 @@ export default function Interviewers() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-sm">Loading interviewers…</span>
+          <div className="flex items-center justify-center py-16">
+            <QlogoLoader size={48} label="Loading interviewers…" />
           </div>
         ) : data.length === 0 ? (
           <div className="text-center py-16">
@@ -477,4 +476,5 @@ export default function Interviewers() {
     </div>
   )
 }
+
 

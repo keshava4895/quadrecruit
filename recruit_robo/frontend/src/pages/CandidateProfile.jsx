@@ -1,10 +1,11 @@
 ﻿import { useEffect, useState } from 'react'
+import QlogoLoader from '../components/QlogoLoader'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { candidatesApi } from '../api'
 import {
   ChevronLeft, Mail, Phone, Briefcase, MapPin, Star,
   FileText, MessageSquare, Calendar, CheckCircle, XCircle,
-  Clock, ChevronDown, ChevronUp, Loader2, Download,
+  Clock, ChevronDown, ChevronUp, Download,
 } from 'lucide-react'
 
 const STATUS_STYLE = {
@@ -88,7 +89,7 @@ export default function CandidateProfile() {
 
   if (loading) return (
     <div className="px-6 py-5 w-full flex items-center justify-center h-64 gap-2 text-gray-400">
-      <Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Loading profile…</span>
+      <QlogoLoader size={40} label="Loading profile…" />
     </div>
   )
   if (!profile) return (
@@ -124,7 +125,7 @@ export default function CandidateProfile() {
                     className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-white rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50"
                     style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
                     {dlLoading
-                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ? <QlogoLoader size={14} />
                       : <Download className="w-3.5 h-3.5" />}
                     Download Resume
                   </button>
@@ -285,4 +286,5 @@ export default function CandidateProfile() {
     </div>
   )
 }
+
 

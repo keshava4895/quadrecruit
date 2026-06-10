@@ -1,9 +1,9 @@
 ﻿import { useEffect, useState, useCallback, useRef } from 'react'
+import QlogoLoader from '../components/QlogoLoader'
 import { Link } from 'react-router-dom'
 import { candidatesApi, jobsApi } from '../api'
 import {
-  Database, Search, X, Filter, Users, ChevronLeft, ChevronRight,
-  Loader2, RefreshCw, Mail, Phone, Briefcase, Trash2,
+  Database, Search, X, Filter, Users, ChevronLeft, ChevronRight, RefreshCw, Mail, Phone, Briefcase, Trash2,
   ExternalLink, Upload, FileText, CheckCircle, AlertCircle,
   CloudUpload, ChevronDown, ShieldAlert,
 } from 'lucide-react'
@@ -156,7 +156,7 @@ function UploadModal({ onClose, onDone }) {
                         <X className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    {status === 'uploading' && <Loader2 className="w-3.5 h-3.5 text-violet-500 animate-spin" />}
+                    {status === 'uploading' && <QlogoLoader size={14} />}
                     {status === 'done'      && <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />}
                     {status === 'error'     && <AlertCircle className="w-3.5 h-3.5 text-red-400" />}
                   </div>
@@ -199,7 +199,7 @@ function UploadModal({ onClose, onDone }) {
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium disabled:opacity-40 text-white rounded-xl transition-all shadow-sm hover:shadow-md"
               style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
               {uploading
-                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading…</>
+                ? <><QlogoLoader size={14} /> Uploading…</>
                 : allDone
                   ? <><CheckCircle className="w-3.5 h-3.5" /> Done</>
                   : <><Upload className="w-3.5 h-3.5" /> Upload {files.length > 0 ? files.length : ''} Resume{files.length !== 1 ? 's' : ''}</>}
@@ -334,7 +334,7 @@ export default function CandidateDatabase() {
           {selected.size > 0 && (
             <button onClick={deleteSelected} disabled={bulkDeleting}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-lg transition-colors">
-              {bulkDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+              {bulkDeleting ? <QlogoLoader size={14} /> : <Trash2 className="w-3.5 h-3.5" />}
               Delete {selected.size} selected
             </button>
           )}
@@ -396,7 +396,7 @@ export default function CandidateDatabase() {
         {/* Table content */}
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-            <Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Loading…</span>
+            <QlogoLoader size={40} label="Loading…" />
           </div>
         ) : candidates.length === 0 ? (
           <div className="text-center py-16">
@@ -539,7 +539,7 @@ export default function CandidateDatabase() {
                           className="text-gray-300 hover:text-red-500 transition-colors disabled:opacity-40"
                           title="Delete candidate">
                           {deleting === c.candidateId
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ? <QlogoLoader size={14} />
                             : <Trash2 className="w-3.5 h-3.5" />}
                         </button>
                       </td>
@@ -585,4 +585,5 @@ export default function CandidateDatabase() {
     </div>
   )
 }
+
 

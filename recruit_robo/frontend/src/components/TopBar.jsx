@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+﻿import { useState, useRef, useEffect, useCallback } from 'react'
+import QlogoLoader from '../components/QlogoLoader'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Search, Briefcase, User, X, ArrowRight } from 'lucide-react'
 import { candidatesApi, jobsApi } from '../api'
@@ -145,9 +146,8 @@ export default function TopBar() {
             <div className="absolute top-full mt-2 left-0 right-0 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden">
 
               {loading && (
-                <div className="px-4 py-3 text-xs text-gray-400 flex items-center gap-2">
-                  <div className="w-3 h-3 border-2 border-gray-200 border-t-purple-500 rounded-full animate-spin" />
-                  Searching…
+                <div className="px-4 py-4 flex items-center justify-center">
+                  <QlogoLoader size={32} label="Searching…" />
                 </div>
               )}
 
@@ -214,3 +214,4 @@ export default function TopBar() {
     </header>
   )
 }
+

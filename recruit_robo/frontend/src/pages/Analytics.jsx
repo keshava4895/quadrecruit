@@ -1,7 +1,8 @@
 ﻿import { useEffect, useState } from 'react'
+import QlogoLoader from '../components/QlogoLoader'
 import { Link } from 'react-router-dom'
 import { analyticsApi, jobsApi } from '../api'
-import { BarChart2, RefreshCw, Loader2, ChevronDown } from 'lucide-react'
+import { BarChart2, RefreshCw, ChevronDown } from 'lucide-react'
 
 // ── Colors ────────────────────────────────────────────────────────────────────
 const STAGE_FILL = {
@@ -333,7 +334,7 @@ function FunnelPanel({ jobs, selectedJob, setSelectedJob, funnel, funnelLoading 
 
       {funnelLoading ? (
         <div className="flex items-center justify-center gap-2 py-10 text-gray-400">
-          <Loader2 className="w-3.5 h-3.5 animate-spin" /><span className="text-xs">Loading…</span>
+          <QlogoLoader size={14} /><span className="text-xs">Loading…</span>
         </div>
       ) : view === 'table' ? (
         <>
@@ -539,7 +540,7 @@ export default function Analytics() {
 
   if (loading) return (
     <div className="px-6 py-5 w-full flex items-center justify-center h-64 gap-2 text-gray-400">
-      <Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Loading analytics…</span>
+      <QlogoLoader size={40} label="Loading analytics…" />
     </div>
   )
 
@@ -585,5 +586,6 @@ export default function Analytics() {
     </div>
   )
 }
+
 
 

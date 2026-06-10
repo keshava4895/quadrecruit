@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { jobsApi, candidatesApi } from '../api'
 import { Upload, FileText, CheckCircle, XCircle, Cpu, X } from 'lucide-react'
+import QlogoLoader from '../components/QlogoLoader'
 
 const SELECT = 'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition'
 
@@ -172,7 +173,12 @@ export default function UploadResume() {
 
         {/* ── Right: Results ── */}
         <div>
-          {results.length > 0 ? (
+          {loading ? (
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm h-full min-h-[280px] flex flex-col items-center justify-center text-center px-8">
+              <QlogoLoader size={56} label={`Screening ${files.length} resume${files.length !== 1 ? 's' : ''}…`} />
+              <p className="text-xs text-gray-400 mt-4 max-w-[220px]">AI is analyzing each resume against the job requirements</p>
+            </div>
+          ) : results.length > 0 ? (
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
               <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/40 flex items-center justify-between">
                 <div>

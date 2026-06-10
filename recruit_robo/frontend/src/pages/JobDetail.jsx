@@ -1,8 +1,9 @@
 ﻿import { useEffect, useState } from 'react'
+import QlogoLoader from '../components/QlogoLoader'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { jobsApi, candidatesApi, pipelineApi, emailApi } from '../api'
 import { useAuth } from '../context/AuthContext'
-import { Mail, Calendar, RefreshCw, ChevronLeft, MapPin, Briefcase, X, Send, Loader2, Trash2, Pencil, Check } from 'lucide-react'
+import { Mail, Calendar, RefreshCw, ChevronLeft, MapPin, Briefcase, X, Send, Trash2, Pencil, Check } from 'lucide-react'
 
 const STATUS_STYLE = {
   sourced:     'bg-zinc-100 text-zinc-600',
@@ -259,7 +260,7 @@ export default function JobDetail() {
                     className="flex-1 flex items-center justify-center gap-1.5 py-1.5 disabled:opacity-40 text-white text-xs font-medium rounded-xl transition-all shadow-sm hover:shadow-md"
                     style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}
                   >
-                    {savingPos ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    {savingPos ? <QlogoLoader size={12} /> : <Check className="w-3 h-3" />}
                     Save
                   </button>
                   <button
@@ -318,7 +319,7 @@ export default function JobDetail() {
                 className="flex items-center gap-1.5 px-3.5 py-1.5 bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors"
               >
                 {deleting
-                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Deleting…</>
+                  ? <><QlogoLoader size={14} /> Deleting…</>
                   : <><Trash2 className="w-3.5 h-3.5" /> Delete ({selected.size})</>
                 }
               </button>
@@ -498,7 +499,7 @@ export default function JobDetail() {
                 disabled={sending || !emailModal.email || sendResult?.ok}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
                 {sending
-                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+                  ? <><QlogoLoader size={14} /> Sending…</>
                   : <><Send className="w-3.5 h-3.5" /> Send Email</>
                 }
               </button>
@@ -510,4 +511,5 @@ export default function JobDetail() {
     </div>
   )
 }
+
 

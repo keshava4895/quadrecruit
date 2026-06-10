@@ -52,4 +52,20 @@
   .section-title {
     @apply text-sm font-semibold text-gray-900;
   }
+
+  /* Q-logo flip loader */
+  .qlogo-loader {
+    display: block;
+    overflow: visible;
+    perspective: 400px;
+  }
+  .qlogo-loader .q-inner {
+    transform-origin: 50% 50%;
+    transform-box: fill-box;
+    animation: q-flip 1.6s cubic-bezier(.6,.1,.4,.9) infinite;
+  }
+  @keyframes q-flip {
+    0%   { transform: rotateY(0deg); }
+    100% { transform: rotateY(360deg); }
+  }
 }

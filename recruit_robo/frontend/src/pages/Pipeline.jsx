@@ -1,8 +1,9 @@
 ﻿import { useState, useEffect, Fragment } from 'react'
+import QlogoLoader from '../components/QlogoLoader'
 import { Link } from 'react-router-dom'
 import { jobsApi, candidatesApi, pipelineApi, analyticsApi } from '../api'
 import {
-  Loader2, RefreshCw, ChevronDown, Zap, ArrowRight, X,
+  RefreshCw, ChevronDown, Zap, ArrowRight, X,
   Eye, Maximize2, LayoutList, Columns,
 } from 'lucide-react'
 
@@ -175,7 +176,7 @@ function PipelineTable({ rows, loading, onRefresh }) {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Loading pipeline…</span>
+          <QlogoLoader size={40} label="Loading pipeline…" />
         </div>
       ) : rows.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">No jobs found.</div>
@@ -304,7 +305,7 @@ function PipelineTable({ rows, loading, onRefresh }) {
                                     </p>
                                     {isLoading ? (
                                       <div className="flex items-center gap-2 text-[11px] text-gray-400">
-                                        <div className="w-3.5 h-3.5 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin" />
+                                        <QlogoLoader size={14} />
                                         Loading candidates…
                                       </div>
                                     ) : (
@@ -383,7 +384,7 @@ function AutoAdvanceModal({ suggestions, onClose, onConfirm, applying }) {
               className="flex-1 py-2 disabled:opacity-40 text-white text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2"
               style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
               {applying
-                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Advancing…</>
+                ? <><QlogoLoader size={14} /> Advancing…</>
                 : <><Zap className="w-3.5 h-3.5" /> Advance {actionable.length}</>}
             </button>
             <button onClick={onClose}
@@ -585,7 +586,7 @@ export default function Pipeline() {
             </div>
           ) : boardLoading ? (
             <div className="flex-1 flex items-center justify-center gap-2 text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Loading…</span>
+              <QlogoLoader size={40} label="Loading…" />
             </div>
           ) : (
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -740,4 +741,5 @@ export default function Pipeline() {
     </div>
   )
 }
+
 

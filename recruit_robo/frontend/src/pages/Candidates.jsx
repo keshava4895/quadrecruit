@@ -1,9 +1,10 @@
 ﻿import { useState, useEffect, useRef } from 'react'
+import QlogoLoader from '../components/QlogoLoader'
 import { useAuth } from '../context/AuthContext'
 import { searchApi, jobsApi, candidatesApi, emailApi, linkedinApi } from '../api'
 import {
   Search, MapPin, Briefcase, ExternalLink,
-  ChevronDown, Star, Loader2, AlertCircle,
+  ChevronDown, Star, AlertCircle,
   Upload, FileText, CheckCircle, XCircle, FolderOpen,
   Mail, X, Settings, Trash2, Bookmark, BookmarkCheck,
 } from 'lucide-react'
@@ -152,7 +153,7 @@ function MailModal({ candidate, job, onClose }) {
                 style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}
               >
                 {sending
-                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+                  ? <><QlogoLoader size={14} /> Sending…</>
                   : sent
                     ? <><CheckCircle className="w-3.5 h-3.5" /> Sent!</>
                     : <><Mail className="w-3.5 h-3.5" /> Send Mail</>
@@ -242,7 +243,7 @@ function BulkMailModal({ candidates, job, onClose }) {
                         {sent[i]
                           ? <><CheckCircle className="w-3.5 h-3.5" /> Sent</>
                           : sending[i]
-                            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+                            ? <><QlogoLoader size={14} /> Sending…</>
                             : <><Mail className="w-3.5 h-3.5" /> Send</>
                         }
                       </button>
@@ -824,7 +825,7 @@ export default function Candidates() {
           className="flex items-center gap-2 px-5 py-2 disabled:opacity-40 text-white text-sm font-medium rounded-xl transition-all shadow-sm hover:shadow-md"
           style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
           {loading ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> {isResumeMode ? 'Screening…' : 'Searching…'}</>
+            <><QlogoLoader size={14} /> {isResumeMode ? 'Screening…' : 'Searching…'}</>
           ) : isResumeMode ? (
             <><Upload className="w-4 h-4" /> Screen {resumeFiles.length || 0} Resume{resumeFiles.length !== 1 ? 's' : ''}</>
           ) : (
@@ -1091,4 +1092,5 @@ export default function Candidates() {
     </div>
   )
 }
+
 
