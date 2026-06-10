@@ -153,6 +153,13 @@ async def update_user(
 
     db     = get_db()
     update = {}
+    if body.name is not None and body.name.strip():
+        update["name"] = body.name.strip()
+    if body.email is not None:
+        existing = await db["users"].find_one({"email": body.email.lower(), "userId": {"$ne": user_id}})
+        if existing:
+            raise HTTPException(400, "Email already in use by another account")
+        update["email"] = body.email.lower()
     if body.role is not None:
         update["role"] = body.role
     if body.is_active is not None:

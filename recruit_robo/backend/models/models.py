@@ -37,6 +37,8 @@ class ProfileUpdate(BaseModel):
     new_password: Optional[str] = None
 
 class UserRoleUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
     role: Optional[str] = None
     is_active: Optional[bool] = None
 
