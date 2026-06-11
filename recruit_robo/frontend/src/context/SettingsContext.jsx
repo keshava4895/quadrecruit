@@ -2,20 +2,26 @@ import { createContext, useContext, useState } from 'react'
 
 const SettingsContext = createContext(null)
 
-const FONT_MAP = { xs: '12px', small: '14px', medium: '16px', large: '18px', xl: '20px' }
+function loadFontSize() {
+  const raw = localStorage.getItem('rr_font_size')
+  if (!raw) return 100
+  const num = parseInt(raw, 10)
+  // Migrate legacy named keys → 100%
+  if (isNaN(num)) return 100
+  return Math.min(200, Math.max(50, num))
+}
 
 export function SettingsProvider({ children }) {
-  const [fontSize, setFontSizeState] = useState(
-    () => localStorage.getItem('rr_font_size') || 'medium'
-  )
+  const [fontSize, setFontSizeState] = useState(loadFontSize)
   const [darkMode, setDarkModeState] = useState(
     () => localStorage.getItem('rr_dark_mode') === 'true'
   )
 
-  function setFontSize(size) {
-    setFontSizeState(size)
-    localStorage.setItem('rr_font_size', size)
-    document.documentElement.style.fontSize = FONT_MAP[size] || '16px'
+  function setFontSize(pct) {
+    const clamped = Math.min(200, Math.max(50, Math.round(pct)))
+    setFontSizeState(clamped)
+    localStorage.setItem('rr_font_size', String(clamped))
+    document.documentElement.style.fontSize = clamped + '%'
   }
 
   function setDarkMode(val) {

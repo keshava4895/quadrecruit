@@ -61,9 +61,6 @@ export default function TopBar() {
     try { return JSON.parse(stored) } catch { return { type: 'photo', data: stored } }
   })()
 
-  const FONT_KEYS   = ['xs', 'small', 'medium', 'large', 'xl']
-  const FONT_LABELS = ['XS', 'S', 'M', 'L', 'XL']
-  const FONT_PX     = { xs: '12px', small: '14px', medium: '16px', large: '18px', xl: '20px' }
 
   const [query,        setQuery]        = useState('')
   const [focused,      setFocused]      = useState(false)
@@ -72,7 +69,7 @@ export default function TopBar() {
   const [settingsOpen, setSettingsOpen]     = useState(false)
   const [notifOpen,    setNotifOpen]        = useState(false)
   const [userOpen,     setUserOpen]         = useState(false)
-  const [sliderVal,    setSliderVal]        = useState(() => Math.max(0, FONT_KEYS.indexOf(fontSize)))
+  const [sliderVal,    setSliderVal]        = useState(() => (typeof fontSize === 'number' ? fontSize : 100))
 
   // User panel state (portals + account)
   const userRef                          = useRef(null)
@@ -503,48 +500,50 @@ export default function TopBar() {
                       <Type className="w-3.5 h-3.5 text-gray-400" />
                       <span className="text-xs font-medium text-gray-600">Text Size</span>
                     </div>
-                    <span className="text-[10px] text-gray-400 font-medium">
-                      {['Extra Small','Small','Medium','Large','Extra Large'][sliderVal]}
+                    <span className="text-[11px] font-semibold text-purple-600 tabular-nums">
+                      {sliderVal}%
                     </span>
                   </div>
 
-                  {/* AA … A with slider */}
-                  <div className="flex items-center gap-2.5 mb-1.5">
-                    <span className="text-[10px] font-bold text-gray-400 flex-shrink-0 select-none w-6 text-center">AA</span>
+                  {/* A … AA with smooth slider */}
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <span className="text-[10px] font-bold text-gray-400 flex-shrink-0 select-none w-5 text-center">A</span>
                     <input
                       type="range"
-                      min="0"
-                      max="4"
+                      min="50"
+                      max="200"
                       step="1"
                       value={sliderVal}
                       onChange={e => {
                         const v = Number(e.target.value)
                         setSliderVal(v)
-                        // live preview — update DOM immediately, don't save yet
-                        document.documentElement.style.fontSize = FONT_PX[FONT_KEYS[v]]
+                        document.documentElement.style.fontSize = v + '%'
                       }}
                       className="flex-1 cursor-pointer"
                       style={{ accentColor: '#7c3aed' }}
                     />
-                    <span className="text-[16px] font-bold text-gray-400 flex-shrink-0 select-none w-6 text-center">A</span>
+                    <span className="text-[16px] font-bold text-gray-400 flex-shrink-0 select-none w-5 text-center">A</span>
                   </div>
 
-                  {/* Tick labels */}
-                  <div className="flex justify-between px-8 mb-3">
-                    {FONT_LABELS.map((l, i) => (
-                      <span key={l}
-                        className={`text-[9px] font-medium select-none transition-colors ${
-                          sliderVal === i ? 'text-purple-600' : 'text-gray-300'
-                        }`}>
-                        {l}
-                      </span>
-                    ))}
+                  {/* Range hint */}
+                  <div className="flex justify-between px-5 mb-3">
+                    <span className="text-[9px] text-gray-300 select-none">50%</span>
+                    <span className="text-[9px] text-gray-300 select-none">100%</span>
+                    <span className="text-[9px] text-gray-300 select-none">200%</span>
                   </div>
 
-                  <div className="flex justify-end">
+                  <div className="flex items-center justify-between gap-2">
                     <button
                       onClick={() => {
-                        setFontSize(FONT_KEYS[sliderVal])
+                        setSliderVal(100)
+                        document.documentElement.style.fontSize = '100%'
+                      }}
+                      className="text-[10px] text-gray-400 hover:text-purple-600 transition-colors">
+                      Reset
+                    </button>
+                    <button
+                      onClick={() => {
+                        setFontSize(sliderVal)
                         setSettingsOpen(false)
                       }}
                       className="px-4 py-1.5 text-[11px] font-semibold text-white rounded-lg transition-opacity hover:opacity-90"
