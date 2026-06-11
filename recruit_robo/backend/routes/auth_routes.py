@@ -10,6 +10,7 @@ from services.auth_service import (
     get_current_user, require_admin,
 )
 from database import get_db
+from config import ADMIN_SECRET
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -101,6 +102,31 @@ async def update_me(body: ProfileUpdate, current_user=Depends(get_current_user))
         {"userId": current_user["userId"]}, {"_id": 0, "password": 0}
     )
     return updated
+
+
+# ── Admin bootstrap (first-time production setup) ────────────────────────────
+
+class BootstrapAdminBody(BaseModel):
+    email:  str
+    secret: str
+
+@router.post("/bootstrap-admin", status_code=200)
+async def bootstrap_admin(body: BootstrapAdminBody):
+    """Promote a user to admin using the ADMIN_SECRET env var.
+    Only works when ADMIN_SECRET is configured and non-empty."""
+    if not ADMIN_SECRET:
+        raise HTTPException(403, "Bootstrap not enabled (ADMIN_SECRET not set)")
+    if body.secret != ADMIN_SECRET:
+        raise HTTPException(403, "Invalid secret")
+    db   = get_db()
+    user = await db["users"].find_one({"email": body.email.lower()})
+    if not user:
+        raise HTTPException(404, "User not found")
+    await db["users"].update_one(
+        {"email": body.email.lower()},
+        {"$set": {"role": "admin"}},
+    )
+    return {"promoted": True, "email": body.email.lower(), "role": "admin"}
 
 
 # ── Admin: user management ────────────────────────────────────────────────────

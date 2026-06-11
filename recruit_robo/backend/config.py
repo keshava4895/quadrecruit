@@ -26,6 +26,9 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASS", "")
 
+# Admin bootstrap (one-time use to promote first admin in production)
+ADMIN_SECRET = os.getenv("ADMIN_SECRET", "")
+
 # JWT Authentication
 JWT_SECRET      = os.getenv("JWT_SECRET", "change-this-secret")
 JWT_ALGORITHM   = os.getenv("JWT_ALGORITHM", "HS256")
