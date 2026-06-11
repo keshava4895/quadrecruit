@@ -2,6 +2,7 @@
 import QlogoLoader from '../components/QlogoLoader'
 import { Link } from 'react-router-dom'
 import { jobsApi, candidatesApi, pipelineApi, analyticsApi } from '../api'
+import { useSettings } from '../context/SettingsContext'
 import {
   RefreshCw, ChevronDown, Zap, ArrowRight, X,
   Eye, Maximize2, LayoutList, Columns,
@@ -9,13 +10,13 @@ import {
 
 // ── Pipeline table stage config ───────────────────────────────────────────────
 const STAGES = [
-  { key: 'sourced',     label: 'Screening',   bg: '#94a3b8', fg: '#0f172a', grad: '#94a3b8' },
-  { key: 'emailed',     label: 'Submissions',  bg: '#93c5fd', fg: '#1e3a5f', grad: '#93c5fd' },
-  { key: 'interested',  label: 'Interview',    bg: '#fdba74', fg: '#7c2d12', grad: '#fdba74' },
-  { key: 'scheduled',   label: 'Shortlisted',  bg: '#fde047', fg: '#713f12', grad: '#fde047' },
-  { key: 'selected',    label: 'Hired',        bg: '#5eead4', fg: '#134e4a', grad: '#5eead4' },
-  { key: 'rejected',    label: 'Rejected',     bg: '#fca5a5', fg: '#7f1d1d', grad: '#fca5a5' },
-  { key: 'no_response', label: 'Archived',     bg: '#bae6fd', fg: '#0c4a6e', grad: '#bae6fd' },
+  { key: 'sourced',     label: 'Screening',   bg: '#94a3b8', fg: '#0f172a', grad: '#94a3b8', darkBg: '#4a4a4a', darkFg: '#d4d4d4' },
+  { key: 'emailed',     label: 'Submissions',  bg: '#93c5fd', fg: '#1e3a5f', grad: '#93c5fd', darkBg: '#3a3a3a', darkFg: '#cecece' },
+  { key: 'interested',  label: 'Interview',    bg: '#fdba74', fg: '#7c2d12', grad: '#fdba74', darkBg: '#5a4020', darkFg: '#e0b070' },
+  { key: 'scheduled',   label: 'Shortlisted',  bg: '#fde047', fg: '#713f12', grad: '#fde047', darkBg: '#4a3c10', darkFg: '#d4b840' },
+  { key: 'selected',    label: 'Hired',        bg: '#5eead4', fg: '#134e4a', grad: '#5eead4', darkBg: '#1a3a35', darkFg: '#5eead4' },
+  { key: 'rejected',    label: 'Rejected',     bg: '#fca5a5', fg: '#7f1d1d', grad: '#fca5a5', darkBg: '#3a1c1c', darkFg: '#e08080' },
+  { key: 'no_response', label: 'Archived',     bg: '#bae6fd', fg: '#0c4a6e', grad: '#bae6fd', darkBg: '#383838', darkFg: '#c0c0c0' },
 ]
 
 // ── Board config ──────────────────────────────────────────────────────────────
@@ -232,7 +233,8 @@ function PipelineTable({ rows, loading, onRefresh }) {
   const [jobCandidates, setJobCandidates] = useState({})
   const [loadingCands,  setLoadingCands]  = useState({})
   const [drawer,        setDrawer]        = useState(null) // { jobId, stageKey }
-  const gradientBar = STAGES.map(s => s.grad).join(', ')
+  const { darkMode } = useSettings()
+  const gradientBar = STAGES.map(s => darkMode ? s.darkBg : s.grad).join(', ')
   const colCount    = STAGES.length + 1
 
   const fetchCandidates = async (jobId) => {
@@ -347,7 +349,8 @@ function PipelineTable({ rows, loading, onRefresh }) {
                           style={{ minWidth: 100 }}>
                           <Chevron
                             count={row.counts[s.key] || 0}
-                            bg={s.bg} fg={s.fg}
+                            bg={darkMode ? s.darkBg : s.bg}
+                            fg={darkMode ? s.darkFg : s.fg}
                             onClick={e => openDrawer(e, row.jobId, s.key)}
                           />
                         </td>
@@ -402,7 +405,7 @@ function PipelineTable({ rows, loading, onRefresh }) {
                                   return (
                                     <div key={s.key}
                                       className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg border border-gray-100 shadow-sm">
-                                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: s.bg }} />
+                                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: darkMode ? s.darkBg : s.bg }} />
                                       <span className="text-[10px] text-gray-500">{s.label}</span>
                                       <span className="text-xs font-bold text-gray-900">{count}</span>
                                       <span className="text-[10px] text-gray-400">{pct}%</span>

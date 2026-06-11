@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { SettingsProvider } from './context/SettingsContext'
+import { NotificationsProvider } from './context/NotificationsContext'
 import Sidebar          from './components/Sidebar'
 import TopBar           from './components/TopBar'
 import Login            from './pages/Login'
@@ -51,7 +53,7 @@ function AppShell() {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-auto" style={{ background: '#f1f0f7' }}>
+        <main className="flex-1 overflow-auto" style={{ background: 'var(--page-bg)' }}>
           <Routes>
             <Route path="/login"    element={<Navigate to="/dashboard" replace />} />
             <Route path="/register" element={<Navigate to="/dashboard" replace />} />
@@ -83,7 +85,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppShell />
+        <SettingsProvider>
+          <NotificationsProvider>
+            <AppShell />
+          </NotificationsProvider>
+        </SettingsProvider>
       </AuthProvider>
     </BrowserRouter>
   )
