@@ -6,6 +6,7 @@ from services.auth_service import get_current_user
 from services.candidate_manager import (
     add_candidate, get_top_candidates, get_candidate, update_status,
     delete_candidate, list_all_candidates, add_standalone_candidate,
+    assign_owner, unassign_owner,
 )
 from services.screening_service import screen_resume, extract_text_from_bytes
 from services.matching_service  import compute_match
@@ -170,8 +171,24 @@ async def upload_and_screen(
 
 
 @router.get("/all")
-async def all_candidates(search: str = "", status: str = "", skip: int = 0, limit: int = 50):
-    return await list_all_candidates(search=search, status=status, skip=skip, limit=limit)
+async def all_candidates(search: str = "", status: str = "", owner_ids: str = "", skip: int = 0, limit: int = 50):
+    owner_id_list = [o.strip() for o in owner_ids.split(',') if o.strip()] if owner_ids else []
+    return await list_all_candidates(search=search, status=status, owner_ids=owner_id_list, skip=skip, limit=limit)
+
+
+@router.patch("/{candidate_id}/owner")
+async def update_candidate_owner(candidate_id: str, payload: dict, current_user=Depends(get_current_user)):
+    owner_id = payload.get("owner_id")
+    if not owner_id:
+        await unassign_owner(candidate_id)
+        return {"updated": True, "owner_id": None, "owner_name": None}
+    from database import get_db as _get_db
+    db = _get_db()
+    user = await db["users"].find_one({"userId": owner_id}, {"_id": 0, "name": 1})
+    if not user:
+        raise HTTPException(404, "User not found")
+    await assign_owner(candidate_id, owner_id, user["name"])
+    return {"updated": True, "owner_id": owner_id, "owner_name": user["name"]}
 
 
 @router.get("/{job_id}/top")

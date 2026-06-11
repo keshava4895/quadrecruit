@@ -104,16 +104,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* AI badge */}
-          <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2.5">
-            <Sparkles className="w-4 h-4 text-yellow-300" />
-            <div>
-              <p className="text-white text-xs font-semibold">AI Match Rate</p>
-              <p className="text-white/70 text-xs">
-                {loading ? '—' : `${stats?.aiMatchRate ?? 0}% accuracy`}
-              </p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -149,15 +139,66 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Today's Tasks */}
-        <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-3">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-900">Today's Tasks</h2>
             <span className="text-xs text-gray-400">Get started</span>
           </div>
+
+          {/* ── My Activities tile ─────────────────────────────────────── */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            {/* Card header bar */}
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between"
+              style={{ background: 'linear-gradient(135deg, #49029F 0%, #7c3aed 100%)' }}>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
+                  <UserCheck className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white leading-tight">My Activities</p>
+                  <p className="text-[10px] text-white/60 leading-tight">Your recruitment snapshot</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent activity rows */}
+            <div className="divide-y divide-gray-50">
+              {loading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 px-5 py-2.5">
+                    <div className="w-6 h-6 rounded-full bg-gray-100 animate-pulse flex-shrink-0" />
+                    <div className="flex-1 space-y-1">
+                      <div className="h-2.5 bg-gray-100 rounded animate-pulse w-3/4" />
+                      <div className="h-2 bg-gray-100 rounded animate-pulse w-1/4" />
+                    </div>
+                  </div>
+                ))
+              ) : activity.length === 0 ? (
+                <div className="px-5 py-6 text-center">
+                  <Star className="w-6 h-6 text-gray-200 mx-auto mb-1.5" />
+                  <p className="text-xs text-gray-400">No recent activity</p>
+                </div>
+              ) : (
+                activity.slice(0, 4).map((item, i) => (
+                  <div key={i} className="flex items-start gap-3 px-5 py-2.5">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                      style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
+                      <CheckCircle className="w-3 h-3 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-700 leading-snug truncate">{item.text}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(item.time)}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* ── 3 task tiles ───────────────────────────────────────────── */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {tasks.map(t => (
               <div key={t.title} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                {/* Gradient header */}
                 <div className={`bg-gradient-to-br ${t.color} p-5 flex items-center justify-center`}>
                   <div className="w-12 h-12 rounded-xl bg-white/25 flex items-center justify-center">
                     <t.icon className="w-6 h-6 text-white" />

@@ -56,7 +56,8 @@ export const candidatesApi = {
   },
   add:          (jobId, data)       => api.post(`/candidates/${jobId}`, data),
   remove:       (id, jobId)         => api.delete(`/candidates/${id}`, { params: { job_id: jobId } }),
-  updateStatus: (id, status, jobId) => api.patch(`/candidates/${id}/status`, { status, jobId }),
+  updateStatus:  (id, status, jobId) => api.patch(`/candidates/${id}/status`, { status, jobId }),
+  assignOwner:   (id, owner_id)      => api.patch(`/candidates/${id}/owner`, { owner_id }),
   uploadResume: (jobId, file) => {
     const form = new FormData()
     form.append('file', file)

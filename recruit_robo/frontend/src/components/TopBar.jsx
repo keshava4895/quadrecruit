@@ -5,11 +5,19 @@ import {
   Search, Briefcase, X, ArrowRight,
   Settings, Moon, Sun, Type, UserCircle, Users, Bell,
   Calendar, FileText, CheckCircle, XCircle, Activity, RefreshCw,
+  LogOut, Link2, Link2Off, Mail, ChevronDown,
 } from 'lucide-react'
-import { candidatesApi, jobsApi } from '../api'
+import { candidatesApi, jobsApi, linkedinApi, searchApi, msGraphApi } from '../api'
 import { useSettings } from '../context/SettingsContext'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications, timeAgo } from '../context/NotificationsContext'
+import { ScaledAvatar } from './AvatarPreset'
+
+const LI_ICON = (
+  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+  </svg>
+)
 
 const PAGE_LABELS = {
   '/dashboard':          'Dashboard',
@@ -43,8 +51,15 @@ export default function TopBar() {
   const settingsRef        = useRef(null)
 
   const { fontSize, setFontSize, darkMode, setDarkMode } = useSettings()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const { notifications, loading: nLoading, unreadCount, markAllRead, markRead, refresh: refreshNotifs } = useNotifications()
+
+  // Load avatar from localStorage (same format as Profile.jsx)
+  const avatarData = (() => {
+    const stored = user ? localStorage.getItem(`rr_avatar_${user.userId}`) : null
+    if (!stored) return null
+    try { return JSON.parse(stored) } catch { return { type: 'photo', data: stored } }
+  })()
 
   const FONT_KEYS   = ['xs', 'small', 'medium', 'large', 'xl']
   const FONT_LABELS = ['XS', 'S', 'M', 'L', 'XL']
@@ -56,7 +71,22 @@ export default function TopBar() {
   const [results,      setResults]      = useState({ jobs: [], candidates: [] })
   const [settingsOpen, setSettingsOpen]     = useState(false)
   const [notifOpen,    setNotifOpen]        = useState(false)
+  const [userOpen,     setUserOpen]         = useState(false)
   const [sliderVal,    setSliderVal]        = useState(() => Math.max(0, FONT_KEYS.indexOf(fontSize)))
+
+  // User panel state (portals + account)
+  const userRef                          = useRef(null)
+  const [userTab,          setUserTab]         = useState('account')
+  const [liAccounts,       setLiAccounts]      = useState([])
+  const [liLoading,        setLiLoading]       = useState(false)
+  const [naukriSession,    setNaukriSession]    = useState(null)
+  const [naukriCurl,       setNaukriCurl]       = useState('')
+  const [naukriSaving,     setNaukriSaving]     = useState(false)
+  const [naukriMsg,        setNaukriMsg]        = useState('')
+  const [showNaukriInput,  setShowNaukriInput]  = useState(false)
+  const [msConnected,      setMsConnected]      = useState(false)
+  const [msConfigured,     setMsConfigured]     = useState(true)
+  const [msConnecting,     setMsConnecting]     = useState(false)
 
   const notifRef = useRef(null)
 
@@ -117,6 +147,57 @@ export default function TopBar() {
     document.addEventListener('mousedown', onOutside)
     return () => document.removeEventListener('mousedown', onOutside)
   }, [])
+
+  // Close user panel on outside click
+  useEffect(() => {
+    function onOutside(e) {
+      if (userRef.current && !userRef.current.contains(e.target)) setUserOpen(false)
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [])
+
+  // Load portal data when user panel opens
+  useEffect(() => {
+    if (!userOpen) return
+    linkedinApi.accounts().then(r => setLiAccounts(r.data.accounts || [])).catch(() => {})
+    searchApi.getNaukriSession().then(r => setNaukriSession(r.data)).catch(() => {})
+    msGraphApi.status().then(r => {
+      setMsConnected(r.data.connected)
+      setMsConfigured(r.data.configured)
+    }).catch(() => {})
+  }, [userOpen])
+
+  async function connectLinkedIn() {
+    setLiLoading(true)
+    try {
+      const r = await linkedinApi.connectUrl(user?.userId || 'user', user?.name || 'Recruiter')
+      window.open(r.data.url, '_blank')
+      setTimeout(async () => {
+        const r2 = await linkedinApi.accounts()
+        setLiAccounts(r2.data.accounts || [])
+        setLiLoading(false)
+      }, 4000)
+    } catch { setLiLoading(false) }
+  }
+
+  async function saveNaukri() {
+    if (!naukriCurl.trim()) return
+    setNaukriSaving(true); setNaukriMsg('')
+    try {
+      await searchApi.saveNaukriSession(naukriCurl.trim())
+      setNaukriMsg('Saved!')
+      setNaukriCurl(''); setShowNaukriInput(false)
+      const r = await searchApi.getNaukriSession()
+      setNaukriSession(r.data)
+    } catch { setNaukriMsg('Failed to save.') }
+    finally { setNaukriSaving(false) }
+  }
+
+  function handleLogout() {
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   // ⌘K / Ctrl+K shortcut
   useEffect(() => {
@@ -501,6 +582,214 @@ export default function TopBar() {
             </div>
           </div>
         )}
+        </div>
+
+        {/* User profile button + dropdown */}
+        <div className="relative ml-1" ref={userRef}>
+          <button
+            onClick={() => { setUserOpen(v => !v); setNotifOpen(false); setSettingsOpen(false) }}
+            className={`flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl transition-colors ${
+              userOpen ? 'bg-purple-50' : 'hover:bg-gray-100'
+            }`}>
+            {/* Avatar */}
+            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-transparent">
+              {avatarData?.type === 'photo' && avatarData.data ? (
+                <img src={avatarData.data} alt="Profile" className="w-8 h-8 object-cover" />
+              ) : avatarData?.type === 'preset' ? (
+                <ScaledAvatar tone={avatarData.tone} hair={avatarData.hair} gender={avatarData.gender} hairColor={avatarData.hairColor} size={32} />
+              ) : (
+                <div className="w-8 h-8 flex items-center justify-center text-white text-xs font-bold"
+                  style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
+                  {user?.name?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+              )}
+            </div>
+            {/* Name + email */}
+            <div className="text-left hidden sm:block">
+              <p className="text-xs font-semibold text-gray-800 leading-tight truncate max-w-[110px]">{user?.name}</p>
+              {user?.email && <p className="text-[10px] text-gray-400 leading-tight truncate max-w-[110px]">{user.email}</p>}
+            </div>
+            <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform flex-shrink-0 ${userOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Dropdown panel */}
+          {userOpen && (
+            <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden">
+
+              {/* Header */}
+              <div className="px-4 py-3 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
+                <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-white/30">
+                  {avatarData?.type === 'photo' && avatarData.data ? (
+                    <img src={avatarData.data} alt="Profile" className="w-9 h-9 object-cover" />
+                  ) : avatarData?.type === 'preset' ? (
+                    <ScaledAvatar tone={avatarData.tone} hair={avatarData.hair} gender={avatarData.gender} hairColor={avatarData.hairColor} size={36} />
+                  ) : (
+                    <div className="w-9 h-9 flex items-center justify-center text-white text-sm font-bold bg-white/20">
+                      {user?.name?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-white text-sm font-semibold truncate">{user?.name}</p>
+                  {user?.email && <p className="text-purple-200/70 text-xs truncate">{user.email}</p>}
+                  {user?.role && <p className="text-purple-200/50 text-[10px] capitalize">{user.role}</p>}
+                </div>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex border-b border-gray-100">
+                {['account', 'portals'].map(tab => (
+                  <button key={tab} onClick={() => setUserTab(tab)}
+                    className={`flex-1 py-2 text-xs font-medium capitalize transition-colors ${
+                      userTab === tab ? 'text-purple-700 border-b-2 border-purple-600' : 'text-gray-400 hover:text-gray-600'
+                    }`}>
+                    {tab === 'portals' ? 'Portals' : 'Account'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Account tab */}
+              {userTab === 'account' && (
+                <div className="p-3 space-y-2 max-h-72 overflow-y-auto">
+                  <Link to="/profile" onClick={() => setUserOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-purple-50 transition-colors group">
+                    <UserCircle className="w-4 h-4 text-gray-400 group-hover:text-purple-500 flex-shrink-0" />
+                    <span className="text-sm text-gray-700 flex-1 font-medium">Edit Profile</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-purple-400 flex-shrink-0" />
+                  </Link>
+                  {user?.role === 'admin' && (
+                    <Link to="/admin/users" onClick={() => setUserOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-purple-50 transition-colors group">
+                      <Users className="w-4 h-4 text-gray-400 group-hover:text-purple-500 flex-shrink-0" />
+                      <span className="text-sm text-gray-700 flex-1 font-medium">Access Management</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-purple-400 flex-shrink-0" />
+                    </Link>
+                  )}
+
+                  {/* Outlook */}
+                  <div className="border border-gray-100 rounded-xl p-3">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Mail className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                      <span className="text-xs font-medium text-gray-800 flex-1">Outgoing Email</span>
+                      {msConnected
+                        ? <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />Connected</span>
+                        : <span className="text-[10px] text-gray-400">Not connected</span>}
+                    </div>
+                    {msConnected ? (
+                      <div className="flex items-center justify-between bg-emerald-50 rounded-lg px-2.5 py-1.5">
+                        <span className="text-[10px] text-emerald-700 font-medium">Outlook connected</span>
+                        <button onClick={async () => { await msGraphApi.disconnect(); setMsConnected(false) }}
+                          className="text-red-400 hover:text-red-600 ml-1" title="Disconnect">
+                          <Link2Off className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : !msConfigured ? (
+                      <p className="text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
+                        Microsoft OAuth not configured.
+                      </p>
+                    ) : (
+                      <button disabled={msConnecting}
+                        onClick={async () => {
+                          setMsConnecting(true)
+                          try { const r = await msGraphApi.authorizeUrl(); window.location.href = r.data.url }
+                          catch { setMsConnecting(false) }
+                        }}
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-[#0078d4] hover:bg-[#106ebe] disabled:opacity-50 text-white text-[11px] font-medium rounded-lg transition-colors">
+                        <Mail className="w-3 h-3" />{msConnecting ? 'Redirecting…' : 'Connect Outlook'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Portals tab */}
+              {userTab === 'portals' && (
+                <div className="p-3 space-y-2 max-h-72 overflow-y-auto">
+                  {/* LinkedIn */}
+                  <div className="border border-gray-100 rounded-xl p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-5 h-5 bg-blue-600 rounded flex items-center justify-center text-white flex-shrink-0">{LI_ICON}</div>
+                      <span className="text-xs font-medium text-gray-800 flex-1">LinkedIn</span>
+                      {liAccounts.length > 0
+                        ? <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />Connected</span>
+                        : <span className="text-[10px] text-gray-400">Not connected</span>}
+                    </div>
+                    {liAccounts.length > 0 ? (
+                      <div className="space-y-1">
+                        {liAccounts.map(acc => (
+                          <div key={acc.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-2 py-1">
+                            <span className="text-[11px] text-gray-700 truncate">{acc.name || acc.id}</span>
+                            <button onClick={async () => { await linkedinApi.disconnect(acc.id); setLiAccounts(prev => prev.filter(a => a.id !== acc.id)) }}
+                              className="text-red-400 hover:text-red-600 ml-1 flex-shrink-0"><Link2Off className="w-3 h-3" /></button>
+                          </div>
+                        ))}
+                        <button onClick={connectLinkedIn} disabled={liLoading}
+                          className="w-full mt-1 text-[11px] text-blue-600 hover:underline disabled:opacity-50">
+                          {liLoading ? 'Opening…' : '+ Add account'}
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={connectLinkedIn} disabled={liLoading}
+                        className="w-full flex items-center justify-center gap-1 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-[11px] font-medium rounded-lg transition-colors">
+                        <Link2 className="w-3 h-3" />{liLoading ? 'Opening…' : 'Connect LinkedIn'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Naukri */}
+                  <div className="border border-gray-100 rounded-xl p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-5 h-5 bg-orange-500 rounded flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0">N</div>
+                      <span className="text-xs font-medium text-gray-800 flex-1">Naukri Resdex</span>
+                      {naukriSession?.configured
+                        ? <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />Active</span>
+                        : <span className="text-[10px] text-gray-400">Not set</span>}
+                    </div>
+                    {naukriSession?.configured && !showNaukriInput && (
+                      <div className="flex items-center justify-between bg-gray-50 rounded-lg px-2 py-1 mb-1.5">
+                        <p className="text-[10px] text-gray-500 truncate">{naukriSession.preview}</p>
+                        <button onClick={async () => { await searchApi.deleteNaukriSession(); setNaukriSession({ configured: false }) }}
+                          className="text-red-400 hover:text-red-600 ml-1"><Link2Off className="w-3 h-3" /></button>
+                      </div>
+                    )}
+                    {!showNaukriInput ? (
+                      <button onClick={() => setShowNaukriInput(true)}
+                        className="w-full flex items-center justify-center gap-1 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-medium rounded-lg transition-colors">
+                        <Settings className="w-3 h-3" />{naukriSession?.configured ? 'Update' : 'Setup Session'}
+                      </button>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] text-gray-500">Log into resdex.naukri.com → F12 → copy as cURL</p>
+                        <textarea rows={2} className="w-full border border-gray-200 rounded px-2 py-1 text-[10px] font-mono bg-gray-50 focus:outline-none resize-none"
+                          placeholder="curl 'https://resdex.naukri.com/...'" value={naukriCurl} onChange={e => setNaukriCurl(e.target.value)} />
+                        {naukriMsg && <p className={`text-[10px] ${naukriMsg === 'Saved!' ? 'text-emerald-600' : 'text-red-500'}`}>{naukriMsg}</p>}
+                        <div className="flex gap-1.5">
+                          <button onClick={saveNaukri} disabled={naukriSaving || !naukriCurl.trim()}
+                            className="flex-1 py-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-[11px] font-medium rounded">
+                            {naukriSaving ? 'Saving…' : 'Save'}
+                          </button>
+                          <button onClick={() => { setShowNaukriInput(false); setNaukriCurl(''); setNaukriMsg('') }}
+                            className="flex-1 py-1 border border-gray-200 text-gray-600 text-[11px] font-medium rounded">Cancel</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border border-dashed border-gray-200 rounded-xl p-2 text-center">
+                    <p className="text-[10px] text-gray-400">More portals coming soon</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Logout */}
+              <div className="border-t border-gray-100">
+                <button onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                  <LogOut className="w-4 h-4" /> Sign out
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

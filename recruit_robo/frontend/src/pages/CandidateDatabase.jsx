@@ -1,11 +1,11 @@
 ﻿import { useEffect, useState, useCallback, useRef } from 'react'
 import QlogoLoader from '../components/QlogoLoader'
 import { Link } from 'react-router-dom'
-import { candidatesApi, jobsApi } from '../api'
+import { candidatesApi, jobsApi, authApi } from '../api'
 import {
   Database, Search, X, Filter, Users, ChevronLeft, ChevronRight, RefreshCw, Mail, Phone, Briefcase, Trash2,
   ExternalLink, Upload, FileText, CheckCircle, AlertCircle,
-  CloudUpload, ChevronDown, ShieldAlert,
+  CloudUpload, ChevronDown, ShieldAlert, UserCheck,
 } from 'lucide-react'
 
 const STATUS_OPTS = ['', 'sourced', 'emailed', 'interested', 'scheduled', 'selected', 'rejected', 'no_response']
@@ -226,6 +226,9 @@ export default function CandidateDatabase() {
   const [loading, setLoading]           = useState(true)
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatus]       = useState('')
+  const [ownerFilter, setOwnerFilter]   = useState(new Set())   // Set of userId strings
+  const [ownerOpen, setOwnerOpen]       = useState(false)
+  const [members, setMembers]           = useState([])
   const [page, setPage]                 = useState(0)
   const [deleting, setDeleting]         = useState(null)
   const [showUpload, setShowUpload]     = useState(false)
@@ -233,29 +236,63 @@ export default function CandidateDatabase() {
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const searchTimer                     = useRef(null)
   const selectAllRef                    = useRef(null)
+  const ownerDropRef                    = useRef(null)
 
-  const load = useCallback((q = search, s = statusFilter, p = page) => {
+  useEffect(() => {
+    authApi.users()
+      .then(r => setMembers((r.data || []).filter(m => m.is_active)))
+      .catch(() => {})
+  }, [])
+
+  // Close owner dropdown on outside click
+  useEffect(() => {
+    function handler(e) {
+      if (ownerDropRef.current && !ownerDropRef.current.contains(e.target)) setOwnerOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const load = useCallback((q = search, s = statusFilter, owners = ownerFilter, p = page) => {
     setLoading(true)
-    candidatesApi.listAll({ search: q, status: s, skip: p * PAGE_SIZE, limit: PAGE_SIZE })
+    const params = { search: q, status: s, skip: p * PAGE_SIZE, limit: PAGE_SIZE }
+    if (owners.size > 0) params.owner_ids = [...owners].join(',')
+    candidatesApi.listAll(params)
       .then(r => { setCandidates(r.data.candidates || []); setTotal(r.data.total || 0) })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [search, statusFilter, page])
+  }, [search, statusFilter, ownerFilter, page])
 
   useEffect(() => { load() }, [])
 
   function onSearchChange(val) {
     setSearch(val); setPage(0)
     clearTimeout(searchTimer.current)
-    searchTimer.current = setTimeout(() => load(val, statusFilter, 0), 350)
+    searchTimer.current = setTimeout(() => load(val, statusFilter, ownerFilter, 0), 350)
   }
 
   function onStatusChange(val) {
-    setStatus(val); setPage(0); load(search, val, 0)
+    setStatus(val); setPage(0); load(search, val, ownerFilter, 0)
+  }
+
+  function toggleOwner(id) {
+    setOwnerFilter(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      setPage(0)
+      load(search, statusFilter, next, 0)
+      return next
+    })
+  }
+
+  function clearOwners() {
+    setOwnerFilter(new Set())
+    setPage(0)
+    load(search, statusFilter, new Set(), 0)
   }
 
   function onPageChange(newPage) {
-    setPage(newPage); load(search, statusFilter, newPage)
+    setPage(newPage); load(search, statusFilter, ownerFilter, newPage)
   }
 
   useEffect(() => {
@@ -388,9 +425,66 @@ export default function CandidateDatabase() {
             </div>
           </div>
 
-          <span className="text-[11px] text-gray-400">
-            {total > 0 ? `${total.toLocaleString()} candidate${total !== 1 ? 's' : ''}` : 'No candidates yet'}
-          </span>
+          <div className="flex items-center gap-2">
+
+            {/* Owner multi-select dropdown */}
+            <div className="relative" ref={ownerDropRef}>
+              <button
+                onClick={() => setOwnerOpen(v => !v)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors ${
+                  ownerFilter.size > 0
+                    ? 'bg-purple-50 text-purple-700 border-purple-300'
+                    : 'bg-white text-gray-500 border-gray-200 hover:border-purple-300 hover:text-purple-600'
+                }`}>
+                <UserCheck className="w-3 h-3" />
+                {ownerFilter.size > 0 ? `Owner (${ownerFilter.size})` : 'Owner'}
+                <ChevronDown className="w-3 h-3" />
+              </button>
+
+              {ownerOpen && (
+                <div className="absolute right-0 top-full mt-1 z-30 bg-white border border-gray-200 rounded-xl shadow-lg w-52 py-1 overflow-hidden">
+                  <div className="px-3 py-1.5 border-b border-gray-100 flex items-center justify-between">
+                    <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Filter by HR</span>
+                    {ownerFilter.size > 0 && (
+                      <button onClick={clearOwners} className="text-[10px] text-purple-600 hover:underline">Clear</button>
+                    )}
+                  </div>
+
+                  {members.length === 0 ? (
+                    <p className="px-3 py-2 text-[11px] text-gray-400">No team members found</p>
+                  ) : (
+                    <div className="max-h-52 overflow-y-auto">
+                      {members.map(m => (
+                        <label key={m.userId}
+                          className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-purple-50 cursor-pointer transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={ownerFilter.has(m.userId)}
+                            onChange={() => toggleOwner(m.userId)}
+                            className="w-3 h-3 rounded accent-purple-600 cursor-pointer flex-shrink-0"
+                          />
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
+                              style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
+                              {m.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[11px] text-gray-700 font-medium truncate">{m.name}</p>
+                              <p className="text-[9px] text-gray-400 capitalize">{m.role}</p>
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <span className="text-[11px] text-gray-400">
+              {total > 0 ? `${total.toLocaleString()} candidate${total !== 1 ? 's' : ''}` : 'No candidates yet'}
+            </span>
+          </div>
         </div>
 
         {/* Table content */}
@@ -432,6 +526,7 @@ export default function CandidateDatabase() {
                   <th className={THL}>Best Score</th>
                   <th className={THL}>Jobs</th>
                   <th className={THL}>Status</th>
+                  <th className={THL}>Owner</th>
                   <th className={THL}>Source</th>
                   <th className={`${THL} w-10`} />
                 </tr>
@@ -524,6 +619,20 @@ export default function CandidateDatabase() {
                             {c.status.replace('_', ' ')}
                           </span>
                         ) : <span className="text-gray-300">—</span>}
+                      </td>
+
+                      <td className={TDL}>
+                        {c.owner_name ? (
+                          <div className="flex items-center gap-1.5 whitespace-nowrap">
+                            <div className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0"
+                              style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
+                              {c.owner_name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-[10px] text-gray-600 max-w-[80px] truncate">{c.owner_name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-300 text-[10px]">—</span>
+                        )}
                       </td>
 
                       <td className={TDL}>

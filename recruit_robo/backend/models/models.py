@@ -87,6 +87,8 @@ class CandidateResponse(CandidateCreate):
     status: str = "sourced"          # sourced | emailed | interested | rejected | selected
     interview_phase: str = "not_started"
     created_at: datetime
+    owner_id: Optional[str] = None
+    owner_name: Optional[str] = None
 
 # ── Email models ──────────────────────────────────────────────────────────────
 class EmailRequest(BaseModel):

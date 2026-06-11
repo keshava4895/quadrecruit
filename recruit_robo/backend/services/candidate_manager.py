@@ -55,11 +55,30 @@ async def get_top_candidates(job_id: str, limit: int = 10) -> list:
     return candidates[:limit]
 
 
-async def list_all_candidates(search: str = "", status: str = "", skip: int = 0, limit: int = 50) -> dict:
+async def assign_owner(candidate_id: str, owner_id: str, owner_name: str):
+    db = get_db()
+    update = {"$set": {
+        "owner_id":   owner_id,
+        "owner_name": owner_name,
+        "updated_at": datetime.now(timezone.utc),
+    }}
+    await db.candidate_info.update_one({"candidateId": candidate_id}, update)
+
+
+async def unassign_owner(candidate_id: str):
+    db = get_db()
+    update = {"$unset": {"owner_id": "", "owner_name": ""},
+              "$set":   {"updated_at": datetime.now(timezone.utc)}}
+    await db.candidate_info.update_one({"candidateId": candidate_id}, update)
+
+
+async def list_all_candidates(search: str = "", status: str = "", owner_ids: list = None, skip: int = 0, limit: int = 50) -> dict:
     db = get_db()
     query: dict = {}
     if status:
         query["status"] = status
+    if owner_ids:
+        query["owner_id"] = {"$in": owner_ids}
     if search:
         query["$or"] = [
             {"name":  {"$regex": search, "$options": "i"}},

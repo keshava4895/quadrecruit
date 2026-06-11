@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import QlogoLoader from '../components/QlogoLoader'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { candidatesApi, notesApi, offersApi, interviewsApi } from '../api'
+import { candidatesApi, notesApi, offersApi, interviewsApi, authApi } from '../api'
+import { useAuth } from '../context/AuthContext'
 import {
   ChevronLeft, Mail, Phone, Briefcase, MapPin, Star,
   FileText, MessageSquare, Calendar, CheckCircle, XCircle,
   Clock, ChevronDown, ChevronUp, Download, Trash2,
-  Activity, DollarSign, Plus, Video, ExternalLink,
+  Activity, DollarSign, Plus, Video, ExternalLink, UserCheck, X,
 } from 'lucide-react'
 
 const STATUS_STYLE = {
@@ -102,6 +103,7 @@ function fmtDate(val, opts = { day: 'numeric', month: 'short', year: 'numeric' }
 export default function CandidateProfile() {
   const { candidateId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [profile,    setProfile]    = useState(null)
   const [loading,    setLoading]    = useState(true)
@@ -115,6 +117,24 @@ export default function CandidateProfile() {
 
   const [offers,      setOffers]      = useState([])
   const [interviews2, setInterviews2] = useState([])
+
+  // ── Ownership ──────────────────────────────────────────────────────────────
+  const [members,       setMembers]       = useState([])
+  const [ownerSaving,   setOwnerSaving]   = useState(false)
+  const ownerRef = useRef(null)
+
+  useEffect(() => {
+    authApi.users().then(r => setMembers(r.data || [])).catch(() => {})
+  }, [])
+
+  async function handleAssignOwner(memberId) {
+    setOwnerSaving(true)
+    try {
+      const r = await candidatesApi.assignOwner(candidateId, memberId || null)
+      setProfile(prev => ({ ...prev, owner_id: r.data.owner_id, owner_name: r.data.owner_name }))
+    } catch { }
+    setOwnerSaving(false)
+  }
 
   useEffect(() => {
     candidatesApi.fullProfile(candidateId)
@@ -247,6 +267,42 @@ export default function CandidateProfile() {
       </div>
 
       <div className="space-y-4">
+
+        {/* ── Assigned To ──────────────────────────────────────────────────── */}
+        <div className="bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-sm flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <UserCheck className="w-4 h-4 text-purple-500" />
+            <span className="text-sm font-semibold text-gray-800">Assigned To</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {profile.owner_name ? (
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+                  style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
+                  {profile.owner_name.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm font-medium text-gray-700">{profile.owner_name}</span>
+              </div>
+            ) : (
+              <span className="text-sm text-gray-400 italic">Unassigned</span>
+            )}
+
+            <select
+              ref={ownerRef}
+              value={profile.owner_id || ''}
+              onChange={e => handleAssignOwner(e.target.value)}
+              disabled={ownerSaving}
+              className="ml-2 text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer disabled:opacity-50">
+              <option value="">— Unassigned —</option>
+              {members.filter(m => m.is_active).map(m => (
+                <option key={m.userId} value={m.userId}>{m.name} ({m.role})</option>
+              ))}
+            </select>
+
+            {ownerSaving && <QlogoLoader size={14} />}
+          </div>
+        </div>
 
         {/* Summary */}
         {profile.summary && (

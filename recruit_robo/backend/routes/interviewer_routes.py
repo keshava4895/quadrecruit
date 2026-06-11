@@ -155,15 +155,21 @@ async def list_availability(interviewer_id: str, current_user=Depends(get_curren
     iv = await db["interviewers"].find_one({"interviewerId": interviewer_id})
     if not iv:
         raise HTTPException(404, "Interviewer not found")
+    today = datetime.now(timezone.utc).date().isoformat()
     all_slots = await db["interviewer_availability"].find(
         {"interviewerId": interviewer_id}, {"_id": 0}
-    ).to_list(200)
-    today = datetime.now(timezone.utc).date().isoformat()
-    slots = sorted(
+    ).to_list(500)
+    # upcoming first, then past — both visible in the management modal
+    upcoming = sorted(
         [s for s in all_slots if s.get("slot_date", "") >= today],
         key=lambda x: (x.get("slot_date", ""), x.get("start_time", ""))
     )
-    return slots
+    past = sorted(
+        [s for s in all_slots if s.get("slot_date", "") < today],
+        key=lambda x: (x.get("slot_date", ""), x.get("start_time", "")),
+        reverse=True,
+    )
+    return upcoming + past
 
 
 @router.post("/{interviewer_id}/availability")

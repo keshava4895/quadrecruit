@@ -1,7 +1,65 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { jobsApi, analyticsApi } from '../api'
-import { Plus, Trash2, MapPin, Briefcase, ChevronRight, X, CheckSquare, Square, Users, UserCheck, Layers, ChevronDown, Pencil } from 'lucide-react'
+import { Plus, Trash2, MapPin, Briefcase, ChevronRight, X, CheckSquare, Square, Users, UserCheck, Layers, ChevronDown, Pencil, Filter } from 'lucide-react'
+
+// ── Multi-select filter dropdown ───────────────────────────────────────────────
+function MultiFilter({ label, options, selected, onChange, openKey, activeKey, onOpen }) {
+  const ref = useRef(null)
+  const isOpen = openKey === activeKey
+
+  useEffect(() => {
+    if (!isOpen) return
+    function handler(e) { if (ref.current && !ref.current.contains(e.target)) onOpen(null) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [isOpen, onOpen])
+
+  function toggle(val) {
+    const next = new Set(selected)
+    next.has(val) ? next.delete(val) : next.add(val)
+    onChange(next)
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => onOpen(isOpen ? null : openKey)}
+        className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors ${
+          selected.size > 0
+            ? 'bg-purple-50 text-purple-700 border-purple-300'
+            : 'bg-white text-gray-500 border-gray-200 hover:border-purple-300 hover:text-purple-600'
+        }`}>
+        <Filter className="w-3 h-3" />
+        {label}{selected.size > 0 ? ` (${selected.size})` : ''}
+        <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-full mt-1 z-30 bg-white border border-gray-200 rounded-xl shadow-lg min-w-[160px] py-1">
+          <div className="px-3 py-1.5 border-b border-gray-100 flex items-center justify-between">
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</span>
+            {selected.size > 0 && (
+              <button onClick={() => onChange(new Set())} className="text-[10px] text-purple-600 hover:underline">Clear</button>
+            )}
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {options.length === 0
+              ? <p className="px-3 py-2 text-[11px] text-gray-400 italic">No values</p>
+              : options.map(opt => (
+                <label key={opt} className="flex items-center gap-2 px-3 py-1.5 hover:bg-purple-50 cursor-pointer">
+                  <input type="checkbox" checked={selected.has(opt)} onChange={() => toggle(opt)}
+                    className="w-3 h-3 rounded accent-purple-600 cursor-pointer flex-shrink-0" />
+                  <span className="text-[11px] text-gray-700 truncate">{opt}</span>
+                </label>
+              ))
+            }
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const STATUS_OPTIONS = [
   { value: 'active',    label: 'Active',    dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50',  border: 'border-emerald-100' },
@@ -89,6 +147,8 @@ export default function Jobs() {
   const [editingJob,  setEditingJob]  = useState(null)
   const [editForm,    setEditForm]    = useState({ project: '', team: '', description: '' })
   const [editSaving,  setEditSaving]  = useState(false)
+  const [filters,     setFilters]     = useState({ title: new Set(), status: new Set(), priority: new Set(), deliveryHead: new Set(), projectName: new Set() })
+  const [filterOpen,  setFilterOpen]  = useState(null)
 
   useEffect(() => {
     const close = (e) => {
@@ -98,6 +158,17 @@ export default function Jobs() {
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
   }, [])
+
+  const filteredJobs = useMemo(() => jobs.filter(job => {
+    if (filters.title.size > 0        && !filters.title.has(job.title || ''))               return false
+    if (filters.status.size > 0       && !filters.status.has(job.status))                   return false
+    if (filters.priority.size > 0     && !filters.priority.has(job.priority || ''))         return false
+    if (filters.deliveryHead.size > 0 && !filters.deliveryHead.has(job.delivery_head || '')) return false
+    if (filters.projectName.size > 0  && !filters.projectName.has(job.project_name || ''))  return false
+    return true
+  }), [jobs, filters])
+
+  const setFilter = (key) => (next) => setFilters(f => ({ ...f, [key]: next }))
 
   const load = () => Promise.all([
     jobsApi.list(),
@@ -144,11 +215,11 @@ export default function Jobs() {
     return next
   })
 
-  const allSelected  = jobs.length > 0 && selected.size === jobs.length
+  const allSelected  = filteredJobs.length > 0 && filteredJobs.every(j => selected.has(j.jobId))
   const someSelected = selected.size > 0 && !allSelected
 
   const toggleAll = () =>
-    setSelected(allSelected ? new Set() : new Set(jobs.map(j => j.jobId)))
+    setSelected(allSelected ? new Set() : new Set(filteredJobs.map(j => j.jobId)))
 
   const deleteSelected = async () => {
     if (!selected.size) return
@@ -188,7 +259,11 @@ export default function Jobs() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Jobs</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{jobs.length} active posting{jobs.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-gray-400 mt-0.5">
+            {filteredJobs.length !== jobs.length
+              ? `${filteredJobs.length} of ${jobs.length} posting${jobs.length !== 1 ? 's' : ''}`
+              : `${jobs.length} posting${jobs.length !== 1 ? 's' : ''}`}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -463,9 +538,10 @@ export default function Jobs() {
       <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
 
         {/* Table toolbar */}
-        <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-3">
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-3 flex-wrap">
+          {/* Left: select-all + delete */}
           <button onClick={toggleAll}
-            className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-800 transition-colors">
+            className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-800 transition-colors flex-shrink-0">
             {allSelected
               ? <CheckSquare className="w-3.5 h-3.5 text-purple-600" />
               : someSelected
@@ -475,14 +551,40 @@ export default function Jobs() {
           </button>
           {selected.size > 0 && (
             <>
-              <span className="text-xs text-gray-400">{selected.size} of {jobs.length} selected</span>
+              <span className="text-xs text-gray-400">{selected.size} of {filteredJobs.length} selected</span>
               <button onClick={deleteSelected} disabled={deleting}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors ml-auto">
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors">
                 <Trash2 className="w-3.5 h-3.5" />
                 {deleting ? 'Deleting…' : `Delete ${selected.size}`}
               </button>
             </>
           )}
+
+          {/* Right: multi-select filters */}
+          {(() => {
+            const uniqueTitle    = [...new Set(jobs.map(j => j.title).filter(Boolean))].sort()
+            const uniqueStatus   = [...new Set(jobs.map(j => j.status).filter(Boolean))].sort()
+            const uniquePriority = [...new Set(jobs.map(j => j.priority).filter(Boolean))].sort()
+            const uniqueDelivery = [...new Set(jobs.map(j => j.delivery_head).filter(Boolean))].sort()
+            const uniqueProject  = [...new Set(jobs.map(j => j.project_name).filter(Boolean))].sort()
+            const anyFilter = filters.title.size + filters.status.size + filters.priority.size + filters.deliveryHead.size + filters.projectName.size > 0
+            return (
+              <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
+                <MultiFilter label="Posting Title" options={uniqueTitle}    selected={filters.title}        onChange={setFilter('title')}        openKey="title"        activeKey={filterOpen} onOpen={setFilterOpen} />
+                <MultiFilter label="Status"        options={uniqueStatus}   selected={filters.status}       onChange={setFilter('status')}       openKey="status"       activeKey={filterOpen} onOpen={setFilterOpen} />
+                <MultiFilter label="Priority"      options={uniquePriority} selected={filters.priority}     onChange={setFilter('priority')}     openKey="priority"     activeKey={filterOpen} onOpen={setFilterOpen} />
+                <MultiFilter label="Delivery Head" options={uniqueDelivery} selected={filters.deliveryHead} onChange={setFilter('deliveryHead')} openKey="deliveryHead" activeKey={filterOpen} onOpen={setFilterOpen} />
+                <MultiFilter label="Project Name"  options={uniqueProject}  selected={filters.projectName}  onChange={setFilter('projectName')}  openKey="projectName"  activeKey={filterOpen} onOpen={setFilterOpen} />
+                {anyFilter && (
+                  <button
+                    onClick={() => setFilters({ title: new Set(), status: new Set(), priority: new Set(), deliveryHead: new Set(), projectName: new Set() })}
+                    className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 transition-colors px-1">
+                    <X className="w-3 h-3" /> Clear all
+                  </button>
+                )}
+              </div>
+            )
+          })()}
         </div>
 
         {jobs.length === 0 ? (
@@ -490,6 +592,12 @@ export default function Jobs() {
             <Briefcase className="w-10 h-10 text-gray-200 mx-auto mb-3" />
             <p className="text-sm font-medium text-gray-500">No jobs yet</p>
             <p className="text-xs text-gray-400 mt-1">Create your first job posting to get started</p>
+          </div>
+        ) : filteredJobs.length === 0 ? (
+          <div className="text-center py-16">
+            <Filter className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+            <p className="text-sm font-medium text-gray-500">No jobs match the active filters</p>
+            <p className="text-xs text-gray-400 mt-1">Try adjusting or clearing the filters above</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -519,7 +627,7 @@ export default function Jobs() {
                 </tr>
               </thead>
               <tbody>
-                {jobs.map(job => {
+                {filteredJobs.map(job => {
                   const isSelected = selected.has(job.jobId)
                   return (
                     <tr key={job.jobId}
