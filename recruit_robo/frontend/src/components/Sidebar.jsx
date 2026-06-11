@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Briefcase, Search, Cpu, UserCheck, GitBranch, BarChart2, Database,
-  ChevronLeft, ChevronRight, LogOut, Users, UserCircle, FileText, Calendar,
+  ChevronLeft, ChevronRight, LogOut, UserCircle, FileText, Calendar,
   Link2, Link2Off, Settings, Mail, Eye, EyeOff, CheckCircle, ChevronUp,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -190,30 +190,6 @@ export default function Sidebar() {
           )
         })}
       </nav>
-
-      {/* Admin section — only visible to admins */}
-      {user?.role === 'admin' && (
-        <div className="px-3 pb-2">
-          {!collapsed && (
-            <p className="text-[10px] font-semibold text-gray-300 uppercase tracking-wider px-1 mb-1">Admin</p>
-          )}
-          {[
-            { to: '/admin/users', label: 'Access Management', icon: Users },
-          ].map(({ to, label, icon: Icon }) => {
-            const active = pathname === to
-            return (
-              <Link key={to} to={to} title={label}
-                className={`flex items-center gap-3 rounded-xl text-sm font-medium transition-all select-none
-                  ${collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'}
-                  ${active ? 'text-white shadow-sm' : 'text-gray-400 hover:bg-purple-50 hover:text-purple-600'}`}
-                style={active ? { background: 'linear-gradient(135deg, #49029F, #7c3aed)' } : {}}>
-                <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                {!collapsed && <span className="truncate">{label}</span>}
-              </Link>
-            )
-          })}
-        </div>
-      )}
 
       {/* User section + panel */}
       <div className="flex-shrink-0 border-t border-gray-100" ref={panelRef}>
