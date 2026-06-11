@@ -63,18 +63,106 @@ function ScoreBadge({ score }) {
 }
 
 // ── Chevron badge (pipeline table) ────────────────────────────────────────────
-function Chevron({ count, bg, fg }) {
+function Chevron({ count, bg, fg, onClick }) {
   if (!count) return null
   return (
-    <div className="flex items-center justify-start px-2">
+    <div className="flex items-center w-full px-1.5">
       <div
-        style={{
-          background: bg, color: fg,
-          clipPath: 'polygon(0% 0%, calc(100% - 10px) 0%, 100% 50%, calc(100% - 10px) 100%, 0% 100%)',
-          minWidth: 44,
-        }}
-        className="inline-flex items-center justify-center h-[26px] pl-3 pr-5 text-xs font-bold select-none">
-        {count}
+        onClick={onClick}
+        className="flex items-center cursor-pointer hover:opacity-80 transition-opacity select-none w-full"
+      >
+        <div
+          style={{ background: bg, color: fg }}
+          className="flex items-center justify-center h-[30px] flex-1 text-[13px] font-bold"
+        >
+          {count}
+        </div>
+        <div style={{
+          width: 0, height: 0,
+          borderTop: '15px solid transparent',
+          borderBottom: '15px solid transparent',
+          borderLeft: `13px solid ${bg}`,
+          flexShrink: 0,
+        }} />
+      </div>
+    </div>
+  )
+}
+
+// ── Stage Candidates Drawer ────────────────────────────────────────────────────
+function DrawerCandidateRow({ c, onClose }) {
+  const pct  = Math.round((c.match_score || 0) * 100)
+  const ring = pct >= 80 ? '#10b981' : pct >= 60 ? '#f59e0b' : pct > 0 ? '#ef4444' : '#d4d4d8'
+  const col  = pct >= 80 ? '#065f46' : pct >= 60 ? '#92400e' : pct > 0 ? '#7f1d1d' : '#71717a'
+  return (
+    <div className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60 transition-colors">
+      <div style={{ borderColor: ring, color: col }}
+        className="w-10 h-10 rounded-full border-2 flex items-center justify-center text-[11px] font-bold flex-shrink-0 bg-white">
+        {pct > 0 ? pct : '—'}
+      </div>
+      <div className="flex-1 min-w-0">
+        <Link to={`/candidates/${c.candidateId}`} onClick={onClose}
+          className="text-xs font-semibold text-purple-700 hover:underline truncate block leading-tight">
+          {c.name}
+        </Link>
+        {c.email && (
+          <p className="text-[11px] text-gray-400 truncate leading-tight mt-0.5">{c.email}</p>
+        )}
+        {c.skills && c.skills.length > 0 && (
+          <div className="flex items-center gap-1 mt-1 flex-wrap">
+            {c.skills.slice(0, 3).map(s => (
+              <span key={s} className="px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px]">{s}</span>
+            ))}
+            {c.skills.length > 3 && (
+              <span className="text-[10px] text-gray-400">+{c.skills.length - 3}</span>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="flex-shrink-0">
+        <span className="text-[10px] text-gray-400">{c.experience ? `${c.experience}y exp` : '—'}</span>
+      </div>
+    </div>
+  )
+}
+
+function StageCandidatesDrawer({ jobTitle, stageLabel, candidates, loading, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex" onClick={onClose}>
+      <div className="flex-1 bg-black/30" />
+      <div className="w-full max-w-md bg-white h-full flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100"
+          style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
+          <div>
+            <p className="text-white/70 text-[11px] font-medium">{jobTitle}</p>
+            <h2 className="text-white text-sm font-semibold">{stageLabel} Candidates</h2>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-5 py-2.5 border-b border-gray-100 bg-gray-50/60">
+          <span className="text-[11px] text-gray-500">
+            {loading ? 'Loading…' : candidates.length + ' candidate' + (candidates.length !== 1 ? 's' : '')}
+          </span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
+          {loading && (
+            <div className="flex items-center justify-center py-16">
+              <QlogoLoader size={36} label="Loading candidates…" />
+            </div>
+          )}
+          {!loading && candidates.length === 0 && (
+            <div className="flex items-center justify-center py-16 text-gray-400 text-sm">
+              No candidates in this stage.
+            </div>
+          )}
+          {!loading && candidates.map(c => (
+            <DrawerCandidateRow key={c.candidateId} c={c} onClose={onClose} />
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -143,23 +231,50 @@ function PipelineTable({ rows, loading, onRefresh }) {
   const [expandedJobId, setExpandedJobId] = useState(null)
   const [jobCandidates, setJobCandidates] = useState({})
   const [loadingCands,  setLoadingCands]  = useState({})
+  const [drawer,        setDrawer]        = useState(null) // { jobId, stageKey }
   const gradientBar = STAGES.map(s => s.grad).join(', ')
   const colCount    = STAGES.length + 1
+
+  const fetchCandidates = async (jobId) => {
+    if (jobCandidates[jobId]) return
+    setLoadingCands(p => ({ ...p, [jobId]: true }))
+    try {
+      const r = await candidatesApi.top(jobId, 200)
+      setJobCandidates(p => ({ ...p, [jobId]: r.data || [] }))
+    } catch { setJobCandidates(p => ({ ...p, [jobId]: [] })) }
+    finally { setLoadingCands(p => ({ ...p, [jobId]: false })) }
+  }
 
   const toggle = async (jobId) => {
     const next = expandedJobId === jobId ? null : jobId
     setExpandedJobId(next)
-    if (next && !jobCandidates[next]) {
-      setLoadingCands(p => ({ ...p, [next]: true }))
-      try {
-        const r = await candidatesApi.top(next, 200)
-        setJobCandidates(p => ({ ...p, [next]: r.data || [] }))
-      } catch { setJobCandidates(p => ({ ...p, [next]: [] })) }
-      finally { setLoadingCands(p => ({ ...p, [next]: false })) }
-    }
+    if (next) fetchCandidates(next)
   }
 
+  const openDrawer = (e, jobId, stageKey) => {
+    e.stopPropagation()
+    setDrawer({ jobId, stageKey })
+    fetchCandidates(jobId)
+  }
+
+  const drawerRow     = drawer && rows.find(r => r.jobId === drawer.jobId)
+  const drawerStage   = drawer && STAGES.find(s => s.key === drawer.stageKey)
+  const drawerCands   = drawer
+    ? (jobCandidates[drawer.jobId] || []).filter(c => c.status === drawer.stageKey)
+    : []
+  const drawerLoading = drawer ? !!loadingCands[drawer.jobId] : false
+
   return (
+    <>
+    {drawer && (
+      <StageCandidatesDrawer
+        jobTitle={drawerRow?.title || ''}
+        stageLabel={drawerStage?.label || ''}
+        candidates={drawerCands}
+        loading={drawerLoading}
+        onClose={() => setDrawer(null)}
+      />
+    )}
     <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-gray-50/60">
         <div className="flex items-center gap-2">
@@ -228,9 +343,13 @@ function PipelineTable({ rows, loading, onRefresh }) {
                       </td>
                       {STAGES.map(s => (
                         <td key={s.key}
-                          className="px-1 py-2 border-b border-gray-100 border-l border-gray-100"
+                          className="px-0 py-1.5 border-b border-gray-100 border-l border-gray-100"
                           style={{ minWidth: 100 }}>
-                          <Chevron count={row.counts[s.key] || 0} bg={s.bg} fg={s.fg} />
+                          <Chevron
+                            count={row.counts[s.key] || 0}
+                            bg={s.bg} fg={s.fg}
+                            onClick={e => openDrawer(e, row.jobId, s.key)}
+                          />
                         </td>
                       ))}
                     </tr>
@@ -342,6 +461,7 @@ function PipelineTable({ rows, loading, onRefresh }) {
         </div>
       )}
     </div>
+    </>
   )
 }
 

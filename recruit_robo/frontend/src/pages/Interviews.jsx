@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { interviewsApi, candidatesApi, jobsApi, interviewersApi, availabilityApi, outreachApi } from '../api'
+import { interviewsApi, candidatesApi, jobsApi, interviewersApi, availabilityApi, outreachApi, msGraphApi } from '../api'
 import QlogoLoader from '../components/QlogoLoader'
 import {
   Calendar, Clock, Video, Phone, MapPin, Plus, X,
@@ -416,6 +416,8 @@ export default function Interviews() {
   const [showCreate,   setShowCreate]   = useState(false)
   const [candSearch,   setCandSearch]   = useState('')
   const [selectedCand, setSelectedCand] = useState(null)
+  const [candName,     setCandName]     = useState('')
+  const [candEmail,    setCandEmail]    = useState('')
   const [form,         setForm]         = useState(BLANK_FORM)
   const [creating,     setCreating]     = useState(false)
 
@@ -428,6 +430,10 @@ export default function Interviews() {
   const [filterStatus,      setFilterStatus]      = useState('')
   const [filterInterviewer, setFilterInterviewer] = useState('')
   const [viewTab,           setViewTab]           = useState('upcoming')
+
+  // Outlook / Teams
+  const [msConnected,    setMsConnected]    = useState(false)
+  const [generatingLink, setGeneratingLink] = useState(false)
 
   // Outreach modal
   const [showOutreach, setShowOutreach] = useState(false)
@@ -444,6 +450,7 @@ export default function Interviews() {
     candidatesApi.listAll({ limit: 500 }).then(r => setAllCandidates(r.data?.candidates || [])).catch(() => {})
     jobsApi.list().then(r => setJobs(r.data || [])).catch(() => {})
     interviewersApi.list().then(r => setInterviewers(r.data || [])).catch(() => {})
+    msGraphApi.status().then(r => setMsConnected(r.data?.connected || false)).catch(() => {})
   }, [])
 
   async function load() {
@@ -504,11 +511,25 @@ export default function Interviews() {
   // ── handlers ────────────────────────────────────────────────────────────────
   async function handleCreate(e) {
     e.preventDefault()
-    if (!selectedCand || !form.jobId || !form.interviewerId || !form.datetime) return
+    if (!candName.trim() || !candEmail.trim() || !form.jobId || !form.interviewerId || !form.datetime) return
     setCreating(true)
     try {
+      let candidateId = selectedCand?.candidateId
+      if (!candidateId) {
+        const existing = allCandidates.find(c => c.email?.toLowerCase() === candEmail.trim().toLowerCase())
+        if (existing) {
+          candidateId = existing.candidateId
+        } else {
+          const created = await candidatesApi.add(form.jobId, { name: candName.trim(), email: candEmail.trim() })
+          candidateId = created.data?.candidateId || created.data?.candidate_id
+          if (candidateId) {
+            setAllCandidates(prev => [...prev, { candidateId, name: candName.trim(), email: candEmail.trim() }])
+          }
+        }
+      }
+      if (!candidateId) throw new Error('Could not resolve candidate')
       const r = await interviewsApi.create({
-        candidateId:   selectedCand.candidateId,
+        candidateId,
         jobId:         form.jobId,
         interviewerId: form.interviewerId,
         round:         parseInt(form.round),
@@ -523,6 +544,8 @@ export default function Interviews() {
       setShowCreate(false)
       setSelectedCand(null)
       setCandSearch('')
+      setCandName('')
+      setCandEmail('')
       setForm(BLANK_FORM)
       showFlash('Interview scheduled!')
     } catch (err) {
@@ -580,10 +603,38 @@ export default function Interviews() {
     })
   }
 
+  async function generateTeamsLink(targetForm, setTargetForm) {
+    if (!msConnected) return
+    setGeneratingLink(true)
+    try {
+      const start = targetForm.datetime
+        ? new Date(targetForm.datetime)
+        : new Date(Date.now() + 86400000)
+      const end = new Date(start.getTime() + (parseInt(targetForm.duration_mins) || 60) * 60000)
+      const candidateLabel = candName.trim() || 'Candidate'
+      const jobLabel = jobs.find(j => j.jobId === targetForm.jobId)?.title || 'Interview'
+      const r = await msGraphApi.createMeeting({
+        subject:       `Interview: ${candidateLabel} — ${jobLabel}`,
+        startDateTime: start.toISOString(),
+        endDateTime:   end.toISOString(),
+      })
+      if (r.data?.joinUrl) {
+        setTargetForm(f => ({ ...f, meeting_link: r.data.joinUrl }))
+        showFlash('Teams link generated!')
+      }
+    } catch (err) {
+      showFlash(err.response?.data?.detail || 'Failed to generate Teams link', 'error')
+    } finally {
+      setGeneratingLink(false)
+    }
+  }
+
   function closeCreate() {
     setShowCreate(false)
     setSelectedCand(null)
     setCandSearch('')
+    setCandName('')
+    setCandEmail('')
     setForm(BLANK_FORM)
   }
 
@@ -731,7 +782,9 @@ export default function Interviews() {
             <form onSubmit={handleCreate} className="px-6 py-4 space-y-4">
               {/* Candidate search */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">Candidate</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                  Search Existing Candidate <span className="text-gray-400 font-normal">(optional — or fill name & email below)</span>
+                </label>
                 {selectedCand ? (
                   <div className="flex items-center justify-between bg-purple-50 border border-purple-200 rounded-xl px-3 py-2">
                     <div className="flex items-center gap-2 min-w-0">
@@ -744,7 +797,7 @@ export default function Interviews() {
                         {selectedCand.email && <p className="text-xs text-gray-400 truncate">{selectedCand.email}</p>}
                       </div>
                     </div>
-                    <button type="button" onClick={() => { setSelectedCand(null); setCandSearch('') }}
+                    <button type="button" onClick={() => { setSelectedCand(null); setCandSearch(''); setCandName(''); setCandEmail('') }}
                       className="text-gray-300 hover:text-gray-500 flex-shrink-0 ml-2">
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -760,7 +813,7 @@ export default function Interviews() {
                       <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-100 rounded-xl shadow-lg z-10 max-h-48 overflow-y-auto">
                         {candResults.map(c => (
                           <button key={c.candidateId} type="button"
-                            onClick={() => { setSelectedCand(c); setCandSearch('') }}
+                            onClick={() => { setSelectedCand(c); setCandSearch(''); setCandName(c.name || ''); setCandEmail(c.email || '') }}
                             className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-purple-50 transition-colors text-left">
                             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                               style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
@@ -776,6 +829,40 @@ export default function Interviews() {
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* Mandatory name + email fields */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Candidate Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={candName}
+                    onChange={e => setCandName(e.target.value)}
+                    placeholder="Full name"
+                    className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-50 ${
+                      !candName.trim() ? 'border-red-200 bg-red-50/30' : 'border-gray-200'
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Candidate Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={candEmail}
+                    onChange={e => setCandEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-50 ${
+                      !candEmail.trim() ? 'border-red-200 bg-red-50/30' : 'border-gray-200'
+                    }`}
+                  />
+                </div>
               </div>
 
               {/* Job + Interviewer */}
@@ -861,9 +948,28 @@ export default function Interviews() {
               {/* Meeting link */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">Meeting Link <span className="text-gray-400 font-normal">(optional)</span></label>
-                <input type="url" value={form.meeting_link} placeholder="https://meet.google.com/…"
-                  onChange={e => setForm(f => ({ ...f, meeting_link: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-purple-300" />
+                <div className="flex gap-2">
+                  <input type="url" value={form.meeting_link} placeholder="https://meet.google.com/…"
+                    onChange={e => setForm(f => ({ ...f, meeting_link: e.target.value }))}
+                    className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-purple-300" />
+                  <button
+                    type="button"
+                    onClick={() => generateTeamsLink(form, setForm)}
+                    disabled={generatingLink || !msConnected}
+                    title={!msConnected ? 'Connect Outlook in Account settings to generate Teams links' : 'Generate Microsoft Teams meeting link'}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all disabled:opacity-40 whitespace-nowrap flex-shrink-0"
+                    style={{ background: '#6264a7', color: 'white' }}>
+                    {generatingLink
+                      ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      : <Video className="w-3.5 h-3.5" />}
+                    Teams
+                  </button>
+                </div>
+                {!msConnected && (
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    <Link to="/account" className="underline text-purple-500">Connect Outlook</Link> in Account settings to generate Teams links
+                  </p>
+                )}
               </div>
 
               {/* Notes */}
@@ -874,9 +980,10 @@ export default function Interviews() {
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-purple-300 resize-none" />
               </div>
 
-              {(!selectedCand || !form.jobId || !form.interviewerId || !form.datetime) && (
-                <p className="text-xs text-gray-400">
-                  {!selectedCand ? 'Search and select a candidate above'
+              {(!candName.trim() || !candEmail.trim() || !form.jobId || !form.interviewerId || !form.datetime) && (
+                <p className="text-xs text-red-400">
+                  {!candName.trim() ? 'Candidate name is required'
+                    : !candEmail.trim() ? 'Candidate email is required'
                     : !form.jobId ? 'Select a job'
                     : !form.interviewerId ? 'Select an interviewer'
                     : 'Choose date and time'}
@@ -888,7 +995,7 @@ export default function Interviews() {
                   className="px-4 py-2 text-sm border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors">
                   Cancel
                 </button>
-                <button type="submit" disabled={creating || !selectedCand || !form.jobId || !form.interviewerId || !form.datetime}
+                <button type="submit" disabled={creating || !candName.trim() || !candEmail.trim() || !form.jobId || !form.interviewerId || !form.datetime}
                   className="px-5 py-2 text-sm font-medium text-white rounded-xl disabled:opacity-40 transition-all"
                   style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
                   {creating ? 'Scheduling…' : 'Schedule'}
@@ -964,9 +1071,28 @@ export default function Interviews() {
               {/* Meeting link */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">Meeting Link</label>
-                <input type="url" value={editForm.meeting_link} placeholder="https://…"
-                  onChange={e => setEditForm(f => ({ ...f, meeting_link: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-purple-300" />
+                <div className="flex gap-2">
+                  <input type="url" value={editForm.meeting_link} placeholder="https://…"
+                    onChange={e => setEditForm(f => ({ ...f, meeting_link: e.target.value }))}
+                    className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-purple-300" />
+                  <button
+                    type="button"
+                    onClick={() => generateTeamsLink(editForm, setEditForm)}
+                    disabled={generatingLink || !msConnected}
+                    title={!msConnected ? 'Connect Outlook in Account settings to generate Teams links' : 'Generate Microsoft Teams meeting link'}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all disabled:opacity-40 whitespace-nowrap flex-shrink-0"
+                    style={{ background: '#6264a7', color: 'white' }}>
+                    {generatingLink
+                      ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      : <Video className="w-3.5 h-3.5" />}
+                    Teams
+                  </button>
+                </div>
+                {!msConnected && (
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    <Link to="/account" className="underline text-purple-500">Connect Outlook</Link> in Account settings to generate Teams links
+                  </p>
+                )}
               </div>
 
               {/* Notes */}

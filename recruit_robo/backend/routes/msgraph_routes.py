@@ -42,3 +42,17 @@ async def status(current_user=Depends(get_current_user)):
 async def disconnect(current_user=Depends(get_current_user)):
     await msgraph_service.disconnect(current_user["userId"])
     return {"disconnected": True}
+
+
+@router.post("/create-meeting")
+async def create_meeting(payload: dict, current_user=Depends(get_current_user)):
+    try:
+        result = await msgraph_service.create_teams_meeting(
+            user_id=current_user["userId"],
+            subject=payload.get("subject", "Interview"),
+            start_dt=payload["startDateTime"],
+            end_dt=payload["endDateTime"],
+        )
+        return result
+    except RuntimeError as e:
+        raise HTTPException(400, str(e))

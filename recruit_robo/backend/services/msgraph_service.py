@@ -14,6 +14,7 @@ from config import MS_CLIENT_ID, MS_CLIENT_SECRET, MS_TENANT_ID, BACKEND_URL, FR
 SCOPES = [
     "https://graph.microsoft.com/Mail.Send",
     "https://graph.microsoft.com/User.Read",
+    "https://graph.microsoft.com/OnlineMeetings.ReadWrite",
     "offline_access",
 ]
 
@@ -134,3 +135,48 @@ async def send_mail(user_id: str, to: str, subject: str, body: str) -> dict:
         "via": "msgraph", "sent_at": datetime.now(timezone.utc),
     })
     return {"sent": True, "to": to}
+
+
+async def create_teams_meeting(user_id: str, subject: str, start_dt: str, end_dt: str) -> dict:
+    doc = await get_tokens(user_id)
+    if not doc or not doc.get("access_token"):
+        raise RuntimeError(
+            "Microsoft account not connected. "
+            "Go to Account settings → Connect Outlook to authorise."
+        )
+
+    payload = {
+        "subject":       subject,
+        "startDateTime": start_dt,
+        "endDateTime":   end_dt,
+    }
+
+    async def _post(token: str):
+        async with httpx.AsyncClient(timeout=15) as client:
+            return await client.post(
+                "https://graph.microsoft.com/v1.0/me/onlineMeetings",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type":  "application/json",
+                },
+                json=payload,
+            )
+
+    r = await _post(doc["access_token"])
+
+    if r.status_code == 401 and doc.get("refresh_token"):
+        new_tokens = await _refresh(doc["refresh_token"])
+        await save_tokens(user_id, new_tokens)
+        r = await _post(new_tokens["access_token"])
+
+    if r.status_code == 403:
+        raise RuntimeError(
+            "Teams meeting permission not granted. "
+            "Please reconnect your Outlook account in Account settings to grant the required permissions."
+        )
+
+    if r.status_code not in (200, 201):
+        raise RuntimeError(f"Teams API error {r.status_code}: {r.text}")
+
+    data = r.json()
+    return {"joinUrl": data.get("joinWebUrl"), "meetingId": data.get("id")}

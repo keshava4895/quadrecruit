@@ -95,9 +95,10 @@ export const pipelineApi = {
 
 // ── Microsoft Graph (Outlook OAuth) ──────────────────────────────────────────
 export const msGraphApi = {
-  status:      ()   => api.get('/msgraph/status'),
-  authorizeUrl:()   => api.get('/msgraph/oauth/authorize'),
-  disconnect:  ()   => api.delete('/msgraph/disconnect'),
+  status:        ()     => api.get('/msgraph/status'),
+  authorizeUrl:  ()     => api.get('/msgraph/oauth/authorize'),
+  disconnect:    ()     => api.delete('/msgraph/disconnect'),
+  createMeeting: (data) => api.post('/msgraph/create-meeting', data),
 }
 
 // ── LinkedIn via Unipile ──────────────────────────────────────────────────────
