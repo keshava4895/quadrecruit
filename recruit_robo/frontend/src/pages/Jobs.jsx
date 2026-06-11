@@ -145,8 +145,9 @@ export default function Jobs() {
   const [deleting,   setDeleting]   = useState(false)
   const [statusMenu,  setStatusMenu]  = useState(null)
   const [editingJob,  setEditingJob]  = useState(null)
-  const [editForm,    setEditForm]    = useState({ project: '', team: '', description: '' })
+  const [editForm,    setEditForm]    = useState(EMPTY_FORM)
   const [editSaving,  setEditSaving]  = useState(false)
+  const [editError,   setEditError]   = useState('')
   const [filters,     setFilters]     = useState({ title: new Set(), status: new Set(), priority: new Set(), deliveryHead: new Set(), projectName: new Set() })
   const [filterOpen,  setFilterOpen]  = useState(null)
 
@@ -203,9 +204,13 @@ export default function Jobs() {
 
   const del = async (id) => {
     if (!confirm('Delete this job?')) return
-    await jobsApi.delete(id)
-    setSelected(prev => { const next = new Set(prev); next.delete(id); return next })
-    load()
+    try {
+      await jobsApi.delete(id)
+      setJobs(prev => prev.filter(j => j.jobId !== id))
+      setSelected(prev => { const next = new Set(prev); next.delete(id); return next })
+    } catch (e) {
+      alert(e?.response?.data?.detail || 'Failed to delete job')
+    }
   }
 
   // ── Multi-select helpers ──────────────────────────────────────────────────
@@ -238,17 +243,78 @@ export default function Jobs() {
     setStatusMenu(null)
   }
 
+  const eSet = (k, v) => setEditForm(f => ({ ...f, [k]: v }))
+
   const openEdit = (job) => {
-    setEditForm({ project: job.project || '', team: job.team || '', description: job.description || '' })
+    setEditForm({
+      title:                  job.title || '',
+      description:            job.description || '',
+      requirements:           job.requirements || '',
+      benefits:               job.benefits || '',
+      skills:                 Array.isArray(job.skills) ? job.skills.join(', ') : (job.skills || ''),
+      experience_years:       job.experience_years ?? 3,
+      location:               job.location || '',
+      positions_open:         job.positions_open ?? 1,
+      rounds_technical:       job.rounds_technical ?? 1,
+      rounds_tech_managerial: job.rounds_tech_managerial ?? 1,
+      rounds_managerial:      job.rounds_managerial ?? 1,
+      rounds_hr:              job.rounds_hr ?? 1,
+      project:                job.project || '',
+      team:                   job.team || '',
+      business_unit:          job.business_unit || '',
+      sub_bu:                 job.sub_bu || '',
+      department_name:        job.department_name || '',
+      job_opening_status:     job.job_opening_status || 'Requisition Created',
+      date_opened:            job.date_opened || '',
+      target_date:            job.target_date || '',
+      delivery_head:          job.delivery_head || '',
+      hiring_manager:         job.hiring_manager || '',
+      assigned_recruiters:    job.assigned_recruiters || '',
+      priority:               job.priority || '',
+      job_approval_status:    job.job_approval_status || '',
+      job_type:               job.job_type || 'Full time',
+      designation:            job.designation || '',
+      work_type:              job.work_type || '',
+      department_lead:        job.department_lead || '',
+      industry:               job.industry || '',
+      min_salary:             job.min_salary || '',
+      max_salary:             job.max_salary || '',
+      salary_type:            job.salary_type || '',
+      rounds_excluding_hr:    job.rounds_excluding_hr || '',
+      client_name:            job.client_name || '',
+      client_name_report:     job.client_name_report || '',
+      project_name:           job.project_name || '',
+      billability_status:     job.billability_status || '',
+      projects:               job.projects || '',
+      currency:               job.currency || 'USD',
+      number_of_roles:        job.number_of_roles || '',
+      pay_rate_range:         job.pay_rate_range || '',
+      visa_type:              job.visa_type || '',
+      vendor_name:            job.vendor_name || '',
+      project_duration:       job.project_duration || '',
+      workplace_flexibility:  job.workplace_flexibility || '',
+      interview_type:         job.interview_type || '',
+      security_clearance:     job.security_clearance || '',
+      remote_job:             job.remote_job || false,
+      city:                   job.city || '',
+      province:               job.province || '',
+      country:                job.country || '',
+      postal_code:            job.postal_code || '',
+    })
+    setEditError('')
     setEditingJob(job.jobId)
   }
 
-  const saveEdit = async (jobId) => {
-    setEditSaving(true)
+  const saveEdit = async () => {
+    if (!editForm.title.trim()) return
+    setEditSaving(true); setEditError('')
     try {
-      await jobsApi.patch(jobId, editForm)
-      setJobs(prev => prev.map(j => j.jobId === jobId ? { ...j, ...editForm } : j))
+      const payload = { ...editForm, skills: editForm.skills.split(',').map(s => s.trim()).filter(Boolean) }
+      await jobsApi.patch(editingJob, payload)
+      setJobs(prev => prev.map(j => j.jobId === editingJob ? { ...j, ...payload } : j))
       setEditingJob(null)
+    } catch (err) {
+      setEditError(err?.response?.data?.detail || err?.message || 'Failed to save changes')
     } finally { setEditSaving(false) }
   }
 
@@ -495,6 +561,203 @@ export default function Jobs() {
                   <textarea rows={3} className={INPUT + ' resize-none'}
                     placeholder="Health insurance, flexible hours, stock options…"
                     value={form.benefits} onChange={e => set('benefits', e.target.value)} />
+                </div>
+              </FormSection>
+
+              <div className="pb-8" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Full-screen EDIT form ─────────────────────────────────────────── */}
+      {editingJob && (
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#f1f0f7' }}>
+          <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0 shadow-sm">
+            <h1 className="text-sm font-semibold text-gray-900">Edit Job Opening</h1>
+            <div className="flex items-center gap-2">
+              {editError && <span className="text-xs text-red-500 mr-2">{editError}</span>}
+              <button onClick={() => setEditingJob(null)}
+                className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition-colors">
+                Cancel
+              </button>
+              <button onClick={saveEdit} disabled={editSaving || !editForm.title.trim()}
+                className="px-5 py-2 disabled:opacity-40 text-white text-sm font-medium rounded-xl transition-all shadow-sm hover:shadow-md"
+                style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
+                {editSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-5xl mx-auto px-6 py-6 space-y-5">
+
+              <FormSection title="Quadrant Details">
+                <Field label="Business Unit"><input className={INPUT} placeholder="e.g. Engineering" value={editForm.business_unit} onChange={e => eSet('business_unit', e.target.value)} /></Field>
+                <Field label="Date Opened"><input type="date" className={INPUT} value={editForm.date_opened} onChange={e => eSet('date_opened', e.target.value)} /></Field>
+                <Field label="Sub BU"><input className={INPUT} value={editForm.sub_bu} onChange={e => eSet('sub_bu', e.target.value)} /></Field>
+                <Field label="Target Date"><input type="date" className={INPUT} value={editForm.target_date} onChange={e => eSet('target_date', e.target.value)} /></Field>
+                <Field label="Department Name"><input className={INPUT} value={editForm.department_name} onChange={e => eSet('department_name', e.target.value)} /></Field>
+                <div />
+                <Field label="Job Opening Status">
+                  <select className={INPUT} value={editForm.job_opening_status} onChange={e => eSet('job_opening_status', e.target.value)}>
+                    {['Requisition Created','Approved','Active','On Hold','Closed'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+              </FormSection>
+
+              <FormSection title="Handled By">
+                <Field label="Delivery Head"><input className={INPUT} value={editForm.delivery_head} onChange={e => eSet('delivery_head', e.target.value)} /></Field>
+                <div />
+                <Field label="Hiring Manager"><input className={INPUT} value={editForm.hiring_manager} onChange={e => eSet('hiring_manager', e.target.value)} /></Field>
+                <div />
+                <Field label="Assigned Recruiter(s)"><input className={INPUT} value={editForm.assigned_recruiters} onChange={e => eSet('assigned_recruiters', e.target.value)} /></Field>
+              </FormSection>
+
+              <FormSection title="Job Opening Info">
+                <Field label="Posting Title" required><input className={INPUT} value={editForm.title} onChange={e => eSet('title', e.target.value)} /></Field>
+                <Field label="Number of Positions"><input type="number" min="1" className={INPUT} value={editForm.positions_open} onChange={e => eSet('positions_open', Math.max(1, +e.target.value))} /></Field>
+                <Field label="Priority">
+                  <select className={INPUT} value={editForm.priority} onChange={e => eSet('priority', e.target.value)}>
+                    <option value="">None</option>
+                    {['High','Medium','Low'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+                <Field label="Job Approval Status">
+                  <select className={INPUT} value={editForm.job_approval_status} onChange={e => eSet('job_approval_status', e.target.value)}>
+                    <option value="">None</option>
+                    {['Pending','Approved','Rejected'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+                <Field label="Job Type">
+                  <select className={INPUT} value={editForm.job_type} onChange={e => eSet('job_type', e.target.value)}>
+                    {['Full time','Part time','Contract','Internship','Freelance'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+                <Field label="Designation"><input className={INPUT} value={editForm.designation} onChange={e => eSet('designation', e.target.value)} /></Field>
+                <Field label="Work Type">
+                  <select className={INPUT} value={editForm.work_type} onChange={e => eSet('work_type', e.target.value)}>
+                    <option value="">None</option>
+                    {['On-site','Remote','Hybrid'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+                <Field label="Department Lead"><input className={INPUT} value={editForm.department_lead} onChange={e => eSet('department_lead', e.target.value)} /></Field>
+                <Field label="Work Experience (years)"><input type="number" min="0" className={INPUT} value={editForm.experience_years} onChange={e => eSet('experience_years', +e.target.value)} /></Field>
+                <Field label="Required Skills"><input className={INPUT} placeholder="comma-separated" value={editForm.skills} onChange={e => eSet('skills', e.target.value)} /></Field>
+                <Field label="Industry">
+                  <select className={INPUT} value={editForm.industry} onChange={e => eSet('industry', e.target.value)}>
+                    <option value="">None</option>
+                    {['Information Technology','Banking & Finance','Healthcare','Manufacturing','Retail','Education','Consulting','Telecom','Media','Other'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+                <Field label="Location"><input className={INPUT} value={editForm.location} onChange={e => eSet('location', e.target.value)} /></Field>
+                <Field label="Min Salary"><input className={INPUT} value={editForm.min_salary} onChange={e => eSet('min_salary', e.target.value)} /></Field>
+                <Field label="Max Salary"><input className={INPUT} value={editForm.max_salary} onChange={e => eSet('max_salary', e.target.value)} /></Field>
+                <Field label="Salary Type">
+                  <select className={INPUT} value={editForm.salary_type} onChange={e => eSet('salary_type', e.target.value)}>
+                    <option value="">None</option>
+                    {['Annual','Monthly','Hourly'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+                <div className="col-span-2">
+                  <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
+                    <p className="text-xs font-semibold text-gray-700 mb-3">Interview Rounds</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        { key: 'rounds_technical',       label: 'Technical' },
+                        { key: 'rounds_tech_managerial', label: 'Tech Managerial' },
+                        { key: 'rounds_managerial',      label: 'Managerial' },
+                        { key: 'rounds_hr',              label: 'HR' },
+                      ].map(r => (
+                        <div key={r.key}>
+                          <label className="block text-[11px] font-medium text-gray-500 mb-1.5">{r.label}</label>
+                          <input type="number" min="0" max="10" className={INPUT}
+                            value={editForm[r.key]} onChange={e => eSet(r.key, Math.min(10, Math.max(0, +e.target.value)))} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </FormSection>
+
+              <FormSection title="Client / Project Details">
+                <Field label="Client Name"><input className={INPUT} value={editForm.client_name} onChange={e => eSet('client_name', e.target.value)} /></Field>
+                <Field label="Client Name (Report)"><input className={INPUT} value={editForm.client_name_report} onChange={e => eSet('client_name_report', e.target.value)} /></Field>
+                <Field label="Project Name"><input className={INPUT} value={editForm.project_name} onChange={e => eSet('project_name', e.target.value)} /></Field>
+                <Field label="Billability Status">
+                  <select className={INPUT} value={editForm.billability_status} onChange={e => eSet('billability_status', e.target.value)}>
+                    <option value="">None</option>
+                    {['Billable','Non-Billable','Partial'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+                <Field label="Project / Team"><input className={INPUT} value={editForm.team} onChange={e => eSet('team', e.target.value)} /></Field>
+                <Field label="Currency">
+                  <select className={INPUT} value={editForm.currency} onChange={e => eSet('currency', e.target.value)}>
+                    {['USD','INR','EUR','GBP','AED','SGD'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+              </FormSection>
+
+              <FormSection title="Additional Information">
+                <Field label="Number of Roles"><input className={INPUT} value={editForm.number_of_roles} onChange={e => eSet('number_of_roles', e.target.value)} /></Field>
+                <Field label="Pay Rate Range"><input className={INPUT} value={editForm.pay_rate_range} onChange={e => eSet('pay_rate_range', e.target.value)} /></Field>
+                <Field label="Visa Type">
+                  <select className={INPUT} value={editForm.visa_type} onChange={e => eSet('visa_type', e.target.value)}>
+                    <option value="">None</option>
+                    {['H1B','L1','OPT','GC','Citizen','Any'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+                <Field label="Vendor Name"><input className={INPUT} value={editForm.vendor_name} onChange={e => eSet('vendor_name', e.target.value)} /></Field>
+                <Field label="Project Duration"><input className={INPUT} value={editForm.project_duration} onChange={e => eSet('project_duration', e.target.value)} /></Field>
+                <Field label="Workplace Flexibility">
+                  <select className={INPUT} value={editForm.workplace_flexibility} onChange={e => eSet('workplace_flexibility', e.target.value)}>
+                    <option value="">None</option>
+                    {['Full Remote','Hybrid','On-site'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+                <Field label="Interview Type">
+                  <select className={INPUT} value={editForm.interview_type} onChange={e => eSet('interview_type', e.target.value)}>
+                    <option value="">None</option>
+                    {['In-person','Virtual','Both'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+                <Field label="Security Clearance">
+                  <select className={INPUT} value={editForm.security_clearance} onChange={e => eSet('security_clearance', e.target.value)}>
+                    <option value="">None</option>
+                    {['None Required','Basic','Secret','Top Secret'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+              </FormSection>
+
+              <FormSection title="Address Information">
+                <div className="col-span-2 flex items-center gap-2 -mb-1">
+                  <input type="checkbox" id="edit_remote_job" className="accent-purple-600 w-4 h-4"
+                    checked={editForm.remote_job} onChange={e => eSet('remote_job', e.target.checked)} />
+                  <label htmlFor="edit_remote_job" className="text-sm text-gray-700 cursor-pointer">Remote Job</label>
+                </div>
+                <Field label="City"><input className={INPUT} value={editForm.city} onChange={e => eSet('city', e.target.value)} /></Field>
+                <Field label="Province / State"><input className={INPUT} value={editForm.province} onChange={e => eSet('province', e.target.value)} /></Field>
+                <Field label="Country">
+                  <select className={INPUT} value={editForm.country} onChange={e => eSet('country', e.target.value)}>
+                    <option value="">-None-</option>
+                    {['India','United States','United Kingdom','Canada','Australia','Singapore','UAE','Germany','Other'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+                <Field label="Postal Code"><input className={INPUT} value={editForm.postal_code} onChange={e => eSet('postal_code', e.target.value)} /></Field>
+              </FormSection>
+
+              <FormSection title="Description Information">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Job Description</label>
+                  <textarea rows={5} className={INPUT + ' resize-none'} value={editForm.description} onChange={e => eSet('description', e.target.value)} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Requirements</label>
+                  <textarea rows={4} className={INPUT + ' resize-none'} value={editForm.requirements} onChange={e => eSet('requirements', e.target.value)} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Benefits</label>
+                  <textarea rows={3} className={INPUT + ' resize-none'} value={editForm.benefits} onChange={e => eSet('benefits', e.target.value)} />
                 </div>
               </FormSection>
 
@@ -792,6 +1055,10 @@ export default function Jobs() {
                             className="p-1.5 text-gray-300 hover:text-gray-700 transition-colors rounded-lg hover:bg-gray-100">
                             <ChevronRight className="w-3.5 h-3.5" />
                           </Link>
+                          <button onClick={() => openEdit(job)} title="Edit job"
+                            className="p-1.5 text-purple-400 hover:text-purple-600 transition-colors rounded-lg hover:bg-purple-50">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
                           <button onClick={() => del(job.jobId)}
                             className="p-1.5 text-gray-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50">
                             <Trash2 className="w-3.5 h-3.5" />
