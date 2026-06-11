@@ -165,7 +165,7 @@ export default function Jobs() {
     if (filters.status.size > 0       && !filters.status.has(job.status))                   return false
     if (filters.priority.size > 0     && !filters.priority.has(job.priority || ''))         return false
     if (filters.deliveryHead.size > 0 && !filters.deliveryHead.has(job.delivery_head || '')) return false
-    if (filters.projectName.size > 0  && !filters.projectName.has(job.project_name || ''))  return false
+    if (filters.projectName.size > 0  && !filters.projectName.has(job.project_name || job.project || ''))  return false
     return true
   }), [jobs, filters])
 
@@ -829,7 +829,7 @@ export default function Jobs() {
             const uniqueStatus   = [...new Set(jobs.map(j => j.status).filter(Boolean))].sort()
             const uniquePriority = [...new Set(jobs.map(j => j.priority).filter(Boolean))].sort()
             const uniqueDelivery = [...new Set(jobs.map(j => j.delivery_head).filter(Boolean))].sort()
-            const uniqueProject  = [...new Set(jobs.map(j => j.project_name).filter(Boolean))].sort()
+            const uniqueProject  = [...new Set(jobs.map(j => j.project_name || j.project).filter(Boolean))].sort()
             const anyFilter = filters.title.size + filters.status.size + filters.priority.size + filters.deliveryHead.size + filters.projectName.size > 0
             return (
               <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
