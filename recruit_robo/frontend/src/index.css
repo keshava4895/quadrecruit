@@ -4,7 +4,24 @@
 
 :root {
   --page-bg: #f1f0f7;
+  --rr-fs: 1;          /* text-size scale — updated by SettingsContext */
 }
+
+/* ── Text-only scaling ─────────────────────────────────────────────────────── */
+/* Overrides Tailwind text-size utilities; padding/margin/layout (rem) is untouched */
+.text-\[9px\]  { font-size: calc(9px    * var(--rr-fs)) !important; }
+.text-\[10px\] { font-size: calc(10px   * var(--rr-fs)) !important; }
+.text-\[11px\] { font-size: calc(11px   * var(--rr-fs)) !important; }
+.text-\[12px\] { font-size: calc(12px   * var(--rr-fs)) !important; }
+.text-\[13px\] { font-size: calc(13px   * var(--rr-fs)) !important; }
+.text-\[14px\] { font-size: calc(14px   * var(--rr-fs)) !important; }
+.text-xs       { font-size: calc(0.75rem   * var(--rr-fs)) !important; line-height: calc(1rem     * var(--rr-fs)) !important; }
+.text-sm       { font-size: calc(0.875rem  * var(--rr-fs)) !important; line-height: calc(1.25rem  * var(--rr-fs)) !important; }
+.text-base     { font-size: calc(1rem      * var(--rr-fs)) !important; line-height: calc(1.5rem   * var(--rr-fs)) !important; }
+.text-lg       { font-size: calc(1.125rem  * var(--rr-fs)) !important; line-height: calc(1.75rem  * var(--rr-fs)) !important; }
+.text-xl       { font-size: calc(1.25rem   * var(--rr-fs)) !important; line-height: calc(1.75rem  * var(--rr-fs)) !important; }
+.text-2xl      { font-size: calc(1.5rem    * var(--rr-fs)) !important; line-height: calc(2rem     * var(--rr-fs)) !important; }
+.text-3xl      { font-size: calc(1.875rem  * var(--rr-fs)) !important; line-height: calc(2.25rem  * var(--rr-fs)) !important; }
 
 html.dark {
   --page-bg: #1a1a1a;

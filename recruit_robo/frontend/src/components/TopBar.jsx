@@ -517,7 +517,7 @@ export default function TopBar() {
                       onChange={e => {
                         const v = Number(e.target.value)
                         setSliderVal(v)
-                        document.documentElement.style.fontSize = v + '%'
+                        document.documentElement.style.setProperty('--rr-fs', String(v / 100))
                       }}
                       className="flex-1 cursor-pointer"
                       style={{ accentColor: '#7c3aed' }}
@@ -536,7 +536,7 @@ export default function TopBar() {
                     <button
                       onClick={() => {
                         setSliderVal(100)
-                        document.documentElement.style.fontSize = '100%'
+                        document.documentElement.style.setProperty('--rr-fs', '1')
                       }}
                       className="text-[10px] text-gray-400 hover:text-purple-600 transition-colors">
                       Reset

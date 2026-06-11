@@ -4,11 +4,11 @@ const SettingsContext = createContext(null)
 
 function loadFontSize() {
   const raw = localStorage.getItem('rr_font_size')
-  if (!raw) return 100
   const num = parseInt(raw, 10)
-  // Migrate legacy named keys → 100%
-  if (isNaN(num)) return 100
-  return Math.min(200, Math.max(50, num))
+  const clamped = isNaN(num) ? 100 : Math.min(200, Math.max(50, num))
+  // Apply immediately so the first render already has the right scale
+  document.documentElement.style.setProperty('--rr-fs', String(clamped / 100))
+  return clamped
 }
 
 export function SettingsProvider({ children }) {
@@ -21,7 +21,7 @@ export function SettingsProvider({ children }) {
     const clamped = Math.min(200, Math.max(50, Math.round(pct)))
     setFontSizeState(clamped)
     localStorage.setItem('rr_font_size', String(clamped))
-    document.documentElement.style.fontSize = clamped + '%'
+    document.documentElement.style.setProperty('--rr-fs', String(clamped / 100))
   }
 
   function setDarkMode(val) {
