@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   GHCR_OWNER: keshava4895
   RESOURCE_GROUP: quadrecruit-rg
   BACKEND_APP: ca-quadrecruit-backend
