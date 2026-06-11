@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { interviewsApi, candidatesApi, jobsApi, interviewersApi, availabilityApi, outreachApi, msGraphApi } from '../api'
 import QlogoLoader from '../components/QlogoLoader'
+import DateTimePicker from '../components/DateTimePicker'
 import {
   Calendar, Clock, Video, Phone, MapPin, Plus, X,
   CheckCircle, XCircle, Edit2, Trash2, ExternalLink,
@@ -924,7 +925,8 @@ export default function Interviews() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">Date & Time</label>
-                  <input type="datetime-local" value={form.datetime}
+                  <DateTimePicker
+                    value={form.datetime}
                     onChange={e => setForm(f => ({ ...f, datetime: e.target.value }))}
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-purple-300" />
                 </div>
@@ -1046,7 +1048,8 @@ export default function Interviews() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">Reschedule</label>
-                  <input type="datetime-local" value={editForm.datetime}
+                  <DateTimePicker
+                    value={editForm.datetime}
                     onChange={e => setEditForm(f => ({ ...f, datetime: e.target.value }))}
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-purple-300" />
                 </div>

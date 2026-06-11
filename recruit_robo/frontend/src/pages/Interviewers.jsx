@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import QlogoLoader from '../components/QlogoLoader'
+import DateTimePicker from '../components/DateTimePicker'
 import { interviewersApi, jobsApi, candidatesApi, availabilityApi } from '../api'
 import {
   Users, UserPlus, Calendar, ChevronDown, ChevronUp, RefreshCw, X, Trash2, UserCheck,
@@ -408,7 +409,9 @@ function AssignModal({ interviewer, onClose, onAssigned }) {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">Scheduled Date / Time</label>
-              <input type="datetime-local" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)}
+              <DateTimePicker
+                value={scheduledDate}
+                onChange={e => setScheduledDate(e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
             </div>
           </div>
