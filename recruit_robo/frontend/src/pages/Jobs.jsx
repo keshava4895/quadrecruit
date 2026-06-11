@@ -572,7 +572,7 @@ export default function Jobs() {
 
       {/* ── Full-screen EDIT form ─────────────────────────────────────────── */}
       {editingJob && (
-        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#f1f0f7' }}>
+        <div data-edit-menu className="fixed inset-0 z-50 flex flex-col" style={{ background: '#f1f0f7' }}>
           <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0 shadow-sm">
             <h1 className="text-sm font-semibold text-gray-900">Edit Job Opening</h1>
             <div className="flex items-center gap-2">
