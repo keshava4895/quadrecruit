@@ -58,7 +58,7 @@ function NotepadWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-0 z-50 flex flex-col items-end gap-3">
+    <div className="fixed bottom-5 right-0 z-50 flex flex-col items-end gap-3" style={{ pointerEvents: 'none' }}>
       {/* Panel — inset from edge so it's fully visible */}
       <div
         className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-80 flex flex-col overflow-hidden origin-bottom-right transition-all duration-200 mr-3"
@@ -110,7 +110,7 @@ function NotepadWidget() {
         onClick={() => setOpen(v => !v)}
         title={open ? 'Close notepad' : 'Open notepad'}
         className="w-8 h-8 rounded-l-full rounded-r-none text-white shadow-md transition-all duration-200 translate-x-1 hover:translate-x-0 active:scale-95 flex items-center justify-center flex-shrink-0"
-        style={{ background: 'rgba(73, 2, 159, 0.55)', backdropFilter: 'blur(4px)' }}
+        style={{ background: 'rgba(73, 2, 159, 0.55)', backdropFilter: 'blur(4px)', pointerEvents: 'auto' }}
       >
         <NotebookPen className="w-3.5 h-3.5" />
       </button>
