@@ -132,6 +132,17 @@ async def get_candidate(candidate_id: str) -> dict | None:
     )
 
 
+async def update_candidate(candidate_id: str, fields: dict) -> dict | None:
+    db = get_db()
+    readonly = {"candidateId", "_id", "created_at", "match_score", "status", "interview_phase", "jobId"}
+    update = {k: v for k, v in fields.items() if k not in readonly}
+    if not update:
+        return await get_candidate(candidate_id)
+    update["updated_at"] = datetime.now(timezone.utc)
+    await db.candidate_info.update_one({"candidateId": candidate_id}, {"$set": update})
+    return await get_candidate(candidate_id)
+
+
 async def update_sourced_by(candidate_id: str, job_id: str, user_id: str | None, user_name: str | None):
     db = get_db()
     if user_id:

@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from 'react'
 import QlogoLoader from '../components/QlogoLoader'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { candidatesApi, notesApi, offersApi, interviewsApi, authApi } from '../api'
+import { candidatesApi, notesApi, offersApi, interviewsApi, authApi, interviewersApi } from '../api'
 import { useAuth } from '../context/AuthContext'
 import {
   ChevronLeft, Mail, Phone, Briefcase, MapPin, Star,
   FileText, MessageSquare, Calendar, CheckCircle, XCircle,
-  Clock, ChevronDown, ChevronUp, Download, Trash2,
-  Activity, DollarSign, Plus, Video, ExternalLink, UserCheck, X,
+  Clock, ChevronDown, ChevronUp, Download, Trash2, Pencil,
+  Activity, DollarSign, Plus, Video, ExternalLink, UserCheck, Users, X,
 } from 'lucide-react'
 
 const STATUS_STYLE = {
@@ -118,15 +118,61 @@ export default function CandidateProfile() {
   const [offers,      setOffers]      = useState([])
   const [interviews2, setInterviews2] = useState([])
 
-  // ── Ownership ──────────────────────────────────────────────────────────────
-  const [members,         setMembers]         = useState([])
-  const [ownerSaving,     setOwnerSaving]     = useState(false)
-  const [sourcedBySaving, setSourcedBySaving] = useState({}) // keyed by jobId
+  // ── Ownership & assignments ────────────────────────────────────────────────
+  const [members,           setMembers]           = useState([])
+  const [interviewers,      setInterviewers]      = useState([])
+  const [ownerSaving,       setOwnerSaving]       = useState(false)
+  const [roundAssignSaving, setRoundAssignSaving] = useState({}) // keyed by `${jobId}-${roundType}`
   const ownerRef = useRef(null)
+
+  // ── Edit profile ───────────────────────────────────────────────────────────
+  const [editOpen,   setEditOpen]   = useState(false)
+  const [editForm,   setEditForm]   = useState({})
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError,  setEditError]  = useState('')
 
   useEffect(() => {
     authApi.users().then(r => setMembers(r.data || [])).catch(() => {})
+    interviewersApi.list().then(r => setInterviewers(r.data || [])).catch(() => {})
   }, [])
+
+  function openEdit() {
+    setEditForm({
+      name:            profile.name            || '',
+      email:           profile.email?.includes('@placeholder') ? '' : (profile.email || ''),
+      alternate_email: profile.alternate_email  || '',
+      phone:           profile.phone            || '',
+      alternate_phone: profile.alternate_phone  || '',
+      location:        profile.location         || '',
+      current_company: profile.current_company  || '',
+      current_role:    profile.current_role     || '',
+      linkedin_url:    profile.linkedin_url      || '',
+      notice_period:   profile.notice_period     || '',
+      expected_salary: profile.expected_salary   || '',
+      experience:      profile.experience        ?? 0,
+      skills:          Array.isArray(profile.skills) ? profile.skills.join(', ') : (profile.skills || ''),
+      summary:         profile.summary           || '',
+    })
+    setEditError('')
+    setEditOpen(true)
+  }
+
+  async function saveEdit() {
+    if (!editForm.name?.trim()) return
+    setEditSaving(true); setEditError('')
+    try {
+      const payload = {
+        ...editForm,
+        skills: editForm.skills.split(',').map(s => s.trim()).filter(Boolean),
+        experience: Number(editForm.experience) || 0,
+      }
+      const r = await candidatesApi.updateProfile(candidateId, payload)
+      setProfile(prev => ({ ...prev, ...r.data }))
+      setEditOpen(false)
+    } catch (err) {
+      setEditError(err?.response?.data?.detail || 'Failed to save changes')
+    } finally { setEditSaving(false) }
+  }
 
   async function handleAssignOwner(memberId) {
     setOwnerSaving(true)
@@ -137,20 +183,29 @@ export default function CandidateProfile() {
     setOwnerSaving(false)
   }
 
-  async function handleUpdateSourcedBy(jobId, userId) {
-    setSourcedBySaving(prev => ({ ...prev, [jobId]: true }))
+  async function handleUpdateRoundAssignment(jobId, roundType, interviewerId) {
+    const key = `${jobId}-${roundType}`
+    setRoundAssignSaving(prev => ({ ...prev, [key]: true }))
     try {
-      const r = await candidatesApi.updateSourcedBy(candidateId, jobId, userId || null)
+      const r = await candidatesApi.updateRoundAssignment(candidateId, jobId, roundType, interviewerId || null)
       setProfile(prev => ({
         ...prev,
         jobs: prev.jobs.map(j =>
           j.jobId === jobId
-            ? { ...j, sourced_by_id: r.data.sourced_by_id, sourced_by_name: r.data.sourced_by_name }
+            ? {
+                ...j,
+                round_assignments: {
+                  ...j.round_assignments,
+                  [roundType]: interviewerId
+                    ? { interviewer_id: r.data.interviewer_id, interviewer_name: r.data.interviewer_name }
+                    : undefined,
+                },
+              }
             : j
         ),
       }))
     } catch { }
-    setSourcedBySaving(prev => ({ ...prev, [jobId]: false }))
+    setRoundAssignSaving(prev => ({ ...prev, [key]: false }))
   }
 
   useEffect(() => {
@@ -227,6 +282,10 @@ export default function CandidateProfile() {
             <div>
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-xl font-bold text-gray-900">{profile.name}</h1>
+                <button onClick={openEdit}
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-colors">
+                  <Pencil className="w-3 h-3" /> Edit
+                </button>
                 {profile.resume_blob && (
                   <button onClick={downloadResume} disabled={dlLoading}
                     className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-white rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50"
@@ -241,9 +300,14 @@ export default function CandidateProfile() {
                 </Link>
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-sm text-gray-400">
-                {profile.email && (
+                {profile.email && !profile.email.includes('@placeholder') && (
                   <a href={`mailto:${profile.email}`} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
                     <Mail className="w-3.5 h-3.5" />{profile.email}
+                  </a>
+                )}
+                {profile.alternate_email && (
+                  <a href={`mailto:${profile.alternate_email}`} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                    <Mail className="w-3.5 h-3.5 text-gray-300" />{profile.alternate_email}
                   </a>
                 )}
                 {profile.phone && (
@@ -251,9 +315,25 @@ export default function CandidateProfile() {
                     <Phone className="w-3.5 h-3.5" />{profile.phone}
                   </span>
                 )}
+                {profile.alternate_phone && (
+                  <span className="flex items-center gap-1 text-gray-300">
+                    <Phone className="w-3.5 h-3.5" />{profile.alternate_phone}
+                  </span>
+                )}
                 {profile.experience > 0 && (
                   <span className="flex items-center gap-1">
                     <Briefcase className="w-3.5 h-3.5" />{profile.experience} yrs experience
+                  </span>
+                )}
+                {profile.location && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" />{profile.location}
+                  </span>
+                )}
+                {profile.current_company && (
+                  <span className="flex items-center gap-1">
+                    <Briefcase className="w-3.5 h-3.5 text-gray-300" />
+                    {profile.current_role ? `${profile.current_role} @ ${profile.current_company}` : profile.current_company}
                   </span>
                 )}
               </div>
@@ -444,33 +524,45 @@ export default function CandidateProfile() {
                       </span>
                     </div>
 
-                    {/* Sourced by row */}
-                    <div className="flex items-center gap-2 mt-1.5 pl-0.5">
-                      <UserCheck className="w-3 h-3 text-gray-300 flex-shrink-0" />
-                      <span className="text-[11px] text-gray-400">Sourced by</span>
-                      {j.sourced_by_name ? (
-                        <div className="flex items-center gap-1">
-                          <div className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0"
-                            style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
-                            {j.sourced_by_name.charAt(0).toUpperCase()}
-                          </div>
-                          <span className="text-[11px] font-medium text-gray-700">{j.sourced_by_name}</span>
+                    {/* Per-round interviewer assignment */}
+                    {[
+                      { type: 'technical',       label: 'Technical',       count: j.rounds_technical },
+                      { type: 'tech_managerial', label: 'Tech Managerial', count: j.rounds_tech_managerial },
+                      { type: 'managerial',      label: 'Managerial',      count: j.rounds_managerial },
+                      { type: 'hr',              label: 'HR Round',        count: j.rounds_hr },
+                    ].filter(r => r.count > 0).map(r => {
+                      const assign = j.round_assignments?.[r.type]
+                      const key = `${j.jobId}-${r.type}`
+                      return (
+                        <div key={r.type} className="flex items-center gap-2 mt-1 pl-0.5">
+                          <Users className="w-3 h-3 text-gray-300 flex-shrink-0" />
+                          <span className="text-[11px] text-gray-400 w-28 flex-shrink-0">
+                            {r.label} ×{r.count}
+                          </span>
+                          {assign?.interviewer_name ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0">
+                                {assign.interviewer_name.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="text-[11px] font-medium text-gray-700">{assign.interviewer_name}</span>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-gray-300 italic">Unassigned</span>
+                          )}
+                          <select
+                            value={assign?.interviewer_id || ''}
+                            onChange={e => handleUpdateRoundAssignment(j.jobId, r.type, e.target.value)}
+                            disabled={roundAssignSaving[key]}
+                            className="ml-1 text-[11px] border border-gray-200 rounded-lg px-1.5 py-1 bg-white text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer disabled:opacity-50">
+                            <option value="">— Unassign —</option>
+                            {interviewers.map(iv => (
+                              <option key={iv.interviewerId} value={iv.interviewerId}>{iv.name}</option>
+                            ))}
+                          </select>
+                          {roundAssignSaving[key] && <QlogoLoader size={12} />}
                         </div>
-                      ) : (
-                        <span className="text-[11px] text-gray-300 italic">Unassigned</span>
-                      )}
-                      <select
-                        value={j.sourced_by_id || ''}
-                        onChange={e => handleUpdateSourcedBy(j.jobId, e.target.value)}
-                        disabled={sourcedBySaving[j.jobId]}
-                        className="ml-1 text-[11px] border border-gray-200 rounded-lg px-1.5 py-1 bg-white text-gray-600 focus:outline-none focus:ring-1 focus:ring-purple-400 cursor-pointer disabled:opacity-50">
-                        <option value="">— Unassign —</option>
-                        {members.filter(m => m.is_active).map(m => (
-                          <option key={m.userId} value={m.userId}>{m.name} ({m.role})</option>
-                        ))}
-                      </select>
-                      {sourcedBySaving[j.jobId] && <QlogoLoader size={12} />}
-                    </div>
+                      )
+                    })}
                   </div>
                 )
               })}
@@ -568,6 +660,117 @@ export default function CandidateProfile() {
         )}
 
       </div>
+
+      {/* ── Edit Candidate Modal ────────────────────────────────────────────── */}
+      {editOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+              <h2 className="text-sm font-semibold text-gray-900">Edit Candidate Profile</h2>
+              <div className="flex items-center gap-2">
+                {editError && <span className="text-xs text-red-500">{editError}</span>}
+                <button onClick={() => setEditOpen(false)}
+                  className="p-1 text-gray-400 hover:text-gray-700 rounded transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              {/* Contact */}
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</p>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { key: 'name',            label: 'Full Name',      required: true },
+                  { key: 'email',           label: 'Email' },
+                  { key: 'alternate_email', label: 'Alternate Email' },
+                  { key: 'phone',           label: 'Phone' },
+                  { key: 'alternate_phone', label: 'Alternate Phone' },
+                  { key: 'linkedin_url',    label: 'LinkedIn URL' },
+                ].map(f => (
+                  <div key={f.key}>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      {f.label}{f.required && <span className="text-red-500 ml-0.5">*</span>}
+                    </label>
+                    <input
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                      value={editForm[f.key] || ''}
+                      onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Professional */}
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-2">Professional</p>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { key: 'current_company', label: 'Current Company' },
+                  { key: 'current_role',    label: 'Current Role / Title' },
+                  { key: 'location',        label: 'Location' },
+                  { key: 'notice_period',   label: 'Notice Period' },
+                  { key: 'expected_salary', label: 'Expected Salary' },
+                ].map(f => (
+                  <div key={f.key}>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">{f.label}</label>
+                    <input
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                      value={editForm[f.key] || ''}
+                      onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Experience (years)</label>
+                  <input type="number" min="0"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                    value={editForm.experience ?? 0}
+                    onChange={e => setEditForm(prev => ({ ...prev, experience: +e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* Skills */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Skills <span className="font-normal text-gray-400">(comma-separated)</span>
+                </label>
+                <input
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                  value={editForm.skills || ''}
+                  onChange={e => setEditForm(prev => ({ ...prev, skills: e.target.value }))}
+                />
+              </div>
+
+              {/* Summary */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Summary</label>
+                <textarea rows={3}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition resize-none"
+                  value={editForm.summary || ''}
+                  onChange={e => setEditForm(prev => ({ ...prev, summary: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50/60 flex-shrink-0">
+              <button onClick={() => setEditOpen(false)}
+                className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition-colors">
+                Cancel
+              </button>
+              <button onClick={saveEdit} disabled={editSaving || !editForm.name?.trim()}
+                className="px-5 py-2 disabled:opacity-40 text-white text-sm font-medium rounded-xl transition-all shadow-sm hover:shadow-md"
+                style={{ background: 'linear-gradient(135deg, #49029F, #7c3aed)' }}>
+                {editSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

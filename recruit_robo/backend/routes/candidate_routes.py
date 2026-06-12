@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
-from models.models import CandidateCreate, NoteCreate
+from models.models import CandidateCreate, CandidateUpdate, NoteCreate
 from services.auth_service import get_current_user
 from services.candidate_manager import (
     add_candidate, get_top_candidates, get_candidate, update_status,
     delete_candidate, list_all_candidates, add_standalone_candidate,
-    assign_owner, unassign_owner, update_sourced_by,
+    assign_owner, unassign_owner, update_sourced_by, update_candidate,
 )
 from services.screening_service import screen_resume, extract_text_from_bytes
 from services.matching_service  import compute_match
@@ -197,6 +197,19 @@ async def all_candidates(search: str = "", status: str = "", owner_ids: str = ""
     return await list_all_candidates(search=search, status=status, owner_ids=owner_id_list, skip=skip, limit=limit)
 
 
+@router.patch("/{candidate_id}/profile")
+async def update_candidate_profile(
+    candidate_id: str,
+    payload: CandidateUpdate,
+    current_user=Depends(get_current_user),
+):
+    c = await get_candidate(candidate_id)
+    if not c:
+        raise HTTPException(404, "Candidate not found")
+    updated = await update_candidate(candidate_id, payload.model_dump(exclude_none=True))
+    return updated
+
+
 @router.patch("/{candidate_id}/owner")
 async def update_candidate_owner(candidate_id: str, payload: dict, current_user=Depends(get_current_user)):
     owner_id = payload.get("owner_id")
@@ -232,6 +245,39 @@ async def update_pipeline_sourced_by(
         return {"updated": True, "sourced_by_id": None, "sourced_by_name": None}
 
 
+@router.patch("/{candidate_id}/pipeline/{job_id}/round-assignment")
+async def update_round_assignment(
+    candidate_id: str,
+    job_id: str,
+    payload: dict,
+    current_user=Depends(get_current_user),
+):
+    round_type     = (payload.get("round_type") or "").strip()
+    interviewer_id = payload.get("interviewer_id")
+    if not round_type:
+        raise HTTPException(400, "round_type required")
+    db = get_db()
+    if interviewer_id:
+        iv = await db["interviewers"].find_one({"interviewerId": interviewer_id}, {"_id": 0, "name": 1})
+        if not iv:
+            raise HTTPException(404, "Interviewer not found")
+        await db["pipeline_round_assignments"].update_one(
+            {"candidateId": candidate_id, "jobId": job_id, "round_type": round_type},
+            {"$set": {
+                "interviewer_id":   interviewer_id,
+                "interviewer_name": iv["name"],
+                "updated_at":       datetime.now(timezone.utc),
+            }},
+            upsert=True,
+        )
+        return {"updated": True, "interviewer_id": interviewer_id, "interviewer_name": iv["name"]}
+    else:
+        await db["pipeline_round_assignments"].delete_one(
+            {"candidateId": candidate_id, "jobId": job_id, "round_type": round_type}
+        )
+        return {"updated": True, "interviewer_id": None, "interviewer_name": None}
+
+
 @router.get("/{job_id}/top")
 async def top_candidates(job_id: str, limit: int = 10):
     return await get_top_candidates(job_id, limit)
@@ -259,16 +305,32 @@ async def candidate_full_profile(candidate_id: str):
     ).to_list(20)
     jobs_detail = []
     for je in job_entries:
-        job = await db["job_info"].find_one({"jobId": je["jobId"]}, {"_id": 0, "title": 1, "location": 1, "skills": 1})
+        job = await db["job_info"].find_one(
+            {"jobId": je["jobId"]},
+            {"_id": 0, "title": 1, "location": 1, "skills": 1,
+             "rounds_technical": 1, "rounds_tech_managerial": 1,
+             "rounds_managerial": 1, "rounds_hr": 1},
+        )
+        # Per-round interviewer assignments for this candidate+job
+        round_assigns_raw = await db["pipeline_round_assignments"].find(
+            {"candidateId": candidate_id, "jobId": je["jobId"]}, {"_id": 0}
+        ).to_list(10)
+        round_assignments = {ra["round_type"]: ra for ra in round_assigns_raw}
+
         jobs_detail.append({
-            "jobId":           je["jobId"],
-            "title":           job["title"] if job else je["jobId"],
-            "location":        job.get("location") if job else None,
-            "match_score":     je.get("match_score", 0),
-            "status":          je.get("status", "sourced"),
-            "updated_at":      je.get("updated_at"),
-            "sourced_by_id":   je.get("sourced_by_id"),
-            "sourced_by_name": je.get("sourced_by_name"),
+            "jobId":                  je["jobId"],
+            "title":                  job["title"] if job else je["jobId"],
+            "location":               job.get("location") if job else None,
+            "match_score":            je.get("match_score", 0),
+            "status":                 je.get("status", "sourced"),
+            "updated_at":             je.get("updated_at"),
+            "sourced_by_id":          je.get("sourced_by_id"),
+            "sourced_by_name":        je.get("sourced_by_name"),
+            "rounds_technical":       (job.get("rounds_technical") or 0) if job else 0,
+            "rounds_tech_managerial": (job.get("rounds_tech_managerial") or 0) if job else 0,
+            "rounds_managerial":      (job.get("rounds_managerial") or 0) if job else 0,
+            "rounds_hr":              (job.get("rounds_hr") or 0) if job else 0,
+            "round_assignments":      round_assignments,
         })
 
     # Interview feedback

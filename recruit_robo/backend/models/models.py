@@ -81,6 +81,22 @@ class CandidateCreate(BaseModel):
     summary: Optional[str] = None
     resume_text: Optional[str] = None
 
+class CandidateUpdate(BaseModel):
+    name:             Optional[str] = None
+    email:            Optional[str] = None
+    alternate_email:  Optional[str] = None
+    phone:            Optional[str] = None
+    alternate_phone:  Optional[str] = None
+    location:         Optional[str] = None
+    current_company:  Optional[str] = None
+    current_role:     Optional[str] = None
+    linkedin_url:     Optional[str] = None
+    notice_period:    Optional[str] = None
+    expected_salary:  Optional[str] = None
+    experience:       Optional[int] = None
+    skills:           Optional[List[str]] = None
+    summary:          Optional[str] = None
+
 class CandidateResponse(CandidateCreate):
     candidateId: str
     match_score: float = 0.0
