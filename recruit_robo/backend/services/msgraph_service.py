@@ -66,6 +66,8 @@ async def _refresh(refresh_tok: str) -> dict:
                 "scope":         " ".join(SCOPES),
             },
         )
+        if r.status_code in (400, 401):
+            raise RuntimeError(f"token_expired:{r.status_code}")
         r.raise_for_status()
         return r.json()
 
