@@ -58,6 +58,8 @@ export const candidatesApi = {
   remove:       (id, jobId)         => api.delete(`/candidates/${id}`, { params: { job_id: jobId } }),
   updateStatus:  (id, status, jobId) => api.patch(`/candidates/${id}/status`, { status, jobId }),
   assignOwner:   (id, owner_id)      => api.patch(`/candidates/${id}/owner`, { owner_id }),
+  updateSourcedBy: (candidateId, jobId, userId) =>
+    api.patch(`/candidates/${candidateId}/pipeline/${jobId}/sourced-by`, { user_id: userId }),
   uploadResume: (jobId, file) => {
     const form = new FormData()
     form.append('file', file)

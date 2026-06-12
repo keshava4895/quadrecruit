@@ -132,6 +132,25 @@ async def get_candidate(candidate_id: str) -> dict | None:
     )
 
 
+async def update_sourced_by(candidate_id: str, job_id: str, user_id: str | None, user_name: str | None):
+    db = get_db()
+    if user_id:
+        await db.job_candidates.update_one(
+            {"candidateId": candidate_id, "jobId": job_id},
+            {"$set": {
+                "sourced_by_id":   user_id,
+                "sourced_by_name": user_name,
+                "updated_at":      datetime.now(timezone.utc),
+            }}
+        )
+    else:
+        await db.job_candidates.update_one(
+            {"candidateId": candidate_id, "jobId": job_id},
+            {"$unset": {"sourced_by_id": "", "sourced_by_name": ""},
+             "$set":   {"updated_at": datetime.now(timezone.utc)}}
+        )
+
+
 async def delete_candidate(candidate_id: str, job_id: str = None):
     db = get_db()
     await db.candidate_info.delete_one({"candidateId": candidate_id})

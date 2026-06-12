@@ -6,7 +6,7 @@ from services.auth_service import get_current_user
 from services.candidate_manager import (
     add_candidate, get_top_candidates, get_candidate, update_status,
     delete_candidate, list_all_candidates, add_standalone_candidate,
-    assign_owner, unassign_owner,
+    assign_owner, unassign_owner, update_sourced_by,
 )
 from services.screening_service import screen_resume, extract_text_from_bytes
 from services.matching_service  import compute_match
@@ -21,6 +21,7 @@ router = APIRouter()
 async def upload_to_pool(
     file: UploadFile = File(...),
     job_id: str = Form(default=None),
+    current_user=Depends(get_current_user),
 ):
     """Upload a resume to the talent pool. Optionally link to a job."""
     import re as _re
@@ -56,8 +57,15 @@ async def upload_to_pool(
         resume_text=resume_text,
     )
 
+    sourced_extra = {
+        "owner_id":        current_user["userId"],
+        "owner_name":      current_user["name"],
+        "sourced_by_id":   current_user["userId"],
+        "sourced_by_name": current_user["name"],
+    }
+
     if job_id:
-        result       = await add_candidate(job_id, candidate)
+        result       = await add_candidate(job_id, candidate, extra=sourced_extra)
         candidate_id = result["candidateId"]
         job = await get_job(job_id)
         if job:
@@ -70,7 +78,7 @@ async def upload_to_pool(
             await update_match_score(candidate_id, job_id, score)
             result["match_score"] = score
     else:
-        result       = await add_standalone_candidate(candidate)
+        result       = await add_standalone_candidate(candidate, extra=sourced_extra)
         candidate_id = result["candidateId"]
 
     # Upload original file to Azure Blob Storage (best-effort — won't fail the request)
@@ -91,18 +99,25 @@ async def upload_to_pool(
 
 
 @router.post("/{job_id}")
-async def add_candidate_route(job_id: str, candidate: CandidateCreate):
+async def add_candidate_route(job_id: str, candidate: CandidateCreate, current_user=Depends(get_current_user)):
     if not candidate.email:
         import re as _re, time as _time
         slug = _re.sub(r"[^a-z0-9]", ".", candidate.name.lower())[:30]
         candidate.email = f"ext.{slug}.{int(_time.time())}@portal.placeholder"
-    return await add_candidate(job_id, candidate)
+    sourced_extra = {
+        "owner_id":        current_user["userId"],
+        "owner_name":      current_user["name"],
+        "sourced_by_id":   current_user["userId"],
+        "sourced_by_name": current_user["name"],
+    }
+    return await add_candidate(job_id, candidate, extra=sourced_extra)
 
 
 @router.post("/{job_id}/upload-resume")
 async def upload_and_screen(
     job_id: str,
     file: UploadFile = File(...),
+    current_user=Depends(get_current_user),
 ):
     """Upload a PDF/text resume, screen it, score it, store candidate."""
     file_bytes  = await file.read()
@@ -130,7 +145,13 @@ async def upload_and_screen(
         summary=parsed.get("summary"),
         resume_text=resume_text,
     )
-    result = await add_candidate(job_id, candidate)
+    sourced_extra = {
+        "owner_id":        current_user["userId"],
+        "owner_name":      current_user["name"],
+        "sourced_by_id":   current_user["userId"],
+        "sourced_by_name": current_user["name"],
+    }
+    result = await add_candidate(job_id, candidate, extra=sourced_extra)
     candidate_id = result["candidateId"]
 
     job = await get_job(job_id)
@@ -191,6 +212,26 @@ async def update_candidate_owner(candidate_id: str, payload: dict, current_user=
     return {"updated": True, "owner_id": owner_id, "owner_name": user["name"]}
 
 
+@router.patch("/{candidate_id}/pipeline/{job_id}/sourced-by")
+async def update_pipeline_sourced_by(
+    candidate_id: str,
+    job_id: str,
+    payload: dict,
+    current_user=Depends(get_current_user),
+):
+    user_id = payload.get("user_id")
+    db = get_db()
+    if user_id:
+        user = await db["users"].find_one({"userId": user_id}, {"_id": 0, "name": 1})
+        if not user:
+            raise HTTPException(404, "User not found")
+        await update_sourced_by(candidate_id, job_id, user_id, user["name"])
+        return {"updated": True, "sourced_by_id": user_id, "sourced_by_name": user["name"]}
+    else:
+        await update_sourced_by(candidate_id, job_id, None, None)
+        return {"updated": True, "sourced_by_id": None, "sourced_by_name": None}
+
+
 @router.get("/{job_id}/top")
 async def top_candidates(job_id: str, limit: int = 10):
     return await get_top_candidates(job_id, limit)
@@ -220,12 +261,14 @@ async def candidate_full_profile(candidate_id: str):
     for je in job_entries:
         job = await db["job_info"].find_one({"jobId": je["jobId"]}, {"_id": 0, "title": 1, "location": 1, "skills": 1})
         jobs_detail.append({
-            "jobId":       je["jobId"],
-            "title":       job["title"] if job else je["jobId"],
-            "location":    job.get("location") if job else None,
-            "match_score": je.get("match_score", 0),
-            "status":      je.get("status", "sourced"),
-            "updated_at":  je.get("updated_at"),
+            "jobId":           je["jobId"],
+            "title":           job["title"] if job else je["jobId"],
+            "location":        job.get("location") if job else None,
+            "match_score":     je.get("match_score", 0),
+            "status":          je.get("status", "sourced"),
+            "updated_at":      je.get("updated_at"),
+            "sourced_by_id":   je.get("sourced_by_id"),
+            "sourced_by_name": je.get("sourced_by_name"),
         })
 
     # Interview feedback
