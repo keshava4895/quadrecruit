@@ -27,6 +27,16 @@ async def send_via_smtp(req: SmtpSendRequest, current_user=Depends(get_current_u
     if ms_doc and ms_doc.get("access_token"):
         try:
             return await msgraph_service.send_mail(user_id, req.to, req.subject, req.body)
+        except RuntimeError as e:
+            err = str(e)
+            # Token expired/invalid — clear stored tokens so user sees "Connect Outlook" again
+            if any(x in err for x in ("400", "401", "invalid_grant", "token")):
+                await msgraph_service.disconnect(user_id)
+                raise HTTPException(
+                    status_code=401,
+                    detail="Outlook session expired. Please reconnect your Outlook account in Account settings.",
+                )
+            raise HTTPException(status_code=502, detail=f"Failed to send via Outlook: {err}")
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Failed to send via Outlook: {str(e)}")
 
